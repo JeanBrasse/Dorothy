@@ -67,6 +67,16 @@ export class ClaudeProvider implements CLIProvider {
       command += ` --add-dir '${escaped}'`;
     }
 
+    // Obsidian vaults (read-only access)
+    if (params.obsidianVaultPaths) {
+      for (const vp of params.obsidianVaultPaths) {
+        if (fs.existsSync(vp)) {
+          const escaped = vp.replace(/'/g, "'\\''");
+          command += ` --add-dir '${escaped}'`;
+        }
+      }
+    }
+
     // Dorothy's CLAUDE.md via ~/.dorothy
     command += ` --add-dir '${os.homedir()}/.dorothy'`;
 

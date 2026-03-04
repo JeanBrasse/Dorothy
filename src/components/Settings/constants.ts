@@ -12,10 +12,12 @@ import {
 import { SlackIcon } from './SlackIcon';
 import { JiraIcon } from './JiraIcon';
 import { TasmaniaIcon } from './TasmaniaIcon';
+import { ObsidianIcon } from './ObsidianIcon';
 import type { SettingsSection } from './types';
 
 export const SECTIONS: { id: SettingsSection; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'general', label: 'General', icon: Settings },
+  { id: 'obsidian', label: 'Obsidian', icon: ObsidianIcon },
   { id: 'git', label: 'Git', icon: GitCommit },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'telegram', label: 'Telegram', icon: Send },
@@ -61,6 +63,7 @@ export const DEFAULT_APP_SETTINGS = {
   verboseModeEnabled: false,
   autoCheckUpdates: true,
   defaultProvider: 'claude',
+  obsidianVaultPaths: [] as string[],
   cliPaths: {
     claude: '',
     codex: '',

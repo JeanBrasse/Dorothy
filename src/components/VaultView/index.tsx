@@ -17,6 +17,7 @@ import DocumentList from './components/DocumentList';
 import DocumentViewer from './components/DocumentViewer';
 import DocumentEditor from './components/DocumentEditor';
 import SearchResults from './components/SearchResults';
+import { VaultPanel, VaultPanelHeader, VaultEmptyState } from './shared';
 
 function isElectron(): boolean {
   return typeof window !== 'undefined' && !!window.electronAPI?.vault;
@@ -44,7 +45,7 @@ function saveReadDocs(ids: Set<string>) {
   localStorage.setItem(READ_DOCS_KEY, JSON.stringify([...ids]));
 }
 
-export default function VaultView() {
+export default function VaultView({ embedded }: { embedded?: boolean } = {}) {
   // Data state
   const [documents, setDocuments] = useState<VaultDocumentElectron[]>([]);
   const [allDocuments, setAllDocuments] = useState<VaultDocumentElectron[]>([]);
@@ -322,26 +323,26 @@ export default function VaultView() {
   // Non-electron fallback
   if (!isElectron()) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        <div className="text-center">
-          <Archive className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p className="text-lg font-medium">Vault</p>
-          <p className="text-sm mt-1">Available in the desktop app</p>
-        </div>
-      </div>
+      <VaultEmptyState
+        icon={Archive}
+        title="Vault"
+        description="Available in the desktop app"
+      />
     );
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-7rem)] lg:h-[calc(100vh-3rem)] pt-4 lg:pt-6 overflow-hidden">
+    <div className={embedded ? "flex flex-col h-full overflow-hidden" : "flex flex-col h-[calc(100vh-7rem)] lg:h-[calc(100vh-3rem)] pt-4 lg:pt-6 overflow-hidden"}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 shrink-0">
-        <div>
-          <h1 className="text-xl lg:text-2xl font-bold tracking-tight">Vault</h1>
-          <p className="text-muted-foreground text-xs lg:text-sm mt-1 hidden sm:block">
-            Agent reports & knowledge base
-          </p>
-        </div>
+        {!embedded && (
+          <div>
+            <h1 className="text-xl lg:text-2xl font-bold tracking-tight">Vault</h1>
+            <p className="text-muted-foreground text-xs lg:text-sm mt-1 hidden sm:block">
+              Agent reports & knowledge base
+            </p>
+          </div>
+        )}
 
         {(viewMode === 'list' || viewMode === 'search') && (
           <div className="flex items-center gap-3">
@@ -390,10 +391,8 @@ export default function VaultView() {
       {/* Main Content: sidebar + content area */}
       <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
         {/* Folder sidebar */}
-        <div className="w-64 shrink-0 hidden lg:flex flex-col border border-border rounded-lg bg-card overflow-hidden">
-          <div className="px-3 py-2.5 border-b border-border">
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Folders</h2>
-          </div>
+        <VaultPanel className="w-64 shrink-0 hidden lg:flex flex-col">
+          <VaultPanelHeader>Folders</VaultPanelHeader>
           <div className="flex-1 overflow-y-auto">
             <FolderTree
               folders={folders}
@@ -411,10 +410,10 @@ export default function VaultView() {
               onDeleteFolder={handleDeleteFolder}
             />
           </div>
-        </div>
+        </VaultPanel>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-hidden min-w-0 border border-border rounded-lg bg-card">
+        <VaultPanel className="flex-1 min-w-0">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -499,7 +498,7 @@ export default function VaultView() {
               )}
             </AnimatePresence>
           )}
-        </div>
+        </VaultPanel>
       </div>
     </div>
   );

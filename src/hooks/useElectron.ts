@@ -56,6 +56,7 @@ export function useElectronAgents() {
     skipPermissions?: boolean;
     provider?: AgentProvider;
     localModel?: string;
+    obsidianVaultPaths?: string[];
   }) => {
     if (!isElectron()) {
       throw new Error('Electron API not available');

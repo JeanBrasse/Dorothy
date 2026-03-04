@@ -76,6 +76,23 @@ export interface ProjectMemory {
   provider: string;    // 'claude' | 'codex' | 'gemini'
 }
 
+export interface ObsidianFile {
+  name: string;
+  path: string;
+  relativePath: string;
+  content: string;
+  size: number;
+  lastModified: string;
+  frontmatter?: Record<string, unknown>;
+}
+
+export interface ObsidianFolder {
+  name: string;
+  path: string;
+  relativePath: string;
+  children: (ObsidianFolder | { type: 'file'; name: string; relativePath: string })[];
+}
+
 export interface ImportPreview {
   name: string;
   description: string;
@@ -114,6 +131,7 @@ export interface AgentStatus {
   skipPermissions?: boolean; // If true, use --dangerously-skip-permissions flag
   provider?: AgentProvider;   // 'claude' (default) or 'local' (Tasmania)
   localModel?: string;        // Tasmania model name when provider is 'local'
+  obsidianVaultPaths?: string[]; // Obsidian vault paths to mount via --add-dir (read-only)
 }
 
 export interface PtyDataEvent {
@@ -154,6 +172,7 @@ export interface ElectronAPI {
       skipPermissions?: boolean;
       provider?: AgentProvider;
       localModel?: string;
+      obsidianVaultPaths?: string[];
     }) => Promise<AgentStatus & { ptyId: string }>;
     update: (params: {
       id: string;
@@ -680,6 +699,24 @@ export interface ElectronAPI {
       releaseNotes: string;
       hasUpdate: boolean;
     }) => void) => () => void;
+  };
+
+  // Obsidian vault browsing & editing
+  obsidian?: {
+    scan: () => Promise<{
+      vaults: Array<{
+        vaultPath: string;
+        name: string;
+        files: (Omit<ObsidianFile, 'content'> & { preview?: string })[];
+        tree: ObsidianFolder;
+      }>;
+    }>;
+    readFile: (filePath: string, vaultPath: string) => Promise<{ file?: ObsidianFile; error?: string }>;
+    writeFile: (filePath: string, content: string, vaultPath: string) => Promise<{ success?: boolean; error?: string }>;
+    getVaultInfo: () => Promise<{ configured: boolean; vaultPaths: string[] }>;
+    detectVault: (projectPath: string) => Promise<{ detected: boolean; vaultPath: string | null }>;
+    addVault: (vaultPath: string) => Promise<{ success: boolean; error?: string }>;
+    removeVault: (vaultPath: string) => Promise<{ success: boolean; error?: string }>;
   };
 
   // Native Claude memory (reads ~/.claude/projects/*/memory/)

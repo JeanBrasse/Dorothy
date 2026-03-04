@@ -55,6 +55,16 @@ export class GeminiProvider implements CLIProvider {
       command += ` --include-directories '${escaped}'`;
     }
 
+    // Obsidian vaults (read-only access)
+    if (params.obsidianVaultPaths) {
+      for (const vp of params.obsidianVaultPaths) {
+        if (fs.existsSync(vp)) {
+          const escaped = vp.replace(/'/g, "'\\''");
+          command += ` --include-directories '${escaped}'`;
+        }
+      }
+    }
+
     // Include Dorothy directory
     command += ` --include-directories '${os.homedir()}/.dorothy'`;
 

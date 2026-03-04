@@ -15,9 +15,12 @@ import RouteOverlay from './overlays/RouteOverlay';
 import GenerativeZoneOverlay from './overlays/GenerativeZoneOverlay';
 import WorldBuilderPrompt from './overlays/WorldBuilderPrompt';
 import ImportPreviewOverlay from './overlays/ImportPreviewOverlay';
+import GeneratingOverlay from './overlays/GeneratingOverlay';
+import ApiKeyDialog, { getStoredKeys, saveKeys } from './overlays/ApiKeyDialog';
 import { renderZoneScreenshot } from './utils/zoneScreenshot';
 import { renderLoadingScreen } from './renderer/uiRenderer';
 import type { ImportPreview } from '@/types/electron';
+import type { GenerativeZone } from '@/types/world';
 import { useWorldZones } from '@/hooks/useWorldZones';
 import AgentTerminalDialog from '@/components/AgentWorld/AgentTerminalDialog';
 import SkillInstallDialog from '@/components/SkillInstallDialog';
@@ -228,8 +231,14 @@ export default function PokemonGame() {
   const [worldBuilderPending, setWorldBuilderPending] = useState(false);
   const [importPreview, setImportPreview] = useState<{ preview: ImportPreview; zone: unknown } | null>(null);
 
-  // Generative world zones (loaded via Electron IPC, live-updated via fs.watch)
-  const { zones: worldZones } = useWorldZones();
+  // AI generation state
+  const [generating, setGenerating] = useState(false);
+  const [generationStatus, setGenerationStatus] = useState('Starting...');
+  const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
+  const [pendingGenerationPrompt, setPendingGenerationPrompt] = useState<string | null>(null);
+
+  // Generative world zones (Electron IPC or localStorage fallback)
+  const { zones: worldZones, addZone, deleteZone: deleteWorldZone } = useWorldZones();
 
   // ── Same pattern as agents/page.tsx ──
   // Get real agents from Electron
@@ -420,34 +429,143 @@ export default function PokemonGame() {
     }
   }, [dialogueQueue, router, worldBuilderPending]);
 
-  // World Builder — create agent with world-builder skill
-  const handleWorldBuilderSubmit = useCallback(async (prompt: string) => {
+  // World Builder — generate zone via Claude API or Electron agent
+  const startGeneration = useCallback(async (prompt: string) => {
+    const keys = getStoredKeys();
     setShowWorldBuilderPrompt(false);
-    if (!electronAgents?.createAgent || !electronFS?.projects?.length) return;
+    setGenerating(true);
+    setGenerationStatus('Starting...');
 
-    // Find the Dorothy app project — agent must run there for dorothy-world MCP access
-    const dorothyProject = electronFS.projects.find(p =>
-      p.path.includes('dorothy')
-    );
-    const projectPath = dorothyProject?.path || electronFS.projects[0]?.path;
-    if (!projectPath) return;
+    try {
+      const response = await fetch('/api/generate-zone', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-anthropic-key': keys.anthropic,
+          ...(keys.socialData ? { 'x-socialdata-key': keys.socialData } : {}),
+        },
+        body: JSON.stringify({ prompt }),
+      });
 
-    const agent = await electronAgents.createAgent({
-      projectPath,
-      skills: ['world-builder'],
-      name: `World: ${prompt.slice(0, 30)}`,
-      character: 'explorer',
-      skipPermissions: true,
-    });
-    await electronAgents.startAgent(agent.id,
-      `Use the /world-builder skill to create a new game zone about: ${prompt}`
-    );
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || `HTTP ${response.status}`);
+      }
 
-    // Show confirmation dialogue
-    setDialogueSpeaker('World Architect');
-    setDialogueText('Your world is being created! Head to the World Gate to the south when it\'s ready.');
-    setDialogueQueue([]);
-  }, [electronAgents, electronFS]);
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response stream');
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
+            if (event.type === 'progress') {
+              setGenerationStatus(event.message);
+            } else if (event.type === 'complete' && event.zone) {
+              addZone(event.zone as GenerativeZone);
+              setGenerating(false);
+              setDialogueSpeaker('World Architect');
+              setDialogueText('Your world has been created! Select it from the world list.');
+              setDialogueQueue([]);
+              return;
+            } else if (event.type === 'error') {
+              throw new Error(event.message);
+            }
+          } catch (e) {
+            if (e instanceof SyntaxError) continue;
+            throw e;
+          }
+        }
+      }
+
+      // Stream ended without a complete event
+      setGenerating(false);
+      setDialogueSpeaker('World Architect');
+      setDialogueText('Something went wrong during generation. Please try again.');
+      setDialogueQueue([]);
+    } catch (e) {
+      setGenerating(false);
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('Invalid API key') || msg.includes('401')) {
+        setDialogueSpeaker('World Architect');
+        setDialogueText('Invalid API key. Please update your key in Settings.');
+        setDialogueQueue([]);
+      } else {
+        setDialogueSpeaker('World Architect');
+        setDialogueText(`Generation failed: ${msg}`);
+        setDialogueQueue([]);
+      }
+    }
+  }, [addZone]);
+
+  const handleWorldBuilderSubmit = useCallback(async (prompt: string) => {
+    // In Electron, use the agent-based approach
+    if (inElectron && electronAgents?.createAgent && electronFS?.projects?.length) {
+      setShowWorldBuilderPrompt(false);
+      const dorothyProject = electronFS.projects.find(p => p.path.includes('dorothy'));
+      const projectPath = dorothyProject?.path || electronFS.projects[0]?.path;
+      if (!projectPath) return;
+
+      const agent = await electronAgents.createAgent({
+        projectPath,
+        skills: ['world-builder'],
+        name: `World: ${prompt.slice(0, 30)}`,
+        character: 'explorer',
+        skipPermissions: true,
+      });
+      await electronAgents.startAgent(agent.id,
+        `Use the /world-builder skill to create a new game zone about: ${prompt}`
+      );
+      setDialogueSpeaker('World Architect');
+      setDialogueText('Your world is being created! Head to the World Gate to the south when it\'s ready.');
+      setDialogueQueue([]);
+      return;
+    }
+
+    // Web mode: check for API key
+    const keys = getStoredKeys();
+    if (!keys.anthropic) {
+      setPendingGenerationPrompt(prompt);
+      setShowWorldBuilderPrompt(false);
+      setShowApiKeyDialog(true);
+      return;
+    }
+
+    await startGeneration(prompt);
+  }, [electronAgents, electronFS, inElectron, startGeneration]);
+
+  // Handle API key save
+  const handleApiKeySave = useCallback((anthropicKey: string, socialDataKey: string) => {
+    saveKeys(anthropicKey, socialDataKey);
+    setShowApiKeyDialog(false);
+    if (pendingGenerationPrompt) {
+      const prompt = pendingGenerationPrompt;
+      setPendingGenerationPrompt(null);
+      startGeneration(prompt);
+    }
+  }, [pendingGenerationPrompt, startGeneration]);
+
+  const handleApiKeyCancel = useCallback(() => {
+    setShowApiKeyDialog(false);
+    setPendingGenerationPrompt(null);
+  }, []);
+
+  // Open settings from game menu
+  const handleOpenSettings = useCallback(() => {
+    const keys = getStoredKeys();
+    setShowApiKeyDialog(true);
+  }, []);
 
   const handleWorldBuilderSelectZone = useCallback((zoneId: string) => {
     setShowWorldBuilderPrompt(false);
@@ -531,21 +649,27 @@ export default function PokemonGame() {
   // Delete zone
   const handleDeleteZone = useCallback(async (zoneId: string) => {
     const world = window.electronAPI?.world;
-    if (!world?.deleteZone) return;
-
-    const result = await world.deleteZone(zoneId);
-    setShowWorldBuilderPrompt(false);
-
-    if (result.success) {
+    if (world?.deleteZone) {
+      const result = await world.deleteZone(zoneId);
+      setShowWorldBuilderPrompt(false);
+      if (result.success) {
+        setDialogueSpeaker('World Architect');
+        setDialogueText('World deleted.');
+        setDialogueQueue([]);
+      } else {
+        setDialogueSpeaker('World Architect');
+        setDialogueText(`Delete failed: ${result.error}`);
+        setDialogueQueue([]);
+      }
+    } else {
+      // Web mode: delete from localStorage
+      deleteWorldZone(zoneId);
+      setShowWorldBuilderPrompt(false);
       setDialogueSpeaker('World Architect');
       setDialogueText('World deleted.');
       setDialogueQueue([]);
-    } else {
-      setDialogueSpeaker('World Architect');
-      setDialogueText(`Delete failed: ${result.error}`);
-      setDialogueQueue([]);
     }
-  }, []);
+  }, [deleteWorldZone]);
 
   // ── Talk to agent — same as agents/page.tsx handleSelectAgent + setEditAgentId ──
   const handleTalkToAgent = useCallback((agentId: string) => {
@@ -722,10 +846,13 @@ export default function PokemonGame() {
 
       {/* Game Menu */}
       {screen === 'menu' && (
-        <GameMenu onClose={() => {
-          setShowMenu(false);
-          setScreen('game');
-        }} />
+        <GameMenu
+          onClose={() => {
+            setShowMenu(false);
+            setScreen('game');
+          }}
+          onSettings={handleOpenSettings}
+        />
       )}
 
       {/* Building Interior */}
@@ -860,6 +987,21 @@ export default function PokemonGame() {
           setPluginInstallTitle('');
         }}
       />
+
+      {/* Generating Overlay */}
+      {generating && (
+        <GeneratingOverlay status={generationStatus} />
+      )}
+
+      {/* API Key Dialog */}
+      {showApiKeyDialog && (
+        <ApiKeyDialog
+          onSave={handleApiKeySave}
+          onCancel={handleApiKeyCancel}
+          initialAnthropicKey={getStoredKeys().anthropic}
+          initialSocialDataKey={getStoredKeys().socialData}
+        />
+      )}
 
       {/* Music Player */}
       <MusicPlayer screen={screen} inBattle={inBattle} />

@@ -66,6 +66,7 @@ export interface AppSettings {
   autoCheckUpdates: boolean;
   cliPaths: CLIPaths;
   defaultProvider?: string;
+  obsidianVaultPaths?: string[];
 }
 
-export type SettingsSection = 'general' | 'git' | 'notifications' | 'telegram' | 'slack' | 'jira' | 'socialdata' | 'tasmania' | 'permissions' | 'skills' | 'cli' | 'system';
+export type SettingsSection = 'general' | 'git' | 'notifications' | 'telegram' | 'slack' | 'jira' | 'socialdata' | 'tasmania' | 'obsidian' | 'permissions' | 'skills' | 'cli' | 'system';

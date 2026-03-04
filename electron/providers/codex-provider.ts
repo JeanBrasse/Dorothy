@@ -53,6 +53,16 @@ export class CodexProvider implements CLIProvider {
       command += ` --add-dir '${escaped}'`;
     }
 
+    // Obsidian vaults (read-only access)
+    if (params.obsidianVaultPaths) {
+      for (const vp of params.obsidianVaultPaths) {
+        if (fs.existsSync(vp)) {
+          const escaped = vp.replace(/'/g, "'\\''");
+          command += ` --add-dir '${escaped}'`;
+        }
+      }
+    }
+
     // Prompt with skills directive
     let finalPrompt = params.prompt;
     if (params.skills && params.skills.length > 0 && !params.isSuperAgent) {

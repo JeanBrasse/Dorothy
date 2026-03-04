@@ -96,9 +96,10 @@ export default function AgentsPage() {
     skipPermissions?: boolean,
     provider?: AgentProvider,
     localModel?: string,
+    obsidianVaultPaths?: string[],
   ) => {
     try {
-      const agent = await createAgent({ projectPath, skills, worktree, character, name, secondaryProjectPath, skipPermissions, provider, localModel });
+      const agent = await createAgent({ projectPath, skills, worktree, character, name, secondaryProjectPath, skipPermissions, provider, localModel, obsidianVaultPaths });
       setSelectedAgent(agent.id);
       setShowNewChatModal(false);
 

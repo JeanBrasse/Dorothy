@@ -10,6 +10,7 @@ export interface InteractiveCommandParams {
   verbose?: boolean;
   skipPermissions?: boolean;
   secondaryProjectPath?: string;
+  obsidianVaultPaths?: string[];
   mcpConfigPath?: string;
   systemPromptFile?: string;
   skills?: string[];

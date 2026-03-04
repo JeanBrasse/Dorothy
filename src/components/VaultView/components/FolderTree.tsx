@@ -83,7 +83,7 @@ interface FolderNodeProps {
 }
 
 function FolderNode({ folder, childFolders, allFolders, documents, selectedFolderId, selectedDocId, readDocIds, onSelectFolder, onSelectDocument, onCreateFolder, onDeleteFolder, depth }: FolderNodeProps) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [showNewSubfolder, setShowNewSubfolder] = useState(false);
   const [newSubfolderName, setNewSubfolderName] = useState('');
   const isSelected = selectedFolderId === folder.id;
@@ -106,7 +106,7 @@ function FolderNode({ folder, childFolders, allFolders, documents, selectedFolde
   return (
     <div>
       <div
-        onClick={() => { onSelectFolder(folder.id); setExpanded(true); }}
+        onClick={() => { onSelectFolder(folder.id); setExpanded(prev => !prev); }}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelectFolder(folder.id); }}

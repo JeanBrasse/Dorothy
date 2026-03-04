@@ -10,8 +10,12 @@ export { Toggle } from './Toggle';
 export { SettingsSidebar } from './SettingsSidebar';
 export { InstallTerminalModal } from './InstallTerminalModal';
 
+// Icons
+export { ObsidianIcon } from './ObsidianIcon';
+
 // Section Components
 export { GeneralSection } from './GeneralSection';
+export { ObsidianSection } from './ObsidianSection';
 export { GitSection } from './GitSection';
 export { NotificationsSection } from './NotificationsSection';
 export { TelegramSection } from './TelegramSection';

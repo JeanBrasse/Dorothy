@@ -52,6 +52,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       skipPermissions?: boolean;
       provider?: 'claude' | 'local';
       localModel?: string;
+      obsidianVaultPaths?: string[];
     }) => ipcRenderer.invoke('agent:create', config),
     update: (params: {
       id: string;
@@ -568,6 +569,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('memory:create-file', memoryDir, fileName, content ?? ''),
     deleteFile: (filePath: string) =>
       ipcRenderer.invoke('memory:delete-file', filePath),
+  },
+
+  // Obsidian vault (read-only browsing, multi-vault)
+  obsidian: {
+    scan: () => ipcRenderer.invoke('obsidian:scan'),
+    readFile: (filePath: string, vaultPath: string) => ipcRenderer.invoke('obsidian:readFile', filePath, vaultPath),
+    writeFile: (filePath: string, content: string, vaultPath: string) => ipcRenderer.invoke('obsidian:writeFile', filePath, content, vaultPath),
+    getVaultInfo: () => ipcRenderer.invoke('obsidian:getVaultInfo'),
+    detectVault: (projectPath: string) => ipcRenderer.invoke('obsidian:detectVault', projectPath),
+    addVault: (vaultPath: string) => ipcRenderer.invoke('obsidian:addVault', vaultPath),
+    removeVault: (vaultPath: string) => ipcRenderer.invoke('obsidian:removeVault', vaultPath),
   },
 
   // API

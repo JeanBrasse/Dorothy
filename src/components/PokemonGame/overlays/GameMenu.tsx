@@ -5,9 +5,10 @@ import { BUILDINGS } from '../constants';
 
 interface GameMenuProps {
   onClose: () => void;
+  onSettings?: () => void;
 }
 
-export default function GameMenu({ onClose }: GameMenuProps) {
+export default function GameMenu({ onClose, onSettings }: GameMenuProps) {
   const router = useRouter();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -17,6 +18,7 @@ export default function GameMenu({ onClose }: GameMenuProps) {
       label: b.label,
       action: () => router.push(b.route),
     })),
+    ...(onSettings ? [{ label: 'SETTINGS', action: () => { onClose(); onSettings(); } }] : []),
   ];
 
   useEffect(() => {

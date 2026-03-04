@@ -28,6 +28,7 @@ export interface AgentStatus {
   kanbanTaskId?: string;  // For kanban task completion tracking
   provider?: AgentProvider;   // 'claude' (default) or 'local' (Tasmania)
   localModel?: string;        // Tasmania model name when provider is 'local'
+  obsidianVaultPaths?: string[]; // Obsidian vault paths to mount via --add-dir (read-only)
 }
 
 export interface CLIPaths {
@@ -72,4 +73,5 @@ export interface AppSettings {
   autoCheckUpdates: boolean;
   cliPaths: CLIPaths;
   defaultProvider?: AgentProvider;
+  obsidianVaultPaths?: string[];
 }

@@ -2,16 +2,79 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Bot, ChevronRight, Play } from 'lucide-react';
+import { X, ChevronRight, Play, Check } from 'lucide-react';
 
 import type { NewChatModalProps, AgentPersonaValues } from './types';
 import type { AgentProvider } from '@/types/electron';
 import { CHARACTER_OPTIONS } from './constants';
 import { useSkillInstall } from './hooks/useSkillInstall';
 import StepProject from './StepProject';
-import StepSkills from './StepSkills';
-import StepConfigure from './StepConfigure';
+import StepModel from './StepModel';
+import StepTools from './StepTools';
+import StepTask from './StepTask';
 import SkillInstallTerminal from './SkillInstallTerminal';
+
+const STEPS = [
+  { label: 'Project', number: 1 },
+  { label: 'Model', number: 2 },
+  { label: 'Tools', number: 3 },
+  { label: 'Task', number: 4 },
+] as const;
+
+function StepIndicator({ currentStep, onStepClick }: { currentStep: number; onStepClick: (step: number) => void }) {
+  return (
+    <div className="flex items-center justify-center gap-0 py-1">
+      {STEPS.map((s, i) => {
+        const isCompleted = currentStep > s.number;
+        const isActive = currentStep === s.number;
+        const isFuture = currentStep < s.number;
+
+        return (
+          <div key={s.number} className="flex items-center">
+            {/* Connector line before (skip first) */}
+            {i > 0 && (
+              <div
+                className={`w-10 h-[2px] ${
+                  isCompleted || isActive ? 'bg-foreground' : 'bg-border'
+                }`}
+              />
+            )}
+
+            {/* Step circle + label */}
+            <button
+              onClick={() => {
+                if (isCompleted) onStepClick(s.number);
+              }}
+              disabled={isFuture || isActive}
+              className={`flex flex-col items-center gap-1 ${
+                isCompleted ? 'cursor-pointer' : isFuture ? 'cursor-default' : 'cursor-default'
+              }`}
+            >
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
+                  isCompleted
+                    ? 'bg-foreground text-background'
+                    : isActive
+                      ? 'bg-foreground text-background ring-2 ring-foreground/20 ring-offset-2 ring-offset-card'
+                      : 'border-2 border-border text-muted-foreground'
+                }`}
+              >
+                {isCompleted ? <Check className="w-3.5 h-3.5" /> : s.number}
+              </div>
+              <span
+                className={`text-[11px] leading-none ${
+                  isActive ? 'text-foreground font-medium' : isCompleted ? 'text-foreground' : 'text-muted-foreground'
+                }`}
+              >
+                {s.label}
+              </span>
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function NewChatModal({
   open,
@@ -35,23 +98,27 @@ export default function NewChatModal({
   const [selectedSecondaryProject, setSelectedSecondaryProject] = useState<string>('');
   const [customSecondaryPath, setCustomSecondaryPath] = useState('');
 
-  // Step 2: Configure (was step 3)
-  // Step 3: Skills (was step 2)
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [installedSkillsByProvider, setInstalledSkillsByProvider] = useState<Record<string, string[]>>({});
-
-  // Configure & Start
-  const [prompt, setPrompt] = useState('');
-  const [model, setModel] = useState<string>('sonnet');
-  const [useWorktree, setUseWorktree] = useState(false);
-  const [branchName, setBranchName] = useState('');
-  const [skipPermissions, setSkipPermissions] = useState(true);
-  const [isOrchestrator, setIsOrchestrator] = useState(false);
+  // Step 2: Model
   const [provider, setProvider] = useState<AgentProvider>('claude');
+  const [model, setModel] = useState<string>('sonnet');
   const [localModel, setLocalModel] = useState('');
   const [tasmaniaEnabled, setTasmaniaEnabled] = useState(false);
   const [installedProviders, setInstalledProviders] = useState<Record<string, boolean>>({ claude: true, codex: true, gemini: true });
   const agentPersonaRef = useRef<AgentPersonaValues>({ character: 'robot', name: '' });
+
+  // Step 3: Tools
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [installedSkillsByProvider, setInstalledSkillsByProvider] = useState<Record<string, string[]>>({});
+  const [selectedObsidianVaults, setSelectedObsidianVaults] = useState<string[]>([]);
+  const [registeredVaults, setRegisteredVaults] = useState<string[]>([]);
+  const [detectedVault, setDetectedVault] = useState<string | null>(null);
+
+  // Step 4: Task
+  const [prompt, setPrompt] = useState('');
+  const [useWorktree, setUseWorktree] = useState(false);
+  const [branchName, setBranchName] = useState('');
+  const [skipPermissions, setSkipPermissions] = useState(true);
+  const [isOrchestrator, setIsOrchestrator] = useState(false);
 
   const projectPath = selectedProject || customPath;
 
@@ -91,10 +158,17 @@ export default function NewChatModal({
       setSkipPermissions(false);
       setProvider('claude');
       setLocalModel('');
+      setSelectedObsidianVaults([]);
+      setDetectedVault(null);
 
       // Check if Tasmania is enabled in app settings
       window.electronAPI?.appSettings?.get().then((settings) => {
         setTasmaniaEnabled(settings?.tasmaniaEnabled || false);
+      });
+
+      // Load registered obsidian vaults
+      window.electronAPI?.obsidian?.getVaultInfo().then((info) => {
+        setRegisteredVaults(info?.vaultPaths || []);
       });
 
       // Detect installed CLI providers
@@ -119,6 +193,27 @@ export default function NewChatModal({
   useEffect(() => {
     setSelectedSkills([]);
   }, [provider]);
+
+  // Detect Obsidian vault when project path changes
+  useEffect(() => {
+    if (!projectPath || !open) return;
+    window.electronAPI?.obsidian?.detectVault(projectPath).then(async (result) => {
+      if (result?.detected && result.vaultPath) {
+        setDetectedVault(result.vaultPath);
+        // Auto-register if not already registered
+        if (!registeredVaults.includes(result.vaultPath)) {
+          await window.electronAPI?.obsidian?.addVault(result.vaultPath);
+          setRegisteredVaults(prev => [...prev, result.vaultPath!]);
+        }
+        // Auto-select the detected vault
+        setSelectedObsidianVaults(prev =>
+          prev.includes(result.vaultPath!) ? prev : [...prev, result.vaultPath!]
+        );
+      } else {
+        setDetectedVault(null);
+      }
+    });
+  }, [projectPath, open, registeredVaults]);
 
   // Stable callbacks for child components
   const handleSelectProject = useCallback((path: string) => {
@@ -164,12 +259,18 @@ export default function NewChatModal({
     }
   }, []);
 
+  const handleToggleVault = useCallback((vp: string) => {
+    setSelectedObsidianVaults(prev =>
+      prev.includes(vp) ? prev.filter(p => p !== vp) : [...prev, vp]
+    );
+  }, []);
+
   const handleSubmit = useCallback(() => {
     if (!projectPath) return;
-    if (!prompt.trim() && selectedSkills.length === 0) return;
     if (useWorktree && !branchName.trim()) return;
 
-    const finalPrompt = prompt.trim() || `Use the following skills: ${selectedSkills.join(', ')}`;
+    const finalPrompt = prompt.trim()
+      || (selectedSkills.length > 0 ? `Use the following skills: ${selectedSkills.join(', ')}` : '');
     const worktreeConfig = useWorktree ? { enabled: true, branchName: branchName.trim() } : undefined;
 
     const { character: agentCharacter, name: agentName } = agentPersonaRef.current;
@@ -178,7 +279,7 @@ export default function NewChatModal({
 
     const secondaryPath = showSecondaryProject ? (selectedSecondaryProject || customSecondaryPath) : undefined;
 
-    onSubmit(projectPath, selectedSkills, finalPrompt, model, worktreeConfig, agentCharacter, finalName, secondaryPath, skipPermissions, provider, localModel);
+    onSubmit(projectPath, selectedSkills, finalPrompt, model, worktreeConfig, agentCharacter, finalName, secondaryPath, skipPermissions, provider, localModel, selectedObsidianVaults.length > 0 ? selectedObsidianVaults : undefined);
 
     // Reset form
     setStep(1);
@@ -195,7 +296,12 @@ export default function NewChatModal({
     setCustomSecondaryPath('');
     setProvider('claude');
     setLocalModel('');
-  }, [projectPath, prompt, selectedSkills, useWorktree, branchName, showSecondaryProject, selectedSecondaryProject, customSecondaryPath, model, skipPermissions, provider, localModel, onSubmit]);
+    setSelectedObsidianVaults([]);
+  }, [projectPath, prompt, selectedSkills, useWorktree, branchName, showSecondaryProject, selectedSecondaryProject, customSecondaryPath, model, skipPermissions, provider, localModel, selectedObsidianVaults, onSubmit]);
+
+  // Can proceed from current step?
+  const canContinue = step === 1 ? !!projectPath : true;
+  const canStart = !useWorktree || !!branchName.trim();
 
   if (!open) return null;
 
@@ -213,38 +319,23 @@ export default function NewChatModal({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-4xl mx-4 bg-card border border-border shadow-2xl overflow-hidden max-h-[85vh] lg:max-h-[90vh] flex flex-col"
+          className="w-full max-w-2xl mx-4 bg-card border border-border rounded-xl shadow-2xl overflow-hidden h-[85vh] lg:h-[90vh] flex flex-col"
         >
-          {/* Header */}
+          {/* Header: Step Indicator + Close */}
           <div className="px-4 lg:px-6 py-3 lg:py-4 border-b border-border flex items-center justify-between bg-secondary">
-            <div className="flex items-center gap-2 lg:gap-3">
-              <div className="w-8 h-8 lg:w-10 lg:h-10 bg-white flex items-center justify-center">
-                <Bot className="w-4 h-4 lg:w-5 lg:h-5 text-black" />
-              </div>
-              <div>
-                <h2 className="font-semibold text-base lg:text-lg">Create New Agent</h2>
-                <p className="text-xs lg:text-sm text-text-muted">Step {step} of 3</p>
-              </div>
+            <div className="flex-1">
+              <StepIndicator currentStep={step} onStepClick={setStep} />
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-none hover:bg-bg-tertiary transition-colors"
+              className="p-2 rounded-lg hover:bg-bg-tertiary transition-colors ml-2"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Progress Bar */}
-          <div className="h-1 bg-secondary">
-            <motion.div
-              initial={{ width: '33%' }}
-              animate={{ width: `${(step / 3) * 100}%` }}
-              className="h-full bg-white"
-            />
-          </div>
-
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-5">
             {step === 1 && (
               <StepProject
                 projects={projects}
@@ -265,13 +356,41 @@ export default function NewChatModal({
             )}
 
             {step === 2 && (
-              <StepConfigure
-                projectPath={projectPath}
-                selectedSkills={selectedSkills}
-                selectedSecondaryProject={selectedSecondaryProject}
-                customSecondaryPath={customSecondaryPath}
+              <StepModel
+                provider={provider}
+                onProviderChange={setProvider}
                 model={model}
                 onModelChange={setModel}
+                localModel={localModel}
+                onLocalModelChange={setLocalModel}
+                tasmaniaEnabled={tasmaniaEnabled}
+                installedProviders={installedProviders}
+                agentPersonaRef={agentPersonaRef}
+                projectPath={projectPath}
+              />
+            )}
+
+            {step === 3 && (
+              <StepTools
+                selectedSkills={selectedSkills}
+                onToggleSkill={toggleSkill}
+                allInstalledSkills={allInstalledSkills}
+                installedSkillSet={installedSkillSet}
+                onInstallSkill={skillInstall.handleInstallSkill}
+                provider={provider}
+                installedSkillsByProvider={installedSkillsByProvider}
+                selectedObsidianVaults={selectedObsidianVaults}
+                registeredVaults={registeredVaults}
+                detectedVault={detectedVault}
+                onToggleVault={handleToggleVault}
+              />
+            )}
+
+            {step === 4 && (
+              <StepTask
+                prompt={prompt}
+                onPromptChange={setPrompt}
+                selectedSkills={selectedSkills}
                 useWorktree={useWorktree}
                 onToggleWorktree={() => setUseWorktree(prev => !prev)}
                 branchName={branchName}
@@ -280,37 +399,20 @@ export default function NewChatModal({
                 onToggleSkipPermissions={() => setSkipPermissions(prev => !prev)}
                 isOrchestrator={isOrchestrator}
                 onOrchestratorToggle={handleOrchestratorToggle}
-                prompt={prompt}
-                onPromptChange={setPrompt}
-                agentPersonaRef={agentPersonaRef}
+                projectPath={projectPath}
                 provider={provider}
-                onProviderChange={setProvider}
-                localModel={localModel}
-                onLocalModelChange={setLocalModel}
-                tasmaniaEnabled={tasmaniaEnabled}
-                installedProviders={installedProviders}
-              />
-            )}
-
-            {step === 3 && (
-              <StepSkills
-                selectedSkills={selectedSkills}
-                onToggleSkill={toggleSkill}
-                allInstalledSkills={allInstalledSkills}
-                installedSkillSet={installedSkillSet}
-                onInstallSkill={skillInstall.handleInstallSkill}
-                provider={provider}
-                installedSkillsByProvider={installedSkillsByProvider}
+                model={model}
+                selectedObsidianVaults={selectedObsidianVaults}
               />
             )}
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-border flex items-center justify-between bg-secondary">
+          <div className="px-5 py-3 border-t border-border flex items-center justify-between bg-secondary">
             <button
               onClick={() => step > 1 && setStep(step - 1)}
               disabled={step === 1}
-              className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Back
             </button>
@@ -318,16 +420,16 @@ export default function NewChatModal({
             <div className="flex items-center gap-3">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
+                className="px-4 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
               >
                 Cancel
               </button>
 
-              {step < 3 ? (
+              {step < 4 ? (
                 <button
                   onClick={() => setStep(step + 1)}
-                  disabled={step === 1 && !projectPath}
-                  className="flex items-center gap-2 px-4 py-2 bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!canContinue}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Continue
                   <ChevronRight className="w-4 h-4" />
@@ -335,8 +437,8 @@ export default function NewChatModal({
               ) : (
                 <button
                   onClick={handleSubmit}
-                  disabled={useWorktree && !branchName.trim()}
-                  className="flex items-center gap-2 px-4 py-2 bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!canStart}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-green text-white font-medium hover:bg-accent-green/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Play className="w-4 h-4" />
                   Start Agent

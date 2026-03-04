@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FolderOpen,
@@ -8,8 +8,11 @@ import {
   ChevronRight,
   X,
   Layers,
+  Search,
 } from 'lucide-react';
 import type { Project } from './types';
+
+const INITIAL_VISIBLE = 8;
 
 interface StepProjectProps {
   projects: Project[];
@@ -44,26 +47,60 @@ const StepProject = React.memo(function StepProject({
   onCustomSecondaryPathChange,
   onClearSecondary,
 }: StepProjectProps) {
+  const [search, setSearch] = useState('');
+  const [showAll, setShowAll] = useState(false);
+
+  const filteredProjects = useMemo(() => {
+    if (!search) return projects;
+    const q = search.toLowerCase();
+    return projects.filter(
+      (p) => p.name.toLowerCase().includes(q) || p.path.toLowerCase().includes(q)
+    );
+  }, [projects, search]);
+
+  // When searching, show all results; otherwise cap at INITIAL_VISIBLE unless expanded
+  const visibleProjects = search
+    ? filteredProjects
+    : showAll
+      ? filteredProjects
+      : filteredProjects.slice(0, INITIAL_VISIBLE);
+
+  const hasMore = !search && filteredProjects.length > INITIAL_VISIBLE && !showAll;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h3 className="text-lg font-medium mb-2 flex items-center gap-2">
+        <h3 className="text-lg font-medium mb-1 flex items-center gap-2">
           <FolderOpen className="w-5 h-5 text-accent-blue" />
           Select Project
         </h3>
-        <p className="text-text-secondary text-sm mb-4">
-          Choose an existing project or enter a custom path
+        <p className="text-text-secondary text-sm">
+          Choose the codebase your agent will work in
         </p>
       </div>
 
-      {/* Existing Projects */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {projects.map((project) => (
+      {/* Search (only show if enough projects to warrant it) */}
+      {projects.length > INITIAL_VISIBLE && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setShowAll(false); }}
+            placeholder="Search projects..."
+            className="w-full pl-10 pr-4 py-2 rounded-lg text-sm"
+          />
+        </div>
+      )}
+
+      {/* Project Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {visibleProjects.map((project) => (
           <button
             key={project.path}
             onClick={() => onSelectProject(project.path)}
             className={`
-              text-left p-4 rounded-none border transition-all
+              text-left p-3 rounded-lg border transition-all
               ${selectedProject === project.path
                 ? 'border-accent-blue bg-accent-blue/10'
                 : 'border-border-primary hover:border-border-accent bg-bg-tertiary/30'
@@ -86,6 +123,29 @@ const StepProject = React.memo(function StepProject({
         ))}
       </div>
 
+      {/* Show All / collapse toggle */}
+      {hasMore && (
+        <button
+          onClick={() => setShowAll(true)}
+          className="w-full text-center text-sm text-text-muted hover:text-foreground transition-colors py-1.5"
+        >
+          Show all {filteredProjects.length} projects
+        </button>
+      )}
+      {showAll && !search && filteredProjects.length > INITIAL_VISIBLE && (
+        <button
+          onClick={() => setShowAll(false)}
+          className="w-full text-center text-sm text-text-muted hover:text-foreground transition-colors py-1.5"
+        >
+          Show less
+        </button>
+      )}
+
+      {/* No results */}
+      {search && filteredProjects.length === 0 && (
+        <p className="text-sm text-text-muted text-center py-2">No projects match &ldquo;{search}&rdquo;</p>
+      )}
+
       {/* Custom Path */}
       <div className="relative">
         <label className="block text-sm font-medium mb-2">Or enter a custom path:</label>
@@ -95,7 +155,7 @@ const StepProject = React.memo(function StepProject({
             value={customPath}
             onChange={(e) => onCustomPathChange(e.target.value)}
             placeholder="/path/to/your/project"
-            className="flex-1 px-4 py-3 rounded-none font-mono text-sm"
+            className="flex-1 px-4 py-3 rounded-lg font-mono text-sm"
           />
           {onBrowseFolder && (
             <button
@@ -104,7 +164,7 @@ const StepProject = React.memo(function StepProject({
                 const path = await onBrowseFolder();
                 if (path) onCustomPathChange(path);
               }}
-              className="px-4 py-3 rounded-none bg-bg-tertiary border border-border-primary hover:border-accent-blue transition-colors flex items-center gap-2"
+              className="px-4 py-3 rounded-lg bg-bg-tertiary border border-border-primary hover:border-accent-blue transition-colors flex items-center gap-2"
             >
               <FolderOpen className="w-4 h-4 text-accent-blue" />
               <span className="text-sm">Browse</span>
@@ -114,7 +174,7 @@ const StepProject = React.memo(function StepProject({
       </div>
 
       {/* Secondary Project (Collapsible) */}
-      <div className="border border-border-primary rounded-none overflow-hidden">
+      <div className="border border-border-primary rounded-lg overflow-hidden">
         <button
           onClick={onToggleSecondary}
           className="w-full flex items-center justify-between px-4 py-3 bg-bg-tertiary/30 hover:bg-bg-tertiary/50 transition-colors"
@@ -155,7 +215,7 @@ const StepProject = React.memo(function StepProject({
                         key={project.path}
                         onClick={() => onSelectSecondaryProject(project.path)}
                         className={`
-                          text-left p-3 rounded-none border transition-all text-sm
+                          text-left p-3 rounded-lg border transition-all text-sm
                           ${selectedSecondaryProject === project.path
                             ? 'border-accent-purple bg-accent-purple/10'
                             : 'border-border-primary hover:border-border-accent bg-bg-tertiary/30'
@@ -188,7 +248,7 @@ const StepProject = React.memo(function StepProject({
                     value={customSecondaryPath}
                     onChange={(e) => onCustomSecondaryPathChange(e.target.value)}
                     placeholder="/path/to/secondary/project"
-                    className="flex-1 px-3 py-2 rounded-none font-mono text-sm"
+                    className="flex-1 px-3 py-2 rounded-lg font-mono text-sm"
                   />
                   {onBrowseFolder && (
                     <button
@@ -197,7 +257,7 @@ const StepProject = React.memo(function StepProject({
                         const path = await onBrowseFolder();
                         if (path) onCustomSecondaryPathChange(path);
                       }}
-                      className="px-3 py-2 rounded-none bg-bg-tertiary border border-border-primary hover:border-accent-purple transition-colors flex items-center gap-2"
+                      className="px-3 py-2 rounded-lg bg-bg-tertiary border border-border-primary hover:border-accent-purple transition-colors flex items-center gap-2"
                     >
                       <FolderOpen className="w-4 h-4 text-accent-purple" />
                       <span className="text-sm">Browse</span>

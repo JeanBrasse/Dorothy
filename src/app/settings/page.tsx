@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Save, Loader2, AlertCircle, Check, RefreshCw } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
@@ -8,6 +9,7 @@ import {
   SettingsSidebar,
   InstallTerminalModal,
   GeneralSection,
+  ObsidianSection,
   GitSection,
   NotificationsSection,
   TelegramSection,
@@ -19,12 +21,22 @@ import {
   SkillsSection,
   CLIPathsSection,
   SystemSection,
+  SECTIONS,
 } from '@/components/Settings';
 import type { SettingsSection } from '@/components/Settings';
 import 'xterm/css/xterm.css';
 
 export default function SettingsPage() {
+  const searchParams = useSearchParams();
+  const sectionParam = searchParams.get('section');
   const [activeSection, setActiveSection] = useState<SettingsSection>('general');
+
+  // Deep-link: initialize from URL param
+  useEffect(() => {
+    if (sectionParam && SECTIONS.some(s => s.id === sectionParam)) {
+      setActiveSection(sectionParam as SettingsSection);
+    }
+  }, [sectionParam]);
   const [showInstallTerminal, setShowInstallTerminal] = useState(false);
   const [installCommand, setInstallCommand] = useState('');
 
@@ -49,6 +61,8 @@ export default function SettingsPage() {
     switch (activeSection) {
       case 'general':
         return <GeneralSection info={info} appSettings={appSettings} onSaveAppSettings={handleSaveAppSettings} />;
+      case 'obsidian':
+        return <ObsidianSection appSettings={appSettings} onSaveAppSettings={handleSaveAppSettings} />;
       case 'git':
         return <GitSection settings={settings} onUpdateSettings={updateSettings} />;
       case 'notifications':

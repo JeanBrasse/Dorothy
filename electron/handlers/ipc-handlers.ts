@@ -1,6 +1,7 @@
 import { ipcMain, dialog, shell } from 'electron';
 import { checkForUpdates } from '../services/update-checker';
 import { registerMemoryHandlers } from './memory-handlers';
+import { registerObsidianHandlers } from './obsidian-handlers';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -67,6 +68,7 @@ export function registerIpcHandlers(deps: IpcHandlerDependencies): void {
   registerFileSystemHandlers(deps);
   registerShellHandlers(deps);
   registerMemoryHandlers();
+  registerObsidianHandlers({ getAppSettings: deps.getAppSettings, setAppSettings: deps.setAppSettings, saveAppSettings: deps.saveAppSettings });
   registerApiTokenHandler();
 }
 
@@ -173,6 +175,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
     skipPermissions?: boolean;
     provider?: 'claude' | 'local';
     localModel?: string;
+    obsidianVaultPaths?: string[];
   }) => {
     const id = uuidv4();
     const shell = '/bin/bash';
@@ -312,6 +315,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       skipPermissions: config.skipPermissions || false,
       provider: config.provider || 'claude',
       localModel: config.localModel,
+      obsidianVaultPaths: config.obsidianVaultPaths || [],
     };
     agents.set(id, status);
 
@@ -541,6 +545,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       verbose: appSettingsForCommand.verboseModeEnabled,
       skipPermissions: agent.skipPermissions,
       secondaryProjectPath: agent.secondaryProjectPath,
+      obsidianVaultPaths: agent.obsidianVaultPaths,
       mcpConfigPath,
       systemPromptFile,
       skills: allAgentSkills,
@@ -769,17 +774,30 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
 function registerSkillHandlers(deps: IpcHandlerDependencies): void {
   const { skillPtyProcesses, getMainWindow } = deps;
 
-  // Start skill installation (creates interactive PTY)
+  // Start skill installation (spawns npx directly — no login shell to avoid
+  // users' zshrc/compdef issues breaking the install flow)
   ipcMain.handle('skill:install-start', async (_event, { repo, cols, rows }: { repo: string; cols?: number; rows?: number }) => {
     const id = uuidv4();
-    const shell = process.env.SHELL || '/bin/zsh';
 
-    const ptyProcess = pty.spawn(shell, ['-l'], {
+    // Parse repo to get the GitHub URL and skill name
+    // Format: "owner/repo/skill-name" or "owner/repo" for full repo install
+    const parts = repo.split('/');
+    let npxArgs: string[];
+    if (parts.length >= 3) {
+      const repoPath = `${parts[0]}/${parts[1]}`;
+      const skillName = parts.slice(2).join('/');
+      npxArgs = ['skills', 'add', `https://github.com/${repoPath}`, '--skill', skillName];
+    } else {
+      npxArgs = ['skills', 'add', `https://github.com/${repo}`];
+    }
+
+    const fullPath = buildFullPath();
+    const ptyProcess = pty.spawn('npx', npxArgs, {
       name: 'xterm-256color',
       cols: cols || 80,
       rows: rows || 24,
       cwd: os.homedir(),
-      env: process.env as { [key: string]: string },
+      env: { ...process.env, PATH: fullPath } as { [key: string]: string },
     });
 
     skillPtyProcesses.set(id, ptyProcess);
@@ -794,25 +812,6 @@ function registerSkillHandlers(deps: IpcHandlerDependencies): void {
       getMainWindow()?.webContents.send('skill:pty-exit', { id, exitCode });
       skillPtyProcesses.delete(id);
     });
-
-    // Send the install command after a short delay to let shell initialize
-    // Parse repo to get the GitHub URL and skill name
-    // Format: "owner/repo/skill-name" or "owner/repo" for full repo install
-    const parts = repo.split('/');
-    let command: string;
-    if (parts.length >= 3) {
-      // Has skill name: owner/repo/skill-name
-      const repoPath = `${parts[0]}/${parts[1]}`;
-      const skillName = parts.slice(2).join('/');
-      command = `npx skills add https://github.com/${repoPath} --skill ${skillName}`;
-    } else {
-      // Just repo: owner/repo (install all skills from repo)
-      command = `npx skills add https://github.com/${repo}`;
-    }
-    setTimeout(() => {
-      ptyProcess.write(command);
-      ptyProcess.write('\r');
-    }, 500);
 
     return { id, repo };
   });
@@ -938,16 +937,28 @@ function registerPluginHandlers(deps: IpcHandlerDependencies): void {
   const { pluginPtyProcesses, getMainWindow } = deps;
 
   // Start plugin installation (creates interactive PTY)
+  // Start plugin installation (uses --no-rcs to skip shell rc files that may
+  // contain broken completions like compdef from other tools)
   ipcMain.handle('plugin:install-start', async (_event, { command, cols, rows }: { command: string; cols?: number; rows?: number }) => {
     const id = uuidv4();
     const shell = process.env.SHELL || '/bin/zsh';
 
-    const ptyProcess = pty.spawn(shell, ['-l'], {
+    // If the command starts with /, it's a Claude CLI slash command - prefix with 'claude'
+    const finalCommand = command.startsWith('/') ? `claude "${command}"` : command;
+    const fullPath = buildFullPath();
+
+    // Use -c to run the command directly, skipping rc files to avoid
+    // compdef/completion errors from the user's shell config
+    const shellArgs = shell.endsWith('zsh')
+      ? ['--no-rcs', '-c', finalCommand]
+      : ['-c', finalCommand];
+
+    const ptyProcess = pty.spawn(shell, shellArgs, {
       name: 'xterm-256color',
       cols: cols || 80,
       rows: rows || 24,
       cwd: os.homedir(),
-      env: process.env as { [key: string]: string },
+      env: { ...process.env, PATH: fullPath } as { [key: string]: string },
     });
 
     pluginPtyProcesses.set(id, ptyProcess);
@@ -962,14 +973,6 @@ function registerPluginHandlers(deps: IpcHandlerDependencies): void {
       getMainWindow()?.webContents.send('plugin:pty-exit', { id, exitCode });
       pluginPtyProcesses.delete(id);
     });
-
-    // Send the install command after a short delay to let shell initialize
-    // If the command starts with /, it's a Claude CLI slash command - prefix with 'claude'
-    const finalCommand = command.startsWith('/') ? `claude "${command}"` : command;
-    setTimeout(() => {
-      ptyProcess.write(finalCommand);
-      ptyProcess.write('\r');
-    }, 500);
 
     return { id };
   });
