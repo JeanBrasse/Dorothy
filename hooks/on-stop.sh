@@ -1,6 +1,8 @@
 #!/bin/bash
 # Stop hook for dorothy
-# Sets agent status to "waiting" and captures clean output from transcript
+# Captures clean output from transcript THEN sets agent status to "idle"
+# ORDER MATTERS: output must be captured BEFORE status change,
+# because wait_for_agent resolves on status change and reads lastCleanOutput.
 
 # Read JSON input from stdin
 INPUT=$(cat)
@@ -31,20 +33,8 @@ if ! curl -s --connect-timeout 1 "$API_URL/api/health" > /dev/null 2>&1; then
   exit 0
 fi
 
-# Update agent status to "idle" (Claude finished responding, ready for next prompt)
-# "waiting" is reserved for permission prompts / idle prompts that need immediate attention
-RESULT=$(curl -s --max-time 3 -X POST "$API_URL/api/hooks/status" \
-  -H "Content-Type: application/json" \
-  -d "{\"agent_id\": \"$AGENT_ID\", \"session_id\": \"$SESSION_ID\", \"status\": \"idle\"}" 2>&1)
-echo "[$(date)] STOP curl result: $RESULT" >> /tmp/dorothy-hooks.log
-
-# Send notification that agent finished a response (respects user settings)
-curl -s --max-time 3 -X POST "$API_URL/api/hooks/agent-stopped" \
-  -H "Content-Type: application/json" \
-  -d "{\"agent_id\": \"$AGENT_ID\", \"session_id\": \"$SESSION_ID\"}" \
-  > /dev/null 2>&1
-
-# Capture clean output from transcript for MCP tools
+# STEP 1: Capture clean output from transcript FIRST (before status change)
+# This ensures lastCleanOutput is up-to-date when wait_for_agent resolves
 if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
   # Extract the last assistant message from transcript (JSONL format)
   LAST_ASSISTANT_MSG=$(tail -100 "$TRANSCRIPT_PATH" 2>/dev/null | \
@@ -60,6 +50,18 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
       > /dev/null 2>&1
   fi
 fi
+
+# STEP 2: NOW update agent status to "idle" (triggers wait_for_agent resolution)
+RESULT=$(curl -s --max-time 3 -X POST "$API_URL/api/hooks/status" \
+  -H "Content-Type: application/json" \
+  -d "{\"agent_id\": \"$AGENT_ID\", \"session_id\": \"$SESSION_ID\", \"status\": \"idle\"}" 2>&1)
+echo "[$(date)] STOP curl result: $RESULT" >> /tmp/dorothy-hooks.log
+
+# STEP 3: Send notification that agent finished a response (respects user settings)
+curl -s --max-time 3 -X POST "$API_URL/api/hooks/agent-stopped" \
+  -H "Content-Type: application/json" \
+  -d "{\"agent_id\": \"$AGENT_ID\", \"session_id\": \"$SESSION_ID\"}" \
+  > /dev/null 2>&1
 
 # Output hook response
 echo '{"continue":true,"suppressOutput":true}'

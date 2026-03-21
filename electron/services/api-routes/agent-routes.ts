@@ -228,6 +228,8 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     agent.status = 'running';
     agent.currentTask = prompt;
     agent.output = [];
+    agent.lastCleanOutput = undefined;  // Clear stale output from previous task
+    agent.error = undefined;            // Clear previous error state
     agent.lastActivity = new Date().toISOString();
     saveAgents();
 
