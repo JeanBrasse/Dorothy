@@ -246,14 +246,20 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     });
 
     ptyProcess.onExit(({ exitCode }) => {
-      agent.status = exitCode === 0 ? 'completed' : 'error';
-      if (exitCode !== 0) {
-        agent.error = `Process exited with code ${exitCode}`;
-      }
-      agent.lastActivity = new Date().toISOString();
-      ptyProcesses.delete(ptyId);
-      saveAgents();
-      ctx.agentStatusEmitter.emit(`status:${agent.id}`);
+      // Delay status change to let hooks (on-stop.sh, task-completed.sh) finish
+      // capturing output before wait_for_agent resolves.
+      setTimeout(() => {
+        if (agent.status === 'running') {
+          agent.status = exitCode === 0 ? 'completed' : 'error';
+        }
+        if (exitCode !== 0) {
+          agent.error = `Process exited with code ${exitCode}`;
+        }
+        agent.lastActivity = new Date().toISOString();
+        ptyProcesses.delete(ptyId);
+        saveAgents();
+        ctx.agentStatusEmitter.emit(`status:${agent.id}`);
+      }, 1500);
     });
 
     sendJson({ success: true, agent: { id: agent.id, status: agent.status } });
