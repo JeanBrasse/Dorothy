@@ -309,7 +309,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
 
     const ptyProcess = ptyProcesses.get(agent.ptyId);
     if (ptyProcess) {
-      writeProgrammaticInput(ptyProcess, message);
+      writeProgrammaticInput(ptyProcess, message, true);
       agent.status = 'running';
       agent.lastActivity = new Date().toISOString();
       saveAgents();

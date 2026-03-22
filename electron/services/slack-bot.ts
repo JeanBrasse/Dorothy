@@ -554,7 +554,7 @@ export async function sendToSuperAgentFromSlack(
 
       const slackMessage = `[FROM SLACK - Use send_slack MCP tool to respond!] ${sanitizedMessage}`;
 
-      writeProgrammaticInput(ptyProcess, slackMessage);
+      writeProgrammaticInput(ptyProcess, slackMessage, true);
 
       await say(':crown: Super Agent is processing...');
     } else if (
