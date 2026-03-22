@@ -171,17 +171,18 @@ export function useMultiTerminal({ agents, initialFontSize, onFontSizeChange, th
       if (isElectron() && window.electronAPI?.agent?.get) {
         try {
           const agent = await window.electronAPI.agent.get(agentId);
-          if (agent?.output?.length) {
-            const outputStr = agent.output.join('');
-            term.write(outputStr);
-          }
 
-          // Step 3: For running/waiting agents, the PTY resize from safeFit
-          // will trigger Claude Code to redraw at correct dimensions.
-          // For idle agents, just clear the garbled display.
           if (agent?.status === 'idle' || agent?.status === 'completed' || agent?.status === 'error') {
+            // Inactive agents: replay output then show status line
+            if (agent?.output?.length) {
+              term.write(agent.output.join(''));
+            }
             term.write('\x1b[2J\x1b[H');
             term.write(`\x1b[90m— Session ${agent.status} —\x1b[0m\r\n`);
+          } else if (agent?.output?.length) {
+            // Active agents: replay output and scroll to bottom
+            term.write(agent.output.join(''));
+            term.scrollToBottom();
           }
         } catch {}
       }
