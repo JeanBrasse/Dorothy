@@ -52,7 +52,7 @@ export default function TerminalPanelHeader({
 
   return (
     <div
-      className={`${showDragHandle ? 'terminal-drag-handle' : ''} flex items-center gap-2 px-3 py-1.5 !rounded-none bg-secondary border-b border-border select-none`}
+      className={`${showDragHandle ? 'terminal-drag-handle' : ''} window-no-drag flex items-center gap-2 px-3 py-1.5 !rounded-none bg-secondary border-b border-border select-none`}
       onContextMenu={onContextMenu}
     >
       {/* Drag handle grip — custom tabs only */}
