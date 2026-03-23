@@ -218,6 +218,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
     secondaryProjectPath?: string;
     skipPermissions?: boolean;
     provider?: AgentProvider;
+    model?: string;
     localModel?: string;
     obsidianVaultPaths?: string[];
   }) => {
@@ -358,6 +359,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       name: config.name || `Agent ${id.slice(0, 4)}`,
       skipPermissions: config.skipPermissions || false,
       provider: config.provider || 'claude',
+      model: config.model,
       localModel: config.localModel,
       obsidianVaultPaths: config.obsidianVaultPaths || [],
     };
@@ -590,10 +592,12 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
 
     const allAgentSkills = [...new Set([...(agent.skills || []), 'world-builder'])];
 
+    const resolvedModel = (provider !== 'local') ? (options?.model || agent.model) : undefined;
+
     const command = cliProvider.buildInteractiveCommand({
       binaryPath,
       prompt,
-      model: (provider !== 'local') ? options?.model : undefined,
+      model: resolvedModel,
       verbose: appSettingsForCommand.verboseModeEnabled,
       skipPermissions: agent.skipPermissions,
       secondaryProjectPath: agent.secondaryProjectPath,
@@ -604,7 +608,10 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       isSuperAgent: isSuperAgentCheck,
     });
 
-    // Update status
+    // Persist the prompt for future re-launches and update status
+    if (prompt.trim()) {
+      agent.savedPrompt = prompt;
+    }
     agent.status = 'running';
     agent.currentTask = prompt.slice(0, 100);
     agent.lastActivity = new Date().toISOString();
@@ -661,7 +668,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
     return Array.from(agents.values());
   });
 
-  // Update an agent (can update skills, secondaryProjectPath, skipPermissions, name, character)
+  // Update an agent (supports all editable fields)
   ipcMain.handle('agent:update', async (_event, params: {
     id: string;
     skills?: string[];
@@ -669,6 +676,12 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
     skipPermissions?: boolean;
     name?: string;
     character?: AgentCharacter;
+    model?: string | null;
+    provider?: AgentProvider;
+    localModel?: string | null;
+    savedPrompt?: string | null;
+    obsidianVaultPaths?: string[];
+    worktree?: WorktreeConfig;
   }) => {
     const agent = agents.get(params.id);
     if (!agent) {
@@ -696,6 +709,52 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
     }
     if (params.character !== undefined) {
       agent.character = params.character;
+    }
+    if (params.model !== undefined) {
+      agent.model = params.model === null ? undefined : params.model;
+    }
+    if (params.provider !== undefined) {
+      agent.provider = params.provider;
+    }
+    if (params.localModel !== undefined) {
+      agent.localModel = params.localModel === null ? undefined : params.localModel;
+    }
+    if (params.savedPrompt !== undefined) {
+      agent.savedPrompt = params.savedPrompt === null ? undefined : params.savedPrompt;
+    }
+    if (params.obsidianVaultPaths !== undefined) {
+      agent.obsidianVaultPaths = params.obsidianVaultPaths;
+    }
+    if (params.worktree !== undefined && !agent.worktreePath) {
+      // Only allow worktree setup if agent doesn't already have one
+      // (worktree changes on a running agent could be destructive)
+      if (params.worktree.enabled && params.worktree.branchName) {
+        const branchName = params.worktree.branchName;
+        if (!/^[a-zA-Z0-9._\-\/]+$/.test(branchName)) {
+          return { success: false, error: 'Invalid branch name' };
+        }
+        const worktreesDir = path.join(agent.projectPath, '.worktrees');
+        const worktreePath = path.join(worktreesDir, branchName);
+        try {
+          if (!fs.existsSync(worktreesDir)) {
+            fs.mkdirSync(worktreesDir, { recursive: true });
+          }
+          if (!fs.existsSync(worktreePath)) {
+            const { execSync } = await import('child_process');
+            try {
+              execSync(`git rev-parse --verify '${branchName}'`, { cwd: agent.projectPath, stdio: 'pipe' });
+              execSync(`git worktree add '${worktreePath}' '${branchName}'`, { cwd: agent.projectPath, stdio: 'pipe' });
+            } catch {
+              execSync(`git worktree add -b '${branchName}' '${worktreePath}'`, { cwd: agent.projectPath, stdio: 'pipe' });
+            }
+          }
+          agent.worktreePath = worktreePath;
+          agent.branchName = branchName;
+        } catch (err) {
+          console.error('Failed to create worktree on update:', err);
+          return { success: false, error: 'Failed to create git worktree' };
+        }
+      }
     }
 
     agent.lastActivity = new Date().toISOString();

@@ -29,7 +29,9 @@ export interface AgentStatus {
   statusLine?: string;       // ANSI-stripped last meaningful output line
   lastCleanOutput?: string;  // Clean text output captured from transcript by hooks
   provider?: AgentProvider;   // 'claude' (default) or 'local' (Tasmania)
+  model?: string;              // Model name (e.g. 'sonnet', 'opus', 'haiku') — persisted across restarts
   localModel?: string;        // Tasmania model name when provider is 'local'
+  savedPrompt?: string;       // Saved task/prompt for re-launching the agent
   obsidianVaultPaths?: string[]; // Obsidian vault paths to mount via --add-dir (read-only)
 }
 

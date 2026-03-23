@@ -78,9 +78,11 @@ export default function AgentsPage() {
       skills: agent.skills,
       skipPermissions: agent.skipPermissions,
       provider: agent.provider,
+      model: agent.model,
       localModel: agent.localModel,
       branchName: agent.branchName,
       obsidianVaultPaths: agent.obsidianVaultPaths,
+      savedPrompt: agent.savedPrompt,
     };
   }, [editAgentId, agents]);
 
@@ -100,9 +102,10 @@ export default function AgentsPage() {
     obsidianVaultPaths?: string[],
   ) => {
     try {
-      const agent = await createAgent({ projectPath, skills, worktree, character, name, secondaryProjectPath, skipPermissions, provider, localModel, obsidianVaultPaths });
+      const resolvedModel = (provider !== 'local' && model && model !== 'default') ? model : undefined;
+      const agent = await createAgent({ projectPath, skills, worktree, character, name, secondaryProjectPath, skipPermissions, provider, model: resolvedModel, localModel, obsidianVaultPaths });
       if (prompt) {
-        const options = { model: provider === 'local' ? undefined : model, provider, localModel };
+        const options = { model: resolvedModel, provider, localModel };
         await startAgent(agent.id, prompt, options);
       }
       setShowNewChatModal(false);
@@ -117,6 +120,12 @@ export default function AgentsPage() {
     skipPermissions?: boolean;
     name?: string;
     character?: AgentCharacter;
+    model?: string | null;
+    provider?: AgentProvider;
+    localModel?: string | null;
+    savedPrompt?: string | null;
+    obsidianVaultPaths?: string[];
+    worktree?: { enabled: boolean; branchName: string };
   }) => {
     try {
       await updateAgent({ id, ...updates });

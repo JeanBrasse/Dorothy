@@ -25,9 +25,11 @@ export interface EditAgentData {
   skills: string[];
   skipPermissions?: boolean;
   provider?: AgentProvider;
+  model?: string;
   localModel?: string;
   branchName?: string;
   obsidianVaultPaths?: string[];
+  savedPrompt?: string;
 }
 
 export interface NewChatModalProps {
@@ -53,6 +55,12 @@ export interface NewChatModalProps {
     skipPermissions?: boolean;
     name?: string;
     character?: AgentCharacter;
+    model?: string | null;
+    provider?: AgentProvider;
+    localModel?: string | null;
+    savedPrompt?: string | null;
+    obsidianVaultPaths?: string[];
+    worktree?: WorktreeConfig;
   }) => void;
   editAgent?: EditAgentData | null;
   projects: Project[];

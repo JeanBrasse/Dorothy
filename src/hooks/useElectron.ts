@@ -55,6 +55,7 @@ export function useElectronAgents() {
     secondaryProjectPath?: string;
     skipPermissions?: boolean;
     provider?: AgentProvider;
+    model?: string;
     localModel?: string;
     obsidianVaultPaths?: string[];
   }) => {
@@ -74,6 +75,12 @@ export function useElectronAgents() {
     skipPermissions?: boolean;
     name?: string;
     character?: AgentCharacter;
+    model?: string | null;
+    provider?: AgentProvider;
+    localModel?: string | null;
+    savedPrompt?: string | null;
+    obsidianVaultPaths?: string[];
+    worktree?: { enabled: boolean; branchName: string };
   }) => {
     if (!isElectron()) {
       throw new Error('Electron API not available');

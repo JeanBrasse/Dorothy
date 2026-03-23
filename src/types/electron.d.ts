@@ -146,7 +146,9 @@ export interface AgentStatus {
   pathMissing?: boolean; // True if project path no longer exists
   skipPermissions?: boolean; // If true, use --dangerously-skip-permissions flag
   provider?: AgentProvider;   // 'claude' (default) or 'local' (Tasmania)
+  model?: string;              // Model name (e.g. 'sonnet', 'opus', 'haiku')
   localModel?: string;        // Tasmania model name when provider is 'local'
+  savedPrompt?: string;       // Saved task/prompt for re-launching the agent
   obsidianVaultPaths?: string[]; // Obsidian vault paths to mount via --add-dir (read-only)
 }
 

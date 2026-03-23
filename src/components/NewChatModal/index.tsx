@@ -156,7 +156,8 @@ export default function NewChatModal({
         setSelectedProject(editAgent.projectPath);
         setCustomPath('');
         setSelectedSkills(editAgent.skills || []);
-        setPrompt('');
+        setPrompt(editAgent.savedPrompt || '');
+        setModel(editAgent.model || 'default');
         setUseWorktree(!!editAgent.branchName);
         setBranchName(editAgent.branchName || '');
         agentPersonaRef.current = {
@@ -233,7 +234,8 @@ export default function NewChatModal({
         if (byProvider) setInstalledSkillsByProvider(byProvider);
       });
     }
-  }, [open, initialProjectPath, initialStep, editAgent]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- depend on editAgent.id, not the object (avoids reset on tick re-renders)
+  }, [open, initialProjectPath, initialStep, editAgent?.id]);
 
   // Clear selected skills when provider changes
   useEffect(() => {
@@ -321,13 +323,22 @@ export default function NewChatModal({
     const secondaryPath = showSecondaryProject ? (selectedSecondaryProject || customSecondaryPath) : undefined;
 
     if (isEditMode && editAgent && onUpdate) {
-      // Edit mode: update existing agent
+      // Edit mode: update existing agent with all fields
+      const worktreeConfig = useWorktree && !editAgent.branchName
+        ? { enabled: true, branchName: branchName.trim() }
+        : undefined;
       onUpdate(editAgent.id, {
         skills: selectedSkills,
         secondaryProjectPath: secondaryPath || null,
         skipPermissions,
         name: finalName,
         character: agentCharacter,
+        model: (model && model !== 'default') ? model : null,
+        provider,
+        localModel: localModel || null,
+        savedPrompt: prompt.trim() || null,
+        obsidianVaultPaths: selectedObsidianVaults.length > 0 ? selectedObsidianVaults : [],
+        worktree: worktreeConfig,
       });
       onClose();
       return;

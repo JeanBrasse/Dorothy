@@ -188,12 +188,13 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     if (skipPermissions !== undefined ? skipPermissions : agent.skipPermissions) {
       command += ' --dangerously-skip-permissions';
     }
-    if (model) {
-      if (!/^[a-zA-Z0-9._:/-]+$/.test(model)) {
+    const resolvedModel = model || agent.model;
+    if (resolvedModel) {
+      if (!/^[a-zA-Z0-9._:/-]+$/.test(resolvedModel)) {
         sendJson({ error: 'Invalid model name' }, 400);
         return;
       }
-      command += ` --model '${model}'`;
+      command += ` --model '${resolvedModel}'`;
     }
 
     let finalPrompt = prompt;

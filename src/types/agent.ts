@@ -25,6 +25,13 @@ export interface AgentStatus {
   character?: AgentCharacter;
   name?: string;
   pathMissing?: boolean; // True if project path no longer exists
+  provider?: string;
+  model?: string;
+  localModel?: string;
+  savedPrompt?: string;
+  skipPermissions?: boolean;
+  secondaryProjectPath?: string;
+  obsidianVaultPaths?: string[];
 }
 
 export interface AgentEvent {
