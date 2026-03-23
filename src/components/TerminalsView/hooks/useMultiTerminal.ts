@@ -172,15 +172,18 @@ export function useMultiTerminal({ agents, initialFontSize, onFontSizeChange, th
         try {
           const agent = await window.electronAPI.agent.get(agentId);
 
-          if (agent?.status === 'idle' || agent?.status === 'completed' || agent?.status === 'error') {
-            // Inactive agents: replay output then show status line
+          const hasPty = agent?.ptyId;
+          const isInactive = agent?.status === 'idle' || agent?.status === 'completed' || agent?.status === 'error';
+
+          if (isInactive && !hasPty) {
+            // Truly stopped agents (no PTY): show status placeholder
             if (agent?.output?.length) {
               term.write(agent.output.join(''));
             }
             term.write('\x1b[2J\x1b[H');
             term.write(`\x1b[90m— Session ${agent.status} —\x1b[0m\r\n`);
           } else if (agent?.output?.length) {
-            // Active agents: replay output and scroll to bottom
+            // Active agents or agents with PTY still alive: replay output
             term.write(agent.output.join(''));
             term.scrollToBottom();
           }
