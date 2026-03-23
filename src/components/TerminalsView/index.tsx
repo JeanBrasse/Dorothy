@@ -209,7 +209,7 @@ export default function TerminalsView() {
 
   const handleStartAll = useCallback(async () => {
     const needsStart = filteredAgents.filter(a =>
-      (a.status === 'idle' || a.status === 'completed') && !a.ptyId
+      a.status === 'idle' || a.status === 'completed' || a.status === 'error'
     );
     for (const agent of needsStart) {
       await startAgent(agent.id, '', { resume: true });
