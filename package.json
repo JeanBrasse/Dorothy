@@ -19,7 +19,7 @@
   },
   "build": {
     "appId": "io.dorothy.app",
-    "productName": "Dorothy",
+    "productName": "Dorothy-fix",
     "publish": {
       "provider": "github",
       "owner": "Charlie85270",
@@ -104,7 +104,6 @@
         ]
       }
     ],
-    "afterSign": "scripts/notarize.js",
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "public/icon.icns",

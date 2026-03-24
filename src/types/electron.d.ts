@@ -257,6 +257,19 @@ export interface ElectronAPI {
       skills: Array<{ name: string; source: 'project' | 'user' | 'plugin'; path: string; description?: string; projectName?: string }>;
       history: Array<{ display: string; timestamp: number; project?: string }>;
       activeSessions: string[];
+      rateLimits: {
+        five_hour?: { used_percentage: number; resets_at: number };
+        seven_day?: { used_percentage: number; resets_at: number };
+      } | null;
+      tokenStats: {
+        totalInputTokens: number;
+        totalOutputTokens: number;
+        totalCostUsd: number;
+        extraCostUsd: number;
+        sessionCount: number;
+        modelTokens?: Record<string, { in: number; out: number }>;
+        dailyCosts?: Record<string, { cost: number; extraCost: number }>;
+      } | null;
     } | null>;
   };
 

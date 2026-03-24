@@ -1182,6 +1182,65 @@ function registerClaudeDataHandlers(deps: IpcHandlerDependencies): void {
         getClaudeHistory(50),
       ]);
 
+      // Read rate limits from statusline cache file
+      let rateLimits = null;
+      try {
+        const rateLimitsFile = path.join(os.homedir(), '.dorothy', 'rate-limits.json');
+        if (fs.existsSync(rateLimitsFile)) {
+          rateLimits = JSON.parse(fs.readFileSync(rateLimitsFile, 'utf-8'));
+        }
+      } catch {
+        // ignore parse errors
+      }
+
+      // Read accumulated token stats from statusline
+      let tokenStats = null;
+      try {
+        const tokenStatsFile = path.join(os.homedir(), '.dorothy', 'token-stats.json');
+        if (fs.existsSync(tokenStatsFile)) {
+          const raw = JSON.parse(fs.readFileSync(tokenStatsFile, 'utf-8'));
+          // Sum all sessions
+          let totalIn = 0, totalOut = 0, totalCost = 0, extraCost = 0;
+          const modelTokens: Record<string, { in: number; out: number }> = {};
+          const dailyCosts: Record<string, { cost: number; extraCost: number }> = {};
+          for (const session of Object.values(raw) as Array<{ in: number; out: number; cost: number; model?: string; extra?: boolean; date?: string }>) {
+            totalIn += session.in || 0;
+            totalOut += session.out || 0;
+            totalCost += session.cost || 0;
+            if (session.extra) {
+              extraCost += session.cost || 0;
+            }
+            if (session.model && session.model !== 'unknown') {
+              if (!modelTokens[session.model]) {
+                modelTokens[session.model] = { in: 0, out: 0 };
+              }
+              modelTokens[session.model].in += session.in || 0;
+              modelTokens[session.model].out += session.out || 0;
+            }
+            if (session.date) {
+              if (!dailyCosts[session.date]) {
+                dailyCosts[session.date] = { cost: 0, extraCost: 0 };
+              }
+              dailyCosts[session.date].cost += session.cost || 0;
+              if (session.extra) {
+                dailyCosts[session.date].extraCost += session.cost || 0;
+              }
+            }
+          }
+          tokenStats = {
+            totalInputTokens: totalIn,
+            totalOutputTokens: totalOut,
+            totalCostUsd: totalCost,
+            extraCostUsd: extraCost,
+            sessionCount: Object.keys(raw).length,
+            modelTokens,
+            dailyCosts,
+          };
+        }
+      } catch {
+        // ignore parse errors
+      }
+
       return {
         settings,
         stats,
@@ -1190,6 +1249,8 @@ function registerClaudeDataHandlers(deps: IpcHandlerDependencies): void {
         skills,
         history,
         activeSessions: [],
+        rateLimits,
+        tokenStats,
       };
     } catch (err) {
       console.error('Failed to get Claude data:', err);

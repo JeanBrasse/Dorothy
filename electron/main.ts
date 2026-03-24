@@ -144,6 +144,7 @@ function loadAppSettings(): AppSettings {
     gwsEnabled: false,
     gwsSkillsInstalled: false,
     verboseModeEnabled: false,
+    statusLineEnabled: true,
     autoCheckUpdates: true,
     opencodeEnabled: false,
     opencodeDefaultModel: '',
@@ -309,6 +310,19 @@ app.whenReady().then(async () => {
 
   // Write Dorothy's CLAUDE.md to ~/.dorothy/ so all spawned agents can load it
   ensureDorothyClaudeMd();
+
+  // Install/update statusline script if enabled (ensures script is always up-to-date after app updates)
+  // statusLineEnabled defaults to true for new users
+  try {
+    const { enableStatusLine, disableStatusLine } = await import('./utils/statusline');
+    if (appSettings.statusLineEnabled !== false) {
+      enableStatusLine();
+    } else {
+      disableStatusLine();
+    }
+  } catch {
+    // ignore statusline errors on startup
+  }
 
   // Migrate data from ~/.claude-manager if it exists (rebrand migration)
   migrateFromClaudeManager();
