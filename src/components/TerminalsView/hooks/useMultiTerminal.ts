@@ -25,6 +25,7 @@ interface UseMultiTerminalOptions {
   onFontSizeChange?: (size: number) => void;
   theme?: 'dark' | 'light';
   onTerminalReady?: (agentId: string) => void;
+  broadcastMode?: boolean;
 }
 
 const MIN_FONT_SIZE = 8;
@@ -48,7 +49,7 @@ function safeFit(agentId: string, entry: TerminalEntry) {
   } catch {}
 }
 
-export function useMultiTerminal({ agents, initialFontSize, onFontSizeChange, theme = 'dark', onTerminalReady }: UseMultiTerminalOptions) {
+export function useMultiTerminal({ agents, initialFontSize, onFontSizeChange, theme = 'dark', onTerminalReady, broadcastMode = false }: UseMultiTerminalOptions) {
   const terminalsRef = useRef<Map<string, TerminalEntry>>(new Map());
   const xtermModuleRef = useRef<{ Terminal: typeof Terminal; FitAddon: typeof FitAddon } | null>(null);
   const initializingRef = useRef<Set<string>>(new Set());
@@ -57,6 +58,8 @@ export function useMultiTerminal({ agents, initialFontSize, onFontSizeChange, th
   const prevInitialFontSizeRef = useRef(initialFontSize);
   const onTerminalReadyRef = useRef(onTerminalReady);
   onTerminalReadyRef.current = onTerminalReady;
+  const broadcastModeRef = useRef(broadcastMode);
+  broadcastModeRef.current = broadcastMode;
 
   // Load xterm modules once
   const loadModules = useCallback(async () => {
@@ -194,10 +197,22 @@ export function useMultiTerminal({ agents, initialFontSize, onFontSizeChange, th
       setTimeout(() => safeFit(agentId, entry), 50);
       setTimeout(() => safeFit(agentId, entry), 200);
 
-      attachShiftEnterHandler(term, (data) => {
-        if (isElectron()) {
-          window.electronAPI!.agent.sendInput({ id: agentId, input: data }).catch(() => {});
+      // Helper: send input to one agent or broadcast to all
+      const sendOrBroadcast = (input: string) => {
+        if (!isElectron()) return;
+        if (broadcastModeRef.current) {
+          // Broadcast to all terminals
+          const promises = Array.from(terminalsRef.current.keys()).map(id =>
+            window.electronAPI!.agent.sendInput({ id, input })
+          );
+          Promise.allSettled(promises).catch(() => {});
+        } else {
+          window.electronAPI!.agent.sendInput({ id: agentId, input }).catch(() => {});
         }
+      };
+
+      attachShiftEnterHandler(term, (data) => {
+        sendOrBroadcast(data);
       });
 
       // Forward keyboard input from xterm to PTY
@@ -211,9 +226,7 @@ export function useMultiTerminal({ agents, initialFontSize, onFontSizeChange, th
           .replace(/\x1b\[(?:I|O)/g, '')         // Focus in/out: \x1b[I / \x1b[O
           .replace(/\d+;\d+c/g, '');             // Bare DA fragments: 1;2c
         if (!cleaned) return;
-        if (isElectron()) {
-          window.electronAPI!.agent.sendInput({ id: agentId, input: cleaned }).catch(() => {});
-        }
+        sendOrBroadcast(cleaned);
       });
 
       // ResizeObserver — auto-fit when container dimensions change

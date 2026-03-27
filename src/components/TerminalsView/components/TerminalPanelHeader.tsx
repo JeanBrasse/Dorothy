@@ -97,7 +97,7 @@ export default function TerminalPanelHeader({
       </span>
 
       {/* Action buttons */}
-      <div className="flex items-center gap-0.5" onMouseDown={e => e.stopPropagation()}>
+      <div className="flex items-center gap-0.5 [&_button]:cursor-pointer" onMouseDown={e => e.stopPropagation()}>
         {agent.status === 'running' || agent.status === 'waiting' ? (
           <button
             onClick={onStop}
