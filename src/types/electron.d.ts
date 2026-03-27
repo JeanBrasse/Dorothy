@@ -144,7 +144,10 @@ export interface AgentStatus {
   name?: string;
   statusLine?: string;    // ANSI-stripped last meaningful output line
   pathMissing?: boolean; // True if project path no longer exists
-  skipPermissions?: boolean; // If true, use --dangerously-skip-permissions flag
+  /** @deprecated Use permissionMode instead */
+  skipPermissions?: boolean;
+  permissionMode?: 'normal' | 'auto' | 'bypass';
+  effort?: 'low' | 'medium' | 'high';
   provider?: AgentProvider;   // 'claude' (default) or 'local' (Tasmania)
   model?: string;              // Model name (e.g. 'sonnet', 'opus', 'haiku')
   localModel?: string;        // Tasmania model name when provider is 'local'
@@ -187,7 +190,8 @@ export interface ElectronAPI {
       character?: AgentCharacter;
       name?: string;
       secondaryProjectPath?: string;
-      skipPermissions?: boolean;
+      permissionMode?: 'normal' | 'auto' | 'bypass';
+      effort?: 'low' | 'medium' | 'high';
       provider?: AgentProvider;
       localModel?: string;
       obsidianVaultPaths?: string[];
@@ -196,7 +200,8 @@ export interface ElectronAPI {
       id: string;
       skills?: string[];
       secondaryProjectPath?: string | null;
-      skipPermissions?: boolean;
+      permissionMode?: 'normal' | 'auto' | 'bypass';
+      effort?: 'low' | 'medium' | 'high';
       name?: string;
       character?: AgentCharacter;
     }) => Promise<{ success: boolean; error?: string; agent?: AgentStatus }>;

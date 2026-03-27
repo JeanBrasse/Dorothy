@@ -14,7 +14,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import { App as SlackApp, LogLevel } from '@slack/bolt';
 
 // Import types
-import type { AgentStatus, WorktreeConfig, AgentCharacter, AppSettings, AgentProvider } from '../types';
+import type { AgentStatus, WorktreeConfig, AgentCharacter, AppSettings, AgentProvider, AgentPermissionMode, AgentEffort } from '../types';
 import { buildFullPath } from '../utils/path-builder';
 import { decodeProjectPath } from '../utils/decode-project-path';
 import { getProvider, getAllProviders } from '../providers';
@@ -216,7 +216,8 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
     character?: AgentCharacter;
     name?: string;
     secondaryProjectPath?: string;
-    skipPermissions?: boolean;
+    permissionMode?: AgentPermissionMode;
+    effort?: AgentEffort;
     provider?: AgentProvider;
     model?: string;
     localModel?: string;
@@ -357,7 +358,8 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       ptyId,
       character: config.character || 'robot',
       name: config.name || `Agent ${id.slice(0, 4)}`,
-      skipPermissions: config.skipPermissions || false,
+      permissionMode: config.permissionMode || 'auto',
+      effort: config.effort,
       provider: config.provider || 'claude',
       model: config.model,
       localModel: config.localModel,
@@ -599,7 +601,8 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       prompt,
       model: resolvedModel,
       verbose: appSettingsForCommand.verboseModeEnabled,
-      skipPermissions: agent.skipPermissions,
+      permissionMode: agent.permissionMode ?? (agent.skipPermissions ? 'auto' : 'normal'),
+      effort: agent.effort,
       secondaryProjectPath: agent.secondaryProjectPath,
       obsidianVaultPaths: agent.obsidianVaultPaths,
       mcpConfigPath,
@@ -673,7 +676,8 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
     id: string;
     skills?: string[];
     secondaryProjectPath?: string | null;
-    skipPermissions?: boolean;
+    permissionMode?: AgentPermissionMode;
+    effort?: AgentEffort | null;
     name?: string;
     character?: AgentCharacter;
     model?: string | null;
@@ -701,8 +705,11 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
         return { success: false, error: 'Secondary project path does not exist' };
       }
     }
-    if (params.skipPermissions !== undefined) {
-      agent.skipPermissions = params.skipPermissions;
+    if (params.permissionMode !== undefined) {
+      agent.permissionMode = params.permissionMode;
+    }
+    if (params.effort !== undefined) {
+      agent.effort = params.effort === null ? undefined : params.effort;
     }
     if (params.name !== undefined) {
       agent.name = params.name;

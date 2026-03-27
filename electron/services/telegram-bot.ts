@@ -704,7 +704,7 @@ export function initTelegramBot() {
         const cliProvider = getProvider(agent.provider);
         const binaryName = cliProvider.binaryName;
         let command = binaryName;
-        if (agent.skipPermissions) command += ' --dangerously-skip-permissions';
+        if (agent.permissionMode === 'auto' || agent.permissionMode === 'bypass' || (!agent.permissionMode && agent.skipPermissions)) command += ' --dangerously-skip-permissions';
         if (agent.secondaryProjectPath) {
           const addDirFlag = cliProvider.getAddDirFlag();
           command += ` ${addDirFlag} '${agent.secondaryProjectPath.replace(/'/g, "'\\''")}'`;
@@ -1215,7 +1215,7 @@ export async function sendToSuperAgent(chatId: string, message: string, attached
         command += ` --append-system-prompt "${escapedTelegram}"`;
       }
 
-      if (superAgent.skipPermissions) command += ' --dangerously-skip-permissions';
+      if (superAgent.permissionMode === 'auto' || superAgent.permissionMode === 'bypass' || (!superAgent.permissionMode && superAgent.skipPermissions)) command += ' --dangerously-skip-permissions';
 
       // Simple prompt with Telegram context including chat ID for proper routing
       const userPrompt = `[FROM TELEGRAM chat_id=${chatId} - Use send_telegram MCP tool with chat_id="${chatId}" to respond!] ${sanitizedMessage}`;

@@ -7,6 +7,20 @@ export type AgentCharacter = 'robot' | 'ninja' | 'wizard' | 'astronaut' | 'knigh
 
 export type AgentProvider = 'claude' | 'codex' | 'gemini' | 'opencode' | 'pi' | 'local';
 
+/** Permission mode for agent tool use:
+ * - normal: Claude asks for confirmation on each tool use
+ * - auto: agent runs fully autonomously (--dangerously-skip-permissions)
+ * - bypass: same as auto, explicit intent to bypass all checks
+ */
+export type AgentPermissionMode = 'normal' | 'auto' | 'bypass';
+
+/** Effort level for agent reasoning:
+ * - low: fast, minimal thinking
+ * - medium: default balanced mode
+ * - high: extended thinking (--think flag)
+ */
+export type AgentEffort = 'low' | 'medium' | 'high';
+
 export interface AgentStatus {
   id: string;
   status: 'idle' | 'running' | 'completed' | 'error' | 'waiting';
@@ -23,7 +37,10 @@ export interface AgentStatus {
   character?: AgentCharacter;
   name?: string;
   pathMissing?: boolean;
+  /** @deprecated use permissionMode instead */
   skipPermissions?: boolean;
+  permissionMode?: AgentPermissionMode;
+  effort?: AgentEffort;
   currentSessionId?: string;
   kanbanTaskId?: string;  // For kanban task completion tracking
   statusLine?: string;       // ANSI-stripped last meaningful output line

@@ -9,6 +9,9 @@ export interface AgentConfig {
 
 export type AgentCharacter = 'robot' | 'ninja' | 'wizard' | 'astronaut' | 'knight' | 'pirate' | 'alien' | 'viking' | 'frog';
 
+export type AgentPermissionMode = 'normal' | 'auto' | 'bypass';
+export type AgentEffort = 'low' | 'medium' | 'high';
+
 export interface AgentStatus {
   id: string;
   status: 'idle' | 'running' | 'completed' | 'error' | 'waiting';
@@ -29,7 +32,10 @@ export interface AgentStatus {
   model?: string;
   localModel?: string;
   savedPrompt?: string;
+  /** @deprecated use permissionMode instead */
   skipPermissions?: boolean;
+  permissionMode?: AgentPermissionMode;
+  effort?: AgentEffort;
   secondaryProjectPath?: string;
   obsidianVaultPaths?: string[];
 }

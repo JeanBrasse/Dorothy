@@ -49,7 +49,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       character?: string;
       name?: string;
       secondaryProjectPath?: string;
-      skipPermissions?: boolean;
+      permissionMode?: 'normal' | 'auto' | 'bypass';
+      effort?: 'low' | 'medium' | 'high';
       provider?: string;
       model?: string;
       localModel?: string;
@@ -59,7 +60,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       id: string;
       skills?: string[];
       secondaryProjectPath?: string | null;
-      skipPermissions?: boolean;
+      permissionMode?: 'normal' | 'auto' | 'bypass';
+      effort?: 'low' | 'medium' | 'high' | null;
       name?: string;
       character?: string;
       model?: string | null;

@@ -15,7 +15,7 @@ interface UseSuperAgentProps {
     skills: string[];
     character?: AgentCharacter;
     name?: string;
-    skipPermissions?: boolean;
+    permissionMode?: 'normal' | 'auto' | 'bypass';
   }) => Promise<AgentStatus>;
   startAgent: (id: string, prompt: string) => Promise<void>;
   onAgentCreated?: (agentId: string) => void;
@@ -72,7 +72,7 @@ export function useSuperAgent({
         skills: [],
         character: 'wizard',
         name: 'Super Agent (Orchestrator)',
-        skipPermissions: true,
+        permissionMode: 'auto',
       });
 
       onAgentCreated?.(agent.id);

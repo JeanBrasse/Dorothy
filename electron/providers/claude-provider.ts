@@ -59,9 +59,16 @@ export class ClaudeProvider implements CLIProvider {
       command += ' --verbose';
     }
 
-    // Skip permissions
-    if (params.skipPermissions) {
-      command += ' --dangerously-skip-permissions';
+    // Permission mode
+    if (params.permissionMode === 'auto') {
+      command += ' --permission-mode auto';
+    } else if (params.permissionMode === 'bypass') {
+      command += ' --permission-mode bypassPermissions';
+    }
+
+    // Effort level
+    if (params.effort && params.effort !== 'medium') {
+      command += ` --effort ${params.effort}`;
     }
 
     // Secondary project

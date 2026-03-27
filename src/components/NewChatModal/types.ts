@@ -1,4 +1,5 @@
 import type { AgentCharacter, AgentProvider } from '@/types/electron';
+import type { AgentPermissionMode, AgentEffort } from '@/types/agent';
 import type { ClaudeSkill } from '@/lib/claude-code';
 
 export interface AgentPersonaValues {
@@ -23,7 +24,10 @@ export interface EditAgentData {
   projectPath: string;
   secondaryProjectPath?: string;
   skills: string[];
+  /** @deprecated use permissionMode instead */
   skipPermissions?: boolean;
+  permissionMode?: AgentPermissionMode;
+  effort?: AgentEffort;
   provider?: AgentProvider;
   model?: string;
   localModel?: string;
@@ -44,15 +48,17 @@ export interface NewChatModalProps {
     character?: AgentCharacter,
     name?: string,
     secondaryProjectPath?: string,
-    skipPermissions?: boolean,
+    permissionMode?: AgentPermissionMode,
     provider?: AgentProvider,
     localModel?: string,
     obsidianVaultPaths?: string[],
+    effort?: AgentEffort,
   ) => void;
   onUpdate?: (id: string, updates: {
     skills?: string[];
     secondaryProjectPath?: string | null;
-    skipPermissions?: boolean;
+    permissionMode?: AgentPermissionMode;
+    effort?: AgentEffort | null;
     name?: string;
     character?: AgentCharacter;
     model?: string | null;

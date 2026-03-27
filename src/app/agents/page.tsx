@@ -76,7 +76,8 @@ export default function AgentsPage() {
       projectPath: agent.projectPath,
       secondaryProjectPath: agent.secondaryProjectPath,
       skills: agent.skills,
-      skipPermissions: agent.skipPermissions,
+      permissionMode: agent.permissionMode ?? (agent.skipPermissions ? 'auto' : 'normal'),
+      effort: agent.effort,
       provider: agent.provider,
       model: agent.model,
       localModel: agent.localModel,
@@ -96,14 +97,15 @@ export default function AgentsPage() {
     character?: AgentCharacter,
     name?: string,
     secondaryProjectPath?: string,
-    skipPermissions?: boolean,
+    permissionMode?: 'normal' | 'auto' | 'bypass',
     provider?: AgentProvider,
     localModel?: string,
     obsidianVaultPaths?: string[],
+    effort?: 'low' | 'medium' | 'high',
   ) => {
     try {
       const resolvedModel = (provider !== 'local' && model && model !== 'default') ? model : undefined;
-      const agent = await createAgent({ projectPath, skills, worktree, character, name, secondaryProjectPath, skipPermissions, provider, model: resolvedModel, localModel, obsidianVaultPaths });
+      const agent = await createAgent({ projectPath, skills, worktree, character, name, secondaryProjectPath, permissionMode, effort, provider, model: resolvedModel, localModel, obsidianVaultPaths });
       if (prompt) {
         const options = { model: resolvedModel, provider, localModel };
         await startAgent(agent.id, prompt, options);
@@ -117,7 +119,8 @@ export default function AgentsPage() {
   const handleUpdateAgent = useCallback(async (id: string, updates: {
     skills?: string[];
     secondaryProjectPath?: string | null;
-    skipPermissions?: boolean;
+    permissionMode?: 'normal' | 'auto' | 'bypass';
+    effort?: 'low' | 'medium' | 'high' | null;
     name?: string;
     character?: AgentCharacter;
     model?: string | null;

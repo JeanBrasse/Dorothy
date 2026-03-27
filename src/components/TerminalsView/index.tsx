@@ -249,7 +249,11 @@ export default function TerminalsView() {
     character?: string,
     name?: string,
     secondaryProjectPath?: string,
-    skipPermissions?: boolean,
+    permissionMode?: 'normal' | 'auto' | 'bypass',
+    _provider?: string,
+    _localModel?: string,
+    _obsidianVaultPaths?: string[],
+    effort?: 'low' | 'medium' | 'high',
   ) => {
     const agent = await createAgent({
       projectPath,
@@ -258,7 +262,8 @@ export default function TerminalsView() {
       character: character as import('@/types/electron').AgentCharacter,
       name,
       secondaryProjectPath,
-      skipPermissions,
+      permissionMode,
+      effort,
     });
     // Auto-add to active custom tab
     if (tabManager.isCustomTabActive && tabManager.activeCustomTab) {

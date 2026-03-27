@@ -114,12 +114,12 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
 
   // POST /api/agents
   app_.post('/api/agents', (req, sendJson) => {
-    const { projectPath, name, skills = [], character, skipPermissions, secondaryProjectPath } = req.body as {
+    const { projectPath, name, skills = [], character, permissionMode, secondaryProjectPath } = req.body as {
       projectPath: string;
       name?: string;
       skills?: string[];
       character?: AgentCharacter;
-      skipPermissions?: boolean;
+      permissionMode?: 'normal' | 'auto' | 'bypass';
       secondaryProjectPath?: string;
     };
 
@@ -139,7 +139,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       lastActivity: new Date().toISOString(),
       character,
       name: name || `Agent ${id.slice(0, 6)}`,
-      skipPermissions,
+      permissionMode: permissionMode || 'auto',
     };
     agents.set(id, agent);
     saveAgents();
@@ -154,8 +154,8 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       return;
     }
 
-    const { prompt, model, skipPermissions, printMode } = req.body as {
-      prompt: string; model?: string; skipPermissions?: boolean; printMode?: boolean;
+    const { prompt, model, permissionMode: bodyPermissionMode, printMode } = req.body as {
+      prompt: string; model?: string; permissionMode?: 'normal' | 'auto' | 'bypass'; printMode?: boolean;
     };
     if (!prompt) {
       sendJson({ error: 'prompt is required' }, 400);
@@ -185,7 +185,8 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     if (agent.secondaryProjectPath) {
       command += ` --add-dir '${agent.secondaryProjectPath.replace(/'/g, "'\\''")}'`;
     }
-    if (skipPermissions !== undefined ? skipPermissions : agent.skipPermissions) {
+    const effectiveMode = bodyPermissionMode ?? agent.permissionMode ?? (agent.skipPermissions ? 'auto' : 'normal');
+    if (effectiveMode === 'auto' || effectiveMode === 'bypass') {
       command += ' --dangerously-skip-permissions';
     }
     const resolvedModel = model || agent.model;

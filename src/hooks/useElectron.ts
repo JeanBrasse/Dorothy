@@ -53,7 +53,8 @@ export function useElectronAgents() {
     character?: AgentCharacter;
     name?: string;
     secondaryProjectPath?: string;
-    skipPermissions?: boolean;
+    permissionMode?: 'normal' | 'auto' | 'bypass';
+    effort?: 'low' | 'medium' | 'high';
     provider?: AgentProvider;
     model?: string;
     localModel?: string;
@@ -72,7 +73,8 @@ export function useElectronAgents() {
     id: string;
     skills?: string[];
     secondaryProjectPath?: string | null;
-    skipPermissions?: boolean;
+    permissionMode?: 'normal' | 'auto' | 'bypass';
+    effort?: 'low' | 'medium' | 'high' | null;
     name?: string;
     character?: AgentCharacter;
     model?: string | null;

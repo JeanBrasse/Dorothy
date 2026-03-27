@@ -123,7 +123,8 @@ export default function NewChatModal({
   const [prompt, setPrompt] = useState('');
   const [useWorktree, setUseWorktree] = useState(false);
   const [branchName, setBranchName] = useState('');
-  const [skipPermissions, setSkipPermissions] = useState(true);
+  const [permissionMode, setPermissionMode] = useState<'normal' | 'auto' | 'bypass'>('auto');
+  const [effort, setEffort] = useState<'low' | 'medium' | 'high'>('medium');
   const [isOrchestrator, setIsOrchestrator] = useState(false);
 
   const projectPath = selectedProject || customPath;
@@ -167,7 +168,8 @@ export default function NewChatModal({
         setShowSecondaryProject(!!editAgent.secondaryProjectPath);
         setSelectedSecondaryProject(editAgent.secondaryProjectPath || '');
         setCustomSecondaryPath('');
-        setSkipPermissions(editAgent.skipPermissions || false);
+        setPermissionMode(editAgent.permissionMode ?? (editAgent.skipPermissions ? 'auto' : 'normal'));
+        setEffort(editAgent.effort || 'medium');
         setProvider(editAgent.provider || 'claude');
         setLocalModel(editAgent.localModel || '');
         setSelectedObsidianVaults(editAgent.obsidianVaultPaths || []);
@@ -185,7 +187,8 @@ export default function NewChatModal({
         setShowSecondaryProject(false);
         setSelectedSecondaryProject('');
         setCustomSecondaryPath('');
-        setSkipPermissions(false);
+        setPermissionMode('auto');
+        setEffort('medium');
         setProvider('claude');
         setLocalModel('');
         setSelectedObsidianVaults([]);
@@ -302,7 +305,7 @@ export default function NewChatModal({
   const handleOrchestratorToggle = useCallback((enabled: boolean) => {
     setIsOrchestrator(enabled);
     if (enabled) {
-      setSkipPermissions(true);
+      setPermissionMode('auto');
       agentPersonaRef.current = { ...agentPersonaRef.current, character: 'wizard' };
     }
   }, []);
@@ -330,7 +333,8 @@ export default function NewChatModal({
       onUpdate(editAgent.id, {
         skills: selectedSkills,
         secondaryProjectPath: secondaryPath || null,
-        skipPermissions,
+        permissionMode,
+        effort: effort || null,
         name: finalName,
         character: agentCharacter,
         model: (model && model !== 'default') ? model : null,
@@ -349,7 +353,7 @@ export default function NewChatModal({
       || (selectedSkills.length > 0 ? `Use the following skills: ${selectedSkills.join(', ')}` : '');
     const worktreeConfig = useWorktree ? { enabled: true, branchName: branchName.trim() } : undefined;
 
-    onSubmit(projectPath, selectedSkills, finalPrompt, model, worktreeConfig, agentCharacter, finalName, secondaryPath, skipPermissions, provider, localModel, selectedObsidianVaults.length > 0 ? selectedObsidianVaults : undefined);
+    onSubmit(projectPath, selectedSkills, finalPrompt, model, worktreeConfig, agentCharacter, finalName, secondaryPath, permissionMode, provider, localModel, selectedObsidianVaults.length > 0 ? selectedObsidianVaults : undefined, effort);
 
     // Reset form
     setStep(1);
@@ -362,12 +366,13 @@ export default function NewChatModal({
     agentPersonaRef.current = { character: 'robot', name: '' };
     setShowSecondaryProject(false);
     setSelectedSecondaryProject('');
-    setSkipPermissions(false);
+    setPermissionMode('auto');
+    setEffort('medium');
     setCustomSecondaryPath('');
     setProvider('claude');
     setLocalModel('');
     setSelectedObsidianVaults([]);
-  }, [projectPath, prompt, selectedSkills, useWorktree, branchName, showSecondaryProject, selectedSecondaryProject, customSecondaryPath, model, skipPermissions, provider, localModel, selectedObsidianVaults, onSubmit, isEditMode, editAgent, onUpdate, onClose]);
+  }, [projectPath, prompt, selectedSkills, useWorktree, branchName, showSecondaryProject, selectedSecondaryProject, customSecondaryPath, model, permissionMode, effort, provider, localModel, selectedObsidianVaults, onSubmit, isEditMode, editAgent, onUpdate, onClose]);
 
   // Can proceed from current step?
   const canContinue = step === 1 ? !!projectPath : true;
@@ -468,8 +473,10 @@ export default function NewChatModal({
                 onToggleWorktree={() => setUseWorktree(prev => !prev)}
                 branchName={branchName}
                 onBranchNameChange={setBranchName}
-                skipPermissions={skipPermissions}
-                onToggleSkipPermissions={() => setSkipPermissions(prev => !prev)}
+                permissionMode={permissionMode}
+                onPermissionModeChange={setPermissionMode}
+                effort={effort}
+                onEffortChange={setEffort}
                 isOrchestrator={isOrchestrator}
                 onOrchestratorToggle={handleOrchestratorToggle}
                 projectPath={projectPath}

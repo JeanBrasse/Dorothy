@@ -453,7 +453,7 @@ export async function handleSlackCommand(
       }
 
       let command = 'claude';
-      if (agent.skipPermissions) command += ' --dangerously-skip-permissions';
+      if (agent.permissionMode === 'auto' || agent.permissionMode === 'bypass' || (!agent.permissionMode && agent.skipPermissions)) command += ' --dangerously-skip-permissions';
       if (agent.secondaryProjectPath) {
         command += ` --add-dir '${agent.secondaryProjectPath.replace(/'/g, "'\\''")}'`;
       }
@@ -583,7 +583,7 @@ export async function sendToSuperAgentFromSlack(
         command += ` --append-system-prompt "${escapedInstructions}"`;
       }
 
-      if (superAgent.skipPermissions) command += ' --dangerously-skip-permissions';
+      if (superAgent.permissionMode === 'auto' || superAgent.permissionMode === 'bypass' || (!superAgent.permissionMode && superAgent.skipPermissions)) command += ' --dangerously-skip-permissions';
 
       // Simple prompt with Slack context - the detailed instructions come from the file
       const userPrompt = `[FROM SLACK - Use send_slack MCP tool to respond!] ${sanitizedMessage}`;

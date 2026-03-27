@@ -212,6 +212,11 @@ export function loadAgents() {
       agent.status = 'idle';
       agent.ptyId = undefined;
 
+      // Migrate legacy skipPermissions boolean → permissionMode
+      if (!agent.permissionMode) {
+        agent.permissionMode = agent.skipPermissions ? 'auto' : 'normal';
+      }
+
       agents.set(agent.id, agent);
     }
 
