@@ -38,12 +38,8 @@ export function useSuperAgent({
   }, [agents]);
 
   const handleSuperAgentClick = useCallback(async () => {
-    // If super agent exists
+    // If super agent exists, just open its edit modal — don't auto-start it
     if (superAgent) {
-      // If idle, restart it with the orchestrator prompt
-      if (superAgent.status === 'idle' || superAgent.status === 'completed' || superAgent.status === 'error') {
-        await startAgent(superAgent.id, ORCHESTRATOR_PROMPT);
-      }
       onAgentCreated?.(superAgent.id);
       return;
     }

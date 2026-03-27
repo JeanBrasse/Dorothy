@@ -184,7 +184,7 @@ export default function AgentTerminalDialog({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          className={`bg-bg-secondary border border-border-primary rounded-none overflow-hidden shadow-2xl ${dialogClass} flex flex-col`}
+          className={`bg-bg-secondary border border-border-primary rounded-none overflow-hidden shadow-2xl ${dialogClass} flex flex-col [&_button:not(:disabled)]:cursor-pointer`}
         >
           <AgentDialogHeader
             agent={agent}

@@ -191,7 +191,7 @@ export default function AgentsPage() {
       {/* Filter bar */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         {/* Status tabs */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 [&_button]:cursor-pointer">
           <button
             onClick={() => setStatusFilter(null)}
             className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors ${
@@ -240,7 +240,7 @@ export default function AgentsPage() {
         {/* Sort toggle */}
         <button
           onClick={cycleSortBy}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-border bg-card hover:bg-accent/50 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
           title={`Sort by: ${sortBy}`}
         >
           <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />
@@ -279,14 +279,14 @@ export default function AgentsPage() {
             {agents.length === 0 ? (
               <button
                 onClick={() => setShowNewChatModal(true)}
-                className="text-primary text-sm hover:underline"
+                className="text-primary text-sm hover:underline cursor-pointer"
               >
                 Create your first agent
               </button>
             ) : (
               <button
                 onClick={() => { setProjectFilter(null); setStatusFilter(null); setSearchQuery(''); }}
-                className="text-primary text-sm hover:underline"
+                className="text-primary text-sm hover:underline cursor-pointer"
               >
                 Clear filters
               </button>
