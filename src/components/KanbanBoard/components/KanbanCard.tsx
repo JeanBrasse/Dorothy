@@ -153,7 +153,7 @@ export function KanbanCard({ task, onEdit, onDelete, onStart, onOpenTerminal, is
       </div>
 
       {/* Title */}
-      <h4 className={`font-medium text-sm text-foreground mb-2 line-clamp-2 ${isDone ? 'line-through opacity-60' : ''}`}>
+      <h4 className={`font-medium text-sm text-foreground mb-2 line-clamp-2 font-sans ${isDone ? 'line-through opacity-60' : ''}`}>
         {task.title}
       </h4>
 

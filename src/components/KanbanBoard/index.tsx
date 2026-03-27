@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Loader2, RefreshCw, Search, ChevronDown } from 'lucide-react';
+import { Plus, Loader2, RefreshCw, Search, ChevronDown, FolderOpen } from 'lucide-react';
 import { useElectronKanban, useKanbanAgentSync } from '@/hooks/useElectronKanban';
 import { isElectron as checkIsElectron } from '@/hooks/useElectron';
 import type { KanbanTask, KanbanColumn as KanbanColumnType, KanbanTaskCreate } from '@/types/kanban';
@@ -331,25 +331,22 @@ export default function KanbanBoard() {
             <div className="relative">
               <button
                 onClick={() => setProjectDropdownOpen(v => !v)}
-                className="flex items-center gap-2 pl-3 pr-2.5 py-2 bg-secondary/50 border border-border/50 rounded-lg text-sm hover:bg-secondary/80 transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-none bg-secondary border border-border text-muted-foreground hover:text-foreground transition-colors text-sm min-w-[160px]"
               >
-                <span className="text-foreground">
-                  {filterProject ? projects.find(p => p.id === filterProject)?.name : 'All Projects'}
-                </span>
-                <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-150 ${projectDropdownOpen ? 'rotate-180' : ''}`} />
+                <FolderOpen className="w-4 h-4" />
+                {filterProject ? projects.find(p => p.id === filterProject)?.name : 'All Projects'}
+                <ChevronDown className="w-4 h-4 ml-auto" />
               </button>
 
               <AnimatePresence>
                 {projectDropdownOpen && (
                   <>
-                    {/* Backdrop */}
                     <div className="fixed inset-0 z-10" onClick={() => setProjectDropdownOpen(false)} />
                     <motion.div
-                      initial={{ opacity: 0, y: -4, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -4, scale: 0.97 }}
-                      transition={{ duration: 0.1 }}
-                      className="absolute right-0 top-full mt-1.5 z-20 min-w-[160px] bg-card border border-border rounded-lg shadow-xl overflow-hidden"
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 5 }}
+                      className="absolute top-full mt-2 right-0 w-48 bg-card border border-border rounded-none shadow-lg z-20 py-2"
                     >
                       {[{ id: '', name: 'All Projects' }, ...projects].map((p) => {
                         const isSelected = (p.id === '' && !filterProject) || filterProject === p.id;
@@ -357,11 +354,9 @@ export default function KanbanBoard() {
                           <button
                             key={p.id}
                             onClick={() => { setFilterProject(p.id || null); setProjectDropdownOpen(false); }}
-                            className={`w-full flex items-center justify-between gap-3 px-3.5 py-2 text-sm text-left transition-colors
-                              ${isSelected ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-secondary/60'}`}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-secondary ${isSelected ? 'text-white' : 'text-muted-foreground'}`}
                           >
                             {p.name}
-                            {isSelected && <span className="text-primary text-xs">✓</span>}
                           </button>
                         );
                       })}
