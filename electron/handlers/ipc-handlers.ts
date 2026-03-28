@@ -626,6 +626,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       systemPromptFile,
       skills: allAgentSkills,
       isSuperAgent: isSuperAgentCheck,
+      chrome: appSettingsForCommand.chromeEnabled,
     });
 
     // Persist the prompt for future re-launches and update status

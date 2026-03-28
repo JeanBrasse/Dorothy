@@ -70,6 +70,7 @@ export interface AppSettings {
   gwsEnabled: boolean;
   gwsSkillsInstalled: boolean;
   verboseModeEnabled: boolean;
+  chromeEnabled: boolean;
   autoCheckUpdates: boolean;
   cliPaths: CLIPaths;
   defaultProvider?: string;

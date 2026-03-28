@@ -1,32 +1,19 @@
 import { useState, useMemo, useCallback } from 'react';
-import type { AgentStatus, AgentCharacter } from '@/types/electron';
+import type { AgentStatus } from '@/types/electron';
 import { ORCHESTRATOR_PROMPT } from '@/app/agents/constants';
-
-interface Project {
-  path: string;
-  name: string;
-}
 
 interface UseSuperAgentProps {
   agents: AgentStatus[];
-  projects: Project[];
-  createAgent: (params: {
-    projectPath: string;
-    skills: string[];
-    character?: AgentCharacter;
-    name?: string;
-    permissionMode?: 'normal' | 'auto' | 'bypass';
-  }) => Promise<AgentStatus>;
   startAgent: (id: string, prompt: string) => Promise<void>;
   onAgentCreated?: (agentId: string) => void;
+  onCreateNew?: () => void;
 }
 
 export function useSuperAgent({
   agents,
-  projects,
-  createAgent,
   startAgent,
   onAgentCreated,
+  onCreateNew,
 }: UseSuperAgentProps) {
   const [isCreatingSuperAgent, setIsCreatingSuperAgent] = useState(false);
 
@@ -61,32 +48,9 @@ export function useSuperAgent({
       }
     }
 
-    // Create a new super agent
-    setIsCreatingSuperAgent(true);
-    try {
-      // Use the first project path or a default
-      const projectPath = projects[0]?.path || '/tmp';
-
-      const agent = await createAgent({
-        projectPath,
-        skills: [],
-        character: 'wizard',
-        name: 'Super Agent (Orchestrator)',
-        permissionMode: 'auto',
-      });
-
-      onAgentCreated?.(agent.id);
-
-      // Start with orchestrator instructions
-      setTimeout(async () => {
-        await startAgent(agent.id, ORCHESTRATOR_PROMPT);
-      }, 600);
-    } catch (error) {
-      console.error('Failed to create super agent:', error);
-    } finally {
-      setIsCreatingSuperAgent(false);
-    }
-  }, [superAgent, projects, createAgent, startAgent, onAgentCreated]);
+    // Open the create agent modal so the user can select a project
+    onCreateNew?.();
+  }, [superAgent, startAgent, onAgentCreated, onCreateNew]);
 
   return {
     superAgent,

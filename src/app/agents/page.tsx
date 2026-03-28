@@ -37,6 +37,7 @@ export default function AgentsPage() {
 
   // Local state
   const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [showSuperAgentModal, setShowSuperAgentModal] = useState(false);
   const [viewAgentId, setViewAgentId] = useState<string | null>(null);  // terminal dialog
   const [editAgentId, setEditAgentId] = useState<string | null>(null);  // edit dialog
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
@@ -48,10 +49,9 @@ export default function AgentsPage() {
   // Custom hooks
   const { superAgent, isCreatingSuperAgent, handleSuperAgentClick } = useSuperAgent({
     agents,
-    projects: projects.map(p => ({ path: p.path, name: p.name })),
-    createAgent,
     startAgent,
     onAgentCreated: (id) => setEditAgentId(id),
+    onCreateNew: () => setShowSuperAgentModal(true),
   });
 
   const { filteredAgents, uniqueProjects } = useAgentFiltering({
@@ -308,6 +308,19 @@ export default function AgentsPage() {
         installedSkills={installedSkills}
         allInstalledSkills={claudeData?.skills || []}
         onRefreshSkills={refreshSkills}
+      />
+
+      {/* Super Agent Create Modal */}
+      <NewChatModal
+        open={showSuperAgentModal}
+        onClose={() => setShowSuperAgentModal(false)}
+        onSubmit={handleCreateAgent}
+        projects={projects.map(p => ({ path: p.path, name: p.name }))}
+        onBrowseFolder={isElectron() ? openFolderDialog : undefined}
+        installedSkills={installedSkills}
+        allInstalledSkills={claudeData?.skills || []}
+        onRefreshSkills={refreshSkills}
+        initialOrchestrator
       />
 
       {/* Edit Modal — reuses NewChatModal pre-filled with agent data */}

@@ -32,6 +32,7 @@ export function useAgentActions({
   const [isCreatingSuperAgent, setIsCreatingSuperAgent] = useState(false);
   const [showCreateAgentModal, setShowCreateAgentModal] = useState(false);
   const [createAgentProjectPath, setCreateAgentProjectPath] = useState<string | null>(null);
+  const [createSuperAgent, setCreateSuperAgent] = useState(false);
 
   const handleToggleAgent = useCallback(async (agentId: string, isRunning: boolean) => {
     if (isRunning) {
@@ -144,12 +145,14 @@ export function useAgentActions({
   const closeCreateAgentModal = useCallback(() => {
     setShowCreateAgentModal(false);
     setCreateAgentProjectPath(null);
+    setCreateSuperAgent(false);
   }, []);
 
   return {
     isCreatingSuperAgent,
     showCreateAgentModal,
     createAgentProjectPath,
+    createSuperAgent,
     handleToggleAgent,
     handleStartAgent,
     handleStopAgent,
