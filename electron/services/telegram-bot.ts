@@ -717,7 +717,7 @@ export function initTelegramBot() {
           binaryPath,
           prompt: task,
           model: agent.model,
-          permissionMode: agent.permissionMode ?? (agent.skipPermissions ? 'auto' : 'normal'),
+          permissionMode: agent.permissionMode ?? (agent.skipPermissions ? 'bypass' : 'normal'),
           effort: agent.effort,
           secondaryProjectPath: agent.secondaryProjectPath,
           obsidianVaultPaths: agent.obsidianVaultPaths,
@@ -729,7 +729,7 @@ export function initTelegramBot() {
         agent.status = 'running';
         agent.currentTask = task.slice(0, 100);
         agent.lastActivity = new Date().toISOString();
-        writeProgrammaticInput(ptyProcess, `cd '${workingPath}' && ${command}`);
+        writeProgrammaticInput(ptyProcess, `cd '${workingPath}' && ${command}`, true);
         saveAgents();
 
         const emoji = isSuperAgent(agent) ? '👑' : (TG_CHARACTER_FACES[agent.character || ''] || '🤖');
@@ -1233,6 +1233,7 @@ export async function sendToSuperAgent(chatId: string, message: string, attached
         const combined = [superAgentInstructions, telegramInstructions].filter(Boolean).join('\n\n');
         const combinedPath = path.join(app.getPath('home'), '.dorothy', 'telegram-combined-prompt.md');
         try {
+          fs.mkdirSync(path.dirname(combinedPath), { recursive: true });
           fs.writeFileSync(combinedPath, combined, 'utf-8');
           systemPromptFile = combinedPath;
         } catch {
@@ -1247,7 +1248,7 @@ export async function sendToSuperAgent(chatId: string, message: string, attached
         binaryPath,
         prompt: userPrompt,
         model: superAgent.model,
-        permissionMode: superAgent.permissionMode ?? (superAgent.skipPermissions ? 'auto' : 'normal'),
+        permissionMode: superAgent.permissionMode ?? (superAgent.skipPermissions ? 'bypass' : 'normal'),
         effort: superAgent.effort,
         secondaryProjectPath: superAgent.secondaryProjectPath,
         obsidianVaultPaths: superAgent.obsidianVaultPaths,
@@ -1266,7 +1267,7 @@ export async function sendToSuperAgent(chatId: string, message: string, attached
       superAgentOutputBuffer = [];
 
       // Start new Claude session
-      writeProgrammaticInput(ptyProcess, `cd '${workingPath}' && ${command}`);
+      writeProgrammaticInput(ptyProcess, `cd '${workingPath}' && ${command}`, true);
       saveAgents();
 
       telegramBot?.sendMessage(chatId, `👑 Super Agent is processing your request...`);

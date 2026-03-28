@@ -187,7 +187,7 @@ export default function NewChatModal({
         setShowSecondaryProject(false);
         setSelectedSecondaryProject('');
         setCustomSecondaryPath('');
-        setPermissionMode('auto');
+        setPermissionMode('normal');
         setEffort('medium');
         setProvider('claude');
         setLocalModel('');
@@ -196,11 +196,11 @@ export default function NewChatModal({
 
         if (initialOrchestrator) {
           agentPersonaRef.current = { character: 'wizard', name: 'Super Agent (Orchestrator)' };
-          setSkipPermissions(true);
+          setPermissionMode('bypass');
           setIsOrchestrator(true);
         } else {
           agentPersonaRef.current = { character: 'robot', name: '' };
-          setSkipPermissions(false);
+          setPermissionMode('normal');
           setIsOrchestrator(false);
         }
       }
@@ -375,7 +375,7 @@ export default function NewChatModal({
     agentPersonaRef.current = { character: 'robot', name: '' };
     setShowSecondaryProject(false);
     setSelectedSecondaryProject('');
-    setPermissionMode('auto');
+    setPermissionMode('normal');
     setEffort('medium');
     setCustomSecondaryPath('');
     setProvider('claude');
