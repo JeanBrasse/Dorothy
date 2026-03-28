@@ -7,6 +7,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    id: 9,
+    version: '1.2.6',
+    date: '2026-03-28',
+    updates: [
+      'Add delay between PTY write and carriage return to fix Telegram/Slack input',
+      'Add Chrome browser sharing for agents (--chrome flag)',
+      'Fix CLI path detection, settings sidebar scroll, and UX improvements',
+    ],
+  },
+  {
     id: 8,
     version: '1.2.5',
     date: '2026-03-17',
