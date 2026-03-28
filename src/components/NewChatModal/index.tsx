@@ -190,6 +190,7 @@ export default function NewChatModal({
         setPermissionMode('normal');
         setEffort('medium');
         setProvider('claude');
+        setModel('default');
         setLocalModel('');
         setSelectedObsidianVaults([]);
         setDetectedVault(null);
@@ -379,6 +380,7 @@ export default function NewChatModal({
     setEffort('medium');
     setCustomSecondaryPath('');
     setProvider('claude');
+    setModel('default');
     setLocalModel('');
     setSelectedObsidianVaults([]);
   }, [projectPath, prompt, selectedSkills, useWorktree, branchName, showSecondaryProject, selectedSecondaryProject, customSecondaryPath, model, permissionMode, effort, provider, localModel, selectedObsidianVaults, onSubmit, isEditMode, editAgent, onUpdate, onClose]);
