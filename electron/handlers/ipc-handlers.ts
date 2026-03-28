@@ -226,6 +226,17 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
     const id = uuidv4();
     const shell = '/bin/bash';
 
+    // Validate effort against allowed values to prevent shell injection
+    const VALID_EFFORTS: AgentEffort[] = ['low', 'medium', 'high'];
+    if (config.effort && !VALID_EFFORTS.includes(config.effort)) {
+      throw new Error(`Invalid effort level: ${config.effort}`);
+    }
+
+    // Validate model name: only allow safe characters (alphanumeric, dash, dot, slash, colon, underscore)
+    if (config.model && !/^[a-zA-Z0-9._\-\/:@]+$/.test(config.model)) {
+      throw new Error(`Invalid model name: ${config.model}`);
+    }
+
     // Validate project path exists
     let cwd = config.projectPath;
     if (!fs.existsSync(cwd)) {
@@ -358,7 +369,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       ptyId,
       character: config.character || 'robot',
       name: config.name || `Agent ${id.slice(0, 4)}`,
-      permissionMode: config.permissionMode || 'auto',
+      permissionMode: config.permissionMode || 'normal',
       effort: config.effort,
       provider: config.provider || 'claude',
       model: config.model,
@@ -431,6 +442,11 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
   }) => {
     const agent = agents.get(id);
     if (!agent) throw new Error('Agent not found');
+
+    // Validate model name from options to prevent shell injection
+    if (options?.model && !/^[a-zA-Z0-9._\-\/:@]+$/.test(options.model)) {
+      throw new Error(`Invalid model name: ${options.model}`);
+    }
 
     // Initialize PTY if agent was restored from disk and doesn't have one
     let ptyJustCreated = false;
@@ -541,7 +557,8 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       newPty.onExit(({ exitCode }) => {
         console.log(`Agent ${id} PTY exited with code ${exitCode}`);
         const agentData = agents.get(id);
-        if (agentData) {
+        // Guard: only mutate if this PTY is still the active one (prevents race on restart)
+        if (agentData && agentData.ptyId === newPtyId) {
           const newStatus = exitCode === 0 ? 'completed' : 'error';
           agentData.status = newStatus;
           agentData.lastActivity = new Date().toISOString();
@@ -808,6 +825,8 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
         ptyProcess.kill();
         ptyProcesses.delete(agent.ptyId);
       }
+      // Nullify so pending onExit callbacks won't mutate state
+      agent.ptyId = undefined;
     }
 
     // Clean up worktree if it exists

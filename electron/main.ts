@@ -144,7 +144,7 @@ function loadAppSettings(): AppSettings {
     gwsEnabled: false,
     gwsSkillsInstalled: false,
     verboseModeEnabled: false,
-    statusLineEnabled: true,
+    statusLineEnabled: false,
     autoCheckUpdates: true,
     opencodeEnabled: false,
     opencodeDefaultModel: '',

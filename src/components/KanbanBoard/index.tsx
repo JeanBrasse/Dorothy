@@ -119,8 +119,11 @@ export default function KanbanBoard() {
   const handleRefresh = useCallback(async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    await refresh();
-    setTimeout(() => setIsRefreshing(false), 600);
+    try {
+      await refresh();
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 600);
+    }
   }, [refresh, isRefreshing]);
 
   // Drag state

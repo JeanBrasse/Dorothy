@@ -71,7 +71,7 @@ export default function TerminalPanelInput({
     setInput(e.target.value);
     // Auto-resize
     e.target.style.height = 'auto';
-    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+    e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
   }, []);
 
   const isDisabled = agentStatus !== 'running' && agentStatus !== 'waiting';
@@ -95,7 +95,7 @@ export default function TerminalPanelInput({
               : 'Send input to agent...'
         }
         disabled={isDisabled}
-        className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none font-mono disabled:opacity-40 resize-none overflow-hidden leading-relaxed"
+        className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none font-mono disabled:opacity-40 resize-none overflow-y-auto leading-relaxed"
         style={{ height: 'auto', minHeight: '1.5rem' }}
       />
       <button

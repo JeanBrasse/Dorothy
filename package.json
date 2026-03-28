@@ -19,7 +19,7 @@
   },
   "build": {
     "appId": "io.dorothy.app",
-    "productName": "Dorothy-fix",
+    "productName": "Dorothy",
     "publish": {
       "provider": "github",
       "owner": "Charlie85270",

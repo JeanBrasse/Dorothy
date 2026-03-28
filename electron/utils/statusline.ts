@@ -26,12 +26,7 @@ if [ -n "$SESSION_ID" ]; then
   T_OUT=$(echo "$INPUT" | jq -r '.context_window.total_output_tokens // 0' 2>/dev/null || echo 0)
   T_COST=$(echo "$INPUT" | jq -r '.cost.total_cost_usd // 0' 2>/dev/null || echo 0)
   T_MODEL=$(echo "$INPUT" | jq -r '.model.model_id // .model.display_name // "unknown"' 2>/dev/null || echo "unknown")
-  # Read existing file or start fresh
-  if [ -f "$TOKEN_STATS_FILE" ]; then
-    EXISTING=$(cat "$TOKEN_STATS_FILE" 2>/dev/null || echo '{}')
-  else
-    EXISTING='{}'
-  fi
+
   # Check if in extra usage (either 5h or 7d quota > 100%)
   PCT_5H=$(echo "$INPUT" | jq -r '.rate_limits.five_hour.used_percentage // 0' 2>/dev/null || echo 0)
   PCT_7D=$(echo "$INPUT" | jq -r '.rate_limits.seven_day.used_percentage // 0' 2>/dev/null || echo 0)
@@ -40,18 +35,53 @@ if [ -n "$SESSION_ID" ]; then
     IS_EXTRA="true"
   fi
 
-  # Update session entry (jq overwrites same session_id, so no double-counting)
-  T_DATE=$(date +%Y-%m-%d)
-  echo "$EXISTING" | jq -c \
-    --arg sid "$SESSION_ID" \
-    --argjson tin "$T_IN" \
-    --argjson tout "$T_OUT" \
-    --argjson cost "$T_COST" \
-    --arg model "$T_MODEL" \
-    --argjson extra "$IS_EXTRA" \
-    --arg date "$T_DATE" \
-    '.[$sid] = {"in": $tin, "out": $tout, "cost": $cost, "model": $model, "extra": $extra, "date": $date}' \
-    > "$TOKEN_STATS_FILE" 2>/dev/null || true
+  # Acquire lock to prevent concurrent read-modify-write races
+  LOCK_DIR="$HOME/.dorothy/token-stats.lock"
+  LOCK_ACQUIRED=false
+  for _i in $(seq 1 20); do
+    if mkdir "$LOCK_DIR" 2>/dev/null; then
+      LOCK_ACQUIRED=true
+      break
+    fi
+    sleep 0.05
+  done
+  # Stale lock cleanup: if lock dir is older than 5s, remove and retry once
+  if [ "$LOCK_ACQUIRED" = "false" ] && [ -d "$LOCK_DIR" ]; then
+    LOCK_AGE=$(( $(date +%s) - $(stat -f%m "$LOCK_DIR" 2>/dev/null || stat -c%Y "$LOCK_DIR" 2>/dev/null || echo 0) ))
+    if [ "$LOCK_AGE" -gt 5 ]; then
+      rmdir "$LOCK_DIR" 2>/dev/null || true
+      mkdir "$LOCK_DIR" 2>/dev/null && LOCK_ACQUIRED=true
+    fi
+  fi
+
+  if [ "$LOCK_ACQUIRED" = "true" ]; then
+    # Ensure lock is released on exit
+    trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
+
+    # Read existing file or start fresh
+    if [ -f "$TOKEN_STATS_FILE" ]; then
+      EXISTING=$(cat "$TOKEN_STATS_FILE" 2>/dev/null || echo '{}')
+    else
+      EXISTING='{}'
+    fi
+
+    # Update session entry via temp file for atomic write
+    T_DATE=$(date +%Y-%m-%d)
+    TMP_FILE="\${TOKEN_STATS_FILE}.tmp.$$"
+    echo "$EXISTING" | jq -c \
+      --arg sid "$SESSION_ID" \
+      --argjson tin "$T_IN" \
+      --argjson tout "$T_OUT" \
+      --argjson cost "$T_COST" \
+      --arg model "$T_MODEL" \
+      --argjson extra "$IS_EXTRA" \
+      --arg date "$T_DATE" \
+      '.[$sid] = {"in": $tin, "out": $tout, "cost": $cost, "model": $model, "extra": $extra, "date": $date}' \
+      > "$TMP_FILE" 2>/dev/null && mv "$TMP_FILE" "$TOKEN_STATS_FILE" 2>/dev/null || rm -f "$TMP_FILE"
+
+    # Release lock
+    rmdir "$LOCK_DIR" 2>/dev/null || true
+  fi
 fi
 
 # Autocompact buffer size (tokens). Adjust if Claude Code changes this.

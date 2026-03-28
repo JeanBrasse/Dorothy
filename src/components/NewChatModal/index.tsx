@@ -123,7 +123,7 @@ export default function NewChatModal({
   const [prompt, setPrompt] = useState('');
   const [useWorktree, setUseWorktree] = useState(false);
   const [branchName, setBranchName] = useState('');
-  const [permissionMode, setPermissionMode] = useState<'normal' | 'auto' | 'bypass'>('auto');
+  const [permissionMode, setPermissionMode] = useState<'normal' | 'auto' | 'bypass'>('normal');
   const [effort, setEffort] = useState<'low' | 'medium' | 'high'>('medium');
   const [isOrchestrator, setIsOrchestrator] = useState(false);
 

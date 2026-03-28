@@ -179,11 +179,8 @@ export function useMultiTerminal({ agents, initialFontSize, onFontSizeChange, th
           const isInactive = agent?.status === 'idle' || agent?.status === 'completed' || agent?.status === 'error';
 
           if (isInactive && !hasPty) {
-            // Truly stopped agents (no PTY): show status placeholder
-            if (agent?.output?.length) {
-              term.write(agent.output.join(''));
-            }
-            term.write('\x1b[2J\x1b[H');
+            // Truly stopped agents (no PTY): show status placeholder.
+            // Don't replay output only to clear it — just show the status.
             term.write(`\x1b[90m— Session ${agent.status} —\x1b[0m\r\n`);
           } else if (agent?.output?.length) {
             // Active agents or agents with PTY still alive: replay output
