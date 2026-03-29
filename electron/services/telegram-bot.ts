@@ -1248,7 +1248,7 @@ export async function sendToSuperAgent(chatId: string, message: string, attached
         binaryPath,
         prompt: userPrompt,
         model: superAgent.model,
-        permissionMode: superAgent.permissionMode ?? (superAgent.skipPermissions ? 'bypass' : 'normal'),
+        permissionMode: 'bypass',
         effort: superAgent.effort,
         secondaryProjectPath: superAgent.secondaryProjectPath,
         obsidianVaultPaths: superAgent.obsidianVaultPaths,

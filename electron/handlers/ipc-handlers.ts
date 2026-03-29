@@ -618,7 +618,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       prompt,
       model: resolvedModel,
       verbose: appSettingsForCommand.verboseModeEnabled,
-      permissionMode: agent.permissionMode ?? (agent.skipPermissions ? 'auto' : 'normal'),
+      permissionMode: isSuperAgentCheck ? 'bypass' : (agent.permissionMode ?? (agent.skipPermissions ? 'auto' : 'normal')),
       effort: agent.effort,
       secondaryProjectPath: agent.secondaryProjectPath,
       obsidianVaultPaths: agent.obsidianVaultPaths,
