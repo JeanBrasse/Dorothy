@@ -5,6 +5,7 @@ import { app } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import { agents, saveAgents, killStalePty, ensureProjectTrusted } from '../../core/agent-manager';
 import { ptyProcesses, writeProgrammaticInput } from '../../core/pty-manager';
+import { getProvider } from '../../providers';
 import { buildFullPath } from '../../utils/path-builder';
 import { AgentStatus, AgentCharacter } from '../../types';
 import { RouteApp, RouteContext, RouteRequest, SendJson } from './types';
@@ -38,7 +39,14 @@ function spawnAgentSession(
   // break when the path legitimately contains a single quote.
   const rawWorkingDir = agent.worktreePath || agent.projectPath;
   const workingDir = rawWorkingDir.replace(/'/g, "'\\''");
-  let command = `cd '${workingDir}' && claude`;
+
+  // Resolve provider and binary — honours custom CLI paths in Settings and
+  // the agent's provider (claude / openrouter / deepseek / moonshot / etc.).
+  const appSettings = ctx.getAppSettings();
+  const cliProvider = getProvider(agent.provider);
+  const binaryPath = cliProvider.resolveBinaryPath(appSettings);
+  const escapedBinary = binaryPath.replace(/'/g, "'\\''");
+  let command = `cd '${workingDir}' && '${escapedBinary}'`;
 
   const isAutomationAgent = agent.name?.toLowerCase().includes('automation:');
   const usePrintMode = opts.printMode || isAutomationAgent;
@@ -51,7 +59,10 @@ function spawnAgentSession(
                           agent.name?.toLowerCase().includes('super agent') ||
                           agent.name?.toLowerCase().includes('orchestrator');
 
-  if (isSuperAgentApi || isAutomationAgent) {
+  // Pass MCP config to all agents using a flag-strategy provider (all
+  // claude-based providers, including OpenRouter/DeepSeek/etc.). Mirrors
+  // ipc-handlers behaviour.
+  if (cliProvider.getMcpConfigStrategy() === 'flag') {
     const mcpConfigPath = path.join(app.getPath('home'), '.claude', 'mcp.json');
     if (fs.existsSync(mcpConfigPath)) {
       command += ` --mcp-config '${mcpConfigPath}'`;
@@ -135,6 +146,11 @@ function spawnAgentSession(
   // BUG 6: pre-accept Claude Code's workspace trust dialog for this cwd.
   ensureProjectTrusted(rawWorkingDir);
 
+  // Provider env vars: CLAUDE_* tracking vars + ANTHROPIC_BASE_URL /
+  // ANTHROPIC_API_KEY for alt providers (OpenRouter, DeepSeek, MiMo,
+  // Moonshot, Qwen, ZhipuAI). The identity vars are re-asserted explicitly —
+  // MCP project scoping and the hooks depend on them.
+  const providerEnvVars = cliProvider.getPtyEnvVars(agent.id, agent.projectPath, agent.skills || [], appSettings);
   const ptyProcess = pty.spawn(shell, ['-l', '-c', command], {
     name: 'xterm-256color',
     cols: 120,
@@ -144,6 +160,7 @@ function spawnAgentSession(
       ...process.env,
       PATH: fullPath,
       TERM: 'xterm-256color',
+      ...providerEnvVars,
       CLAUDE_SKILLS: agent.skills?.join(',') || '',
       CLAUDE_AGENT_ID: agent.id,
       CLAUDE_PROJECT_PATH: agent.projectPath,
