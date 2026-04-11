@@ -5,7 +5,20 @@ export interface WorktreeConfig {
 
 export type AgentCharacter = 'robot' | 'ninja' | 'wizard' | 'astronaut' | 'knight' | 'pirate' | 'alien' | 'viking';
 
-export type AgentProvider = 'claude' | 'codex' | 'gemini' | 'grok' | 'opencode' | 'pi' | 'local';
+export type AgentProvider =
+  | 'claude'
+  | 'codex'
+  | 'gemini'
+  | 'grok'
+  | 'opencode'
+  | 'pi'
+  | 'local'
+  | 'openrouter'
+  | 'deepseek'
+  | 'mimo'
+  | 'moonshot'
+  | 'qwen'
+  | 'zhipu';
 
 /** Permission mode for agent tool use:
  * - normal: Claude asks for confirmation on each tool use
@@ -123,6 +136,20 @@ export interface AppSettings {
   cliPaths: CLIPaths;
   opencodeEnabled: boolean;
   opencodeDefaultModel: string;
+  /** External AI provider keys. All alt providers use the claude binary
+   *  with ANTHROPIC_BASE_URL + ANTHROPIC_API_KEY injected into the PTY. */
+  openRouterEnabled?: boolean;
+  openRouterApiKey?: string;
+  deepSeekEnabled?: boolean;
+  deepSeekApiKey?: string;
+  mimoEnabled?: boolean;
+  mimoApiKey?: string;
+  moonshotEnabled?: boolean;
+  moonshotApiKey?: string;
+  qwenEnabled?: boolean;
+  qwenApiKey?: string;
+  zhipuEnabled?: boolean;
+  zhipuApiKey?: string;
   defaultProvider?: AgentProvider;
   obsidianVaultPaths?: string[];
   notificationSounds?: {

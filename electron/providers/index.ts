@@ -6,6 +6,12 @@ import { GeminiProvider } from './gemini-provider';
 import { GrokProvider } from './grok-provider';
 import { OpenCodeProvider } from './opencode-provider';
 import { PiProvider } from './pi-provider';
+import { OpenRouterProvider } from './openrouter-provider';
+import { DeepSeekProvider } from './deepseek-provider';
+import { MiMoProvider } from './mimo-provider';
+import { MoonshotProvider } from './moonshot-provider';
+import { QwenProvider } from './qwen-provider';
+import { ZhipuProvider } from './zhipu-provider';
 
 export type { CLIProvider } from './cli-provider';
 export type {
@@ -23,6 +29,12 @@ const providers: Record<string, CLIProvider> = {
   grok: new GrokProvider(),
   opencode: new OpenCodeProvider(),
   pi: new PiProvider(),
+  openrouter: new OpenRouterProvider(),
+  deepseek: new DeepSeekProvider(),
+  mimo: new MiMoProvider(),
+  moonshot: new MoonshotProvider(),
+  qwen: new QwenProvider(),
+  zhipu: new ZhipuProvider(),
 };
 
 /**
