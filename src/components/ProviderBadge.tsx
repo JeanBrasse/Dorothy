@@ -27,6 +27,14 @@ function GrokLogo({ className }: { className?: string }) {
   );
 }
 
+function OpenCodeLogo(_: { className?: string }) {
+  return <span className="font-bold text-[9px] leading-none text-cyan-500">OC</span>;
+}
+
+function PiLogo(_: { className?: string }) {
+  return <span className="font-bold text-[10px] leading-none text-cyan-400">π</span>;
+}
+
 const PROVIDER_CONFIG: Record<string, {
   label: string;
   icon: string | React.FC<{ className?: string }>;
@@ -35,6 +43,8 @@ const PROVIDER_CONFIG: Record<string, {
   codex: { label: 'ChatGPT', icon: '/chatgpt-icon.webp' },
   gemini: { label: 'Gemini', icon: GeminiLogo },
   grok: { label: 'Grok', icon: GrokLogo },
+  opencode: { label: 'OpenCode', icon: OpenCodeLogo },
+  pi: { label: 'Pi', icon: PiLogo },
 };
 
 interface ProviderBadgeProps {
