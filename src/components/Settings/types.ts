@@ -36,6 +36,7 @@ export interface CLIPaths {
   gcloud: string;
   gh: string;
   node: string;
+  minimax: string;
   additionalPaths: string[];
 }
 
@@ -93,6 +94,12 @@ export interface AppSettings {
   qwenApiKey?: string;
   zhipuEnabled?: boolean;
   zhipuApiKey?: string;
+  minimaxEnabled?: boolean;
+  minimaxApiKey?: string;
+  nvidiaEnabled?: boolean;
+  nvidiaApiKey?: string;
+  nousPortalEnabled?: boolean;
+  nousPortalApiKey?: string;
   notificationSounds?: {
     waiting?: string;
     complete?: string;

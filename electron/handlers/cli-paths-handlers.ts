@@ -21,13 +21,13 @@ export interface CLIPathsHandlerDependencies {
  * Detect CLI paths from the system.
  * If savedPaths is provided, manually-set paths are checked first and used if the binary exists.
  */
-async function detectCLIPaths(savedPaths?: Partial<CLIPaths>): Promise<{ claude: string; codex: string; gemini: string; grok: string; opencode: string; pi: string; gws: string; gcloud: string; gh: string; node: string }> {
+async function detectCLIPaths(savedPaths?: Partial<CLIPaths>): Promise<{ claude: string; codex: string; gemini: string; grok: string; opencode: string; pi: string; gws: string; gcloud: string; gh: string; node: string; minimax: string }> {
   const homeDir = os.homedir();
-  const paths = { claude: '', codex: '', gemini: '', grok: '', opencode: '', pi: '', gws: '', gcloud: '', gh: '', node: '' };
+  const paths = { claude: '', codex: '', gemini: '', grok: '', opencode: '', pi: '', gws: '', gcloud: '', gh: '', node: '', minimax: '' };
 
   // If a user manually set a path in settings, use it if the binary exists
   if (savedPaths) {
-    const cliKeys = ['claude', 'codex', 'gemini', 'grok', 'opencode', 'pi', 'gws', 'gcloud', 'gh', 'node'] as const;
+    const cliKeys = ['claude', 'codex', 'gemini', 'grok', 'opencode', 'pi', 'gws', 'gcloud', 'gh', 'node', 'minimax'] as const;
     for (const key of cliKeys) {
       const savedPath = savedPaths[key];
       if (savedPath && fs.existsSync(savedPath)) {
@@ -314,6 +314,29 @@ async function detectCLIPaths(savedPaths?: Partial<CLIPaths>): Promise<{ claude:
     }
   }
 
+  // Check for minimax
+  if (!paths.minimax) for (const dir of commonPaths) {
+    const minimaxPath = path.join(dir, 'minimax');
+    if (fs.existsSync(minimaxPath)) {
+      paths.minimax = minimaxPath;
+      break;
+    }
+  }
+
+  // Try which command for minimax
+  if (!paths.minimax) {
+    try {
+      const { stdout } = await execAsync('which minimax', {
+        env: { ...process.env, PATH: `${commonPaths.join(':')}:${process.env.PATH}` },
+      });
+      if (stdout.trim()) {
+        paths.minimax = stdout.trim();
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
   return paths;
 }
 
@@ -395,7 +418,7 @@ export function registerCLIPathsHandlers(deps: CLIPathsHandlerDependencies): voi
   // Get CLI paths from app settings
   ipcMain.handle('cliPaths:get', async () => {
     const settings = getAppSettings();
-    return settings.cliPaths || { claude: '', codex: '', gemini: '', grok: '', opencode: '', pi: '', gws: '', gcloud: '', gh: '', node: '', additionalPaths: [] };
+    return settings.cliPaths || { claude: '', codex: '', gemini: '', grok: '', qwencode: '', opencode: '', pi: '', gws: '', gcloud: '', gh: '', node: '', minimax: '', additionalPaths: [] };
   });
 
   // Save CLI paths
@@ -453,12 +476,14 @@ export function getCLIPathsConfig(): CLIPaths & { fullPath: string } {
     codex: '',
     gemini: '',
     grok: '',
+    qwencode: '',
     opencode: '',
     pi: '',
     gws: '',
     gcloud: '',
     gh: '',
     node: '',
+    minimax: '',
     additionalPaths: [],
     fullPath: [...new Set([...defaultPaths, ...(process.env.PATH || '').split(':')])].join(':'),
   };

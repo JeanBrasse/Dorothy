@@ -138,7 +138,10 @@ export type AgentProvider =
   | 'mimo'
   | 'moonshot'
   | 'qwen'
-  | 'zhipu';
+  | 'zhipu'
+  | 'minimax'
+  | 'nvidia'
+  | 'nous-portal';
 
 export interface AgentStatus {
   id: string;
@@ -169,6 +172,7 @@ export interface AgentStatus {
   savedPrompt?: string;       // Saved task/prompt for re-launching the agent
   obsidianVaultPaths?: string[]; // Obsidian vault paths to mount via --add-dir (read-only)
   createdAt?: string;         // ISO timestamp when the agent was created
+  cliPath?: string;              // Custom CLI binary path override
 }
 
 export interface AgentTemplate {
@@ -414,6 +418,12 @@ export interface ElectronAPI {
       qwenApiKey?: string;
       zhipuEnabled?: boolean;
       zhipuApiKey?: string;
+      minimaxEnabled?: boolean;
+      minimaxApiKey?: string;
+      nvidiaEnabled?: boolean;
+      nvidiaApiKey?: string;
+      nousPortalEnabled?: boolean;
+      nousPortalApiKey?: string;
       notificationSounds?: {
         waiting?: string;
         complete?: string;
@@ -437,6 +447,7 @@ export interface ElectronAPI {
         gcloud: string;
         gh: string;
         node: string;
+        minimax: string;
         additionalPaths: string[];
       };
     }>;
@@ -489,6 +500,7 @@ export interface ElectronAPI {
         gcloud: string;
         gh: string;
         node: string;
+        minimax: string;
         additionalPaths: string[];
       };
     }) => Promise<{ success: boolean; error?: string }>;
@@ -757,24 +769,28 @@ export interface ElectronAPI {
       codex: string;
       gemini: string;
       grok: string;
+      qwencode: string;
       opencode: string;
       pi: string;
       gws: string;
       gcloud: string;
       gh: string;
       node: string;
+      minimax: string;
     }>;
     get: () => Promise<{
       claude: string;
       codex: string;
       gemini: string;
       grok: string;
+      qwencode: string;
       opencode: string;
       pi: string;
       gws: string;
       gcloud: string;
       gh: string;
       node: string;
+      minimax: string;
       additionalPaths: string[];
     }>;
     save: (paths: {
@@ -782,12 +798,14 @@ export interface ElectronAPI {
       codex: string;
       gemini: string;
       grok: string;
+      qwencode: string;
       opencode: string;
       pi: string;
       gws: string;
       gcloud: string;
       gh: string;
       node: string;
+      minimax: string;
       additionalPaths: string[];
     }) => Promise<{ success: boolean; error?: string }>;
   };

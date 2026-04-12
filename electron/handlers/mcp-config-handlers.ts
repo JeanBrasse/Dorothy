@@ -35,6 +35,16 @@ function getConfigPath(provider: string): string {
       return path.join(os.homedir(), '.gemini', 'settings.json');
     case 'grok':
       return path.join(os.homedir(), '.grok', 'config.toml');
+    case 'opencode':
+      return path.join(os.homedir(), '.opencode', 'mcp.json');
+    case 'pi':
+      return path.join(os.homedir(), '.pi', 'mcp.json');
+    case 'qwencode':
+      return path.join(os.homedir(), '.qwen-code', 'mcp.json');
+    case 'minimax':
+    case 'nvidia':
+    case 'nous-portal':
+      return path.join(os.homedir(), '.claude', 'mcp.json');
     default:
       throw new Error(`Unknown provider: ${provider}`);
   }
@@ -113,6 +123,56 @@ function readGeminiMcp(): McpServer[] {
 
 function writeGeminiMcp(action: 'update' | 'delete', server?: McpServer, deleteName?: string): void {
   const configPath = getConfigPath('gemini');
+  let data: any = {};
+  if (fs.existsSync(configPath)) {
+    try {
+      data = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    } catch {
+      data = {};
+    }
+  }
+  if (!data.mcpServers) data.mcpServers = {};
+
+  if (action === 'update' && server) {
+    data.mcpServers[server.name] = {
+      command: server.command,
+      args: server.args,
+      ...(Object.keys(server.env).length > 0 ? { env: server.env } : {}),
+    };
+  } else if (action === 'delete' && deleteName) {
+    delete data.mcpServers[deleteName];
+  }
+
+  const dir = path.dirname(configPath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(configPath, JSON.stringify(data, null, 2));
+}
+
+// ── Generic JSON MCP: { mcpServers: { name: { command, args, env } } }
+// Used by OpenCode, Pi, Qwen Code (same format as Claude)
+
+function readJsonMcp(provider: string): McpServer[] {
+  const configPath = getConfigPath(provider);
+  if (!fs.existsSync(configPath)) return [];
+  try {
+    const data = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const servers = data.mcpServers || {};
+    return Object.entries(servers)
+      .filter(([name]) => !DOROTHY_MANAGED_MCPS.has(name))
+      .map(([name, cfg]: [string, any]) => ({
+        name,
+        command: cfg.command || '',
+        args: Array.isArray(cfg.args) ? cfg.args : [],
+        env: (cfg.env && typeof cfg.env === 'object') ? cfg.env : {},
+      }));
+  } catch (err) {
+    console.error(`Failed to read ${provider} MCP config:`, err);
+    return [];
+  }
+}
+
+function writeJsonMcp(provider: string, action: 'update' | 'delete', server?: McpServer, deleteName?: string): void {
+  const configPath = getConfigPath(provider);
   let data: any = {};
   if (fs.existsSync(configPath)) {
     try {
@@ -265,6 +325,9 @@ function listServers(provider: string): McpServer[] {
     case 'codex': return readCodexMcp();
     case 'gemini': return readGeminiMcp();
     case 'grok': return readCodexMcp('grok');
+    case 'opencode':
+    case 'pi':
+    case 'qwencode': return readJsonMcp(provider);
     default: return [];
   }
 }
@@ -275,6 +338,9 @@ function updateServer(provider: string, server: McpServer): void {
     case 'codex': writeCodexMcp('update', server); break;
     case 'gemini': writeGeminiMcp('update', server); break;
     case 'grok': writeCodexMcp('update', server, undefined, 'grok'); break;
+    case 'opencode':
+    case 'pi':
+    case 'qwencode': writeJsonMcp(provider, 'update', server); break;
   }
 }
 
@@ -284,6 +350,9 @@ function deleteServer(provider: string, name: string): void {
     case 'codex': writeCodexMcp('delete', undefined, name); break;
     case 'gemini': writeGeminiMcp('delete', undefined, name); break;
     case 'grok': writeCodexMcp('delete', undefined, name, 'grok'); break;
+    case 'opencode':
+    case 'pi':
+    case 'qwencode': writeJsonMcp(provider, 'delete', undefined, name); break;
   }
 }
 

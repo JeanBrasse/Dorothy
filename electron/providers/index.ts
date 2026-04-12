@@ -12,6 +12,9 @@ import { MiMoProvider } from './mimo-provider';
 import { MoonshotProvider } from './moonshot-provider';
 import { QwenProvider } from './qwen-provider';
 import { ZhipuProvider } from './zhipu-provider';
+import { MiniMaxProvider } from './minimax-provider';
+import { NvidiaProvider } from './nvidia-provider';
+import { NousPortalProvider } from './nous-portal-provider';
 
 export type { CLIProvider } from './cli-provider';
 export type {
@@ -35,6 +38,9 @@ const providers: Record<string, CLIProvider> = {
   moonshot: new MoonshotProvider(),
   qwen: new QwenProvider(),
   zhipu: new ZhipuProvider(),
+  minimax: new MiniMaxProvider(),
+  nvidia: new NvidiaProvider(),
+  'nous-portal': new NousPortalProvider(),
 };
 
 /**
