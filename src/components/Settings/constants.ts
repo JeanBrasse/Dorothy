@@ -100,6 +100,7 @@ export const DEFAULT_APP_SETTINGS = {
     codex: '',
     gemini: '',
     grok: '',
+    qwencode: '',
     opencode: '',
     pi: '',
     gws: '',
