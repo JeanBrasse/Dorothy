@@ -214,12 +214,22 @@ function playSound(filePath: string): void {
 }
 
 export function isSuperAgent(agent: AgentStatus): boolean {
+  // The persisted role is authoritative; the name-substring test only covers
+  // agents created before the role field existed (loadAgents migrates them).
+  if (agent.role) return agent.role === 'orchestrator';
   const name = agent.name?.toLowerCase() || '';
   return name.includes('super agent') || name.includes('orchestrator');
 }
 
-export function getSuperAgent(agents: Map<string, AgentStatus>): AgentStatus | undefined {
-  return Array.from(agents.values()).find(a => isSuperAgent(a));
+/** Find an orchestrator agent. Pass projectPath to get the orchestrator OF
+ *  THAT PROJECT — without it, callers with no project context (Telegram,
+ *  Slack) get the first orchestrator found, all projects considered. */
+export function getSuperAgent(agents: Map<string, AgentStatus>, projectPath?: string): AgentStatus | undefined {
+  const orchestrators = Array.from(agents.values()).filter(a => isSuperAgent(a));
+  if (projectPath) {
+    return orchestrators.find(a => a.projectPath === projectPath);
+  }
+  return orchestrators[0];
 }
 
 export function formatAgentStatus(agent: AgentStatus): string {

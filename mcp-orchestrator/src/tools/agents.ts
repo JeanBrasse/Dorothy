@@ -4,7 +4,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { apiRequest } from "../utils/api.js";
+import { apiRequest, getCallerIdentity } from "../utils/api.js";
 
 type WaitResult = {
   status: string;
@@ -69,19 +69,27 @@ async function fetchCleanOutput(
 }
 
 export function registerAgentTools(server: McpServer): void {
-  // Tool: List all agents
+  // Tool: List agents (scoped to the caller's project by default)
   server.tool(
     "list_agents",
-    "List all agents and their current status. Returns agent IDs, names, status (idle/running/waiting/completed/error), projects, and current tasks.",
-    {},
-    async () => {
+    "List the agents of YOUR project and their current status (idle/running/waiting/completed/error). Only these agents can receive your tasks — delegating to another project's agents is rejected. Pass all: true only if you explicitly need the global cross-project view.",
+    {
+      all: z.boolean().optional().describe("If true, list agents of ALL projects instead of only your own"),
+    },
+    async ({ all }) => {
       try {
-        const data = (await apiRequest("/api/agents")) as { agents: unknown[] };
+        const data = (await apiRequest(all ? "/api/agents?all=true" : "/api/agents")) as {
+          agents: unknown[];
+          scopedToProject?: string;
+        };
+        const scopeNote = data.scopedToProject
+          ? `Agents of your project (${data.scopedToProject}):\n`
+          : "";
         return {
           content: [
             {
               type: "text",
-              text: JSON.stringify(data.agents, null, 2),
+              text: `${scopeNote}${JSON.stringify(data.agents, null, 2)}`,
             },
           ],
         };
@@ -185,9 +193,9 @@ export function registerAgentTools(server: McpServer): void {
   // Tool: Create agent
   server.tool(
     "create_agent",
-    "Create a new agent for a specific project. The agent will be in 'idle' state until started. By default, agents run with --dangerously-skip-permissions for autonomous operation.",
+    "Create a new agent. Defaults to YOUR project when projectPath is omitted. The agent will be in 'idle' state until started. By default, agents run with --dangerously-skip-permissions for autonomous operation.",
     {
-      projectPath: z.string().describe("Absolute path to the project directory"),
+      projectPath: z.string().optional().describe("Absolute path to the project directory (defaults to your own project)"),
       name: z.string().optional().describe("Name for the agent (e.g., 'Backend Worker', 'Test Runner')"),
       skills: z.array(z.string()).optional().describe("List of skill names to enable for this agent"),
       character: z
@@ -203,8 +211,15 @@ export function registerAgentTools(server: McpServer): void {
     },
     async ({ projectPath, name, skills, character, skipPermissions = true, secondaryProjectPath }) => {
       try {
+        const resolvedProjectPath = projectPath || getCallerIdentity().projectPath;
+        if (!resolvedProjectPath) {
+          return {
+            content: [{ type: "text", text: "Error: projectPath is required (no caller project identity available)." }],
+            isError: true,
+          };
+        }
         const data = (await apiRequest("/api/agents", "POST", {
-          projectPath,
+          projectPath: resolvedProjectPath,
           name,
           skills,
           character,

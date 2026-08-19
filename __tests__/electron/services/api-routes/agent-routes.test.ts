@@ -380,6 +380,97 @@ describe('agent-routes', () => {
     });
   });
 
+  describe('project scoping', () => {
+    function reqFromProject(project: string, overrides: Partial<RouteRequest> = {}): RouteRequest {
+      return makeReq({
+        raw: { headers: { 'x-dorothy-caller-project': project }, on: () => {} } as any,
+        ...overrides,
+      });
+    }
+
+    it('GET /api/agents returns only the caller project agents', async () => {
+      agents.set('a1', makeAgent({ id: 'a1', projectPath: '/proj/dorothy' }));
+      agents.set('a2', makeAgent({ id: 'a2', projectPath: '/proj/tars' }));
+      agents.set('a3', makeAgent({ id: 'a3', projectPath: '/proj/dorothy' }));
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = app.routes.find(r => r.method === 'GET' && r.pattern === '/api/agents')!.handler;
+
+      const sendJson = vi.fn();
+      await handler(reqFromProject('/proj/dorothy', { url: new URL('http://localhost/api/agents') }), sendJson, ctx);
+
+      const result = sendJson.mock.calls[0][0] as { agents: { id: string }[]; scopedToProject?: string };
+      expect(result.agents.map(a => a.id).sort()).toEqual(['a1', 'a3']);
+      expect(result.scopedToProject).toBe('/proj/dorothy');
+    });
+
+    it('GET /api/agents?all=true returns every project', async () => {
+      agents.set('a1', makeAgent({ id: 'a1', projectPath: '/proj/dorothy' }));
+      agents.set('a2', makeAgent({ id: 'a2', projectPath: '/proj/tars' }));
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = app.routes.find(r => r.method === 'GET' && r.pattern === '/api/agents')!.handler;
+
+      const sendJson = vi.fn();
+      await handler(reqFromProject('/proj/dorothy', { url: new URL('http://localhost/api/agents?all=true') }), sendJson, ctx);
+
+      const result = sendJson.mock.calls[0][0] as { agents: unknown[] };
+      expect(result.agents).toHaveLength(2);
+    });
+
+    it('rejects dispatch to an agent of another project with 403', async () => {
+      agents.set('a1', makeAgent({ id: 'a1', name: 'Tars-Worker', projectPath: '/proj/tars' }));
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = findHandler(app, 'POST', 'dispatch');
+
+      const pty = await import('node-pty');
+      const spawnCallsBefore = (pty.spawn as any).mock.calls.length;
+
+      const sendJson = vi.fn();
+      await handler(reqFromProject('/proj/dorothy', { params: { id: 'a1' }, body: { message: 'go' } }), sendJson, ctx);
+
+      expect(sendJson.mock.calls[0][1]).toBe(403);
+      expect(String((sendJson.mock.calls[0][0] as { error: string }).error)).toContain('Cross-project access denied');
+      expect((pty.spawn as any).mock.calls.length).toBe(spawnCallsBefore);
+    });
+
+    it('allows cross-project dispatch with allowCrossProject: true', async () => {
+      const agent = makeAgent({ id: 'a1', projectPath: '/proj/tars', status: 'idle' });
+      agents.set('a1', agent);
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = findHandler(app, 'POST', 'dispatch');
+
+      const sendJson = vi.fn();
+      await handler(
+        reqFromProject('/proj/dorothy', { params: { id: 'a1' }, body: { message: 'go', allowCrossProject: true } }),
+        sendJson,
+        ctx
+      );
+
+      expect(agent.status).toBe('running');
+      expect((sendJson.mock.calls[0][0] as { mode: string }).mode).toBe('start');
+    });
+
+    it('callers without identity headers (UI) are unrestricted', async () => {
+      const agent = makeAgent({ id: 'a1', projectPath: '/proj/tars', status: 'idle' });
+      agents.set('a1', agent);
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = findHandler(app, 'POST', 'start');
+
+      const sendJson = vi.fn();
+      await handler(makeReq({ params: { id: 'a1' }, body: { prompt: 'go' } }), sendJson, ctx);
+      expect(agent.status).toBe('running');
+    });
+  });
+
   describe('POST /api/agents/:id/message', () => {
     it('sends message to agent PTY', async () => {
       const mockPty = { write: vi.fn() };

@@ -47,7 +47,8 @@ function spawnAgentSession(
     command += ' -p';
   }
 
-  const isSuperAgentApi = agent.name?.toLowerCase().includes('super agent') ||
+  const isSuperAgentApi = agent.role === 'orchestrator' ||
+                          agent.name?.toLowerCase().includes('super agent') ||
                           agent.name?.toLowerCase().includes('orchestrator');
 
   if (isSuperAgentApi || isAutomationAgent) {
@@ -191,6 +192,30 @@ function projectAgent(agent: AgentStatus) {
   return { ...rest, outputChunks: output.length };
 }
 
+/** Project path of the calling agent, injected as a header by the MCP client
+ *  from its PTY environment. Absent for the UI and other local callers. */
+function callerProject(req: RouteRequest): string | undefined {
+  const h = req.raw?.headers?.['x-dorothy-caller-project'];
+  return typeof h === 'string' && h.length > 0 ? h : undefined;
+}
+
+/**
+ * Cross-project guard: an orchestrator may only act on agents of its own
+ * project. This is what stops an orchestrator from delegating to another
+ * project's agents when the LLM picks a wrong ID from a global listing.
+ * Callers without identity headers (UI, curl) are unrestricted, and a caller
+ * can explicitly override with allowCrossProject: true.
+ */
+function assertSameProject(req: RouteRequest, agent: AgentStatus, sendJson: SendJson): boolean {
+  const caller = callerProject(req);
+  if (!caller || agent.projectPath === caller) return true;
+  if ((req.body as { allowCrossProject?: boolean } | undefined)?.allowCrossProject === true) return true;
+  sendJson({
+    error: `Cross-project access denied: agent "${agent.name || agent.id}" belongs to project ${agent.projectPath}, but you are the orchestrator of ${caller}. Use list_agents to see YOUR project's agents, or pass allowCrossProject: true if this is intentional.`,
+  }, 403);
+  return false;
+}
+
 export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
   // GET /api/agents/:id/wait — long-poll until agent status changes
   app_.get(/^\/api\/agents\/([^/]+)\/wait$/, (req, sendJson) => {
@@ -256,9 +281,17 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     });
   });
 
-  // GET /api/agents
+  // GET /api/agents — scoped to the caller's project by default (?all=true
+  // for the global view). An orchestrator that only ever SEES its own team
+  // cannot pick another project's agent ID by mistake.
   app_.get('/api/agents', (req, sendJson) => {
-    const agentList = Array.from(agents.values()).map(a => ({
+    const caller = callerProject(req);
+    const showAll = req.url.searchParams.get('all') === 'true';
+    let agentValues = Array.from(agents.values());
+    if (caller && !showAll) {
+      agentValues = agentValues.filter(a => a.projectPath === caller);
+    }
+    const agentList = agentValues.map(a => ({
       id: a.id,
       name: a.name,
       status: a.status,
@@ -269,9 +302,10 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       lastActivity: a.lastActivity,
       character: a.character,
       branchName: a.branchName,
+      role: a.role,
       error: a.error,
     }));
-    sendJson({ agents: agentList });
+    sendJson({ agents: agentList, scopedToProject: caller && !showAll ? caller : undefined });
   });
 
   // GET /api/agents/:id
@@ -315,6 +349,8 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     }
 
     const id = uuidv4();
+    const resolvedName = name || `Agent ${id.slice(0, 6)}`;
+    const lowerName = resolvedName.toLowerCase();
     const agent: AgentStatus = {
       id,
       status: 'idle',
@@ -324,9 +360,12 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       output: [],
       lastActivity: new Date().toISOString(),
       character,
-      name: name || `Agent ${id.slice(0, 6)}`,
+      name: resolvedName,
       permissionMode: permissionMode || 'auto',
       orchestratorMode: orchestratorMode || false,
+      role: (orchestratorMode || lowerName.includes('super agent') || lowerName.includes('orchestrator'))
+        ? 'orchestrator'
+        : 'worker',
     };
     agents.set(id, agent);
     saveAgents();
@@ -340,6 +379,8 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       sendJson({ error: 'Agent not found' }, 404);
       return;
     }
+
+    if (!assertSameProject(req, agent, sendJson)) return;
 
     const { prompt, model, permissionMode: bodyPermissionMode, printMode } = req.body as {
       prompt: string; model?: string; permissionMode?: 'normal' | 'auto' | 'bypass'; printMode?: boolean;
@@ -366,6 +407,8 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       sendJson({ error: 'Agent not found' }, 404);
       return;
     }
+
+    if (!assertSameProject(req, agent, sendJson)) return;
 
     const { message, model, permissionMode } = req.body as {
       message: string; model?: string; permissionMode?: 'normal' | 'auto' | 'bypass';
@@ -407,6 +450,8 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       return;
     }
 
+    if (!assertSameProject(req, agent, sendJson)) return;
+
     if (agent.ptyId) {
       const ptyProcess = ptyProcesses.get(agent.ptyId);
       if (ptyProcess) {
@@ -431,6 +476,8 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       sendJson({ error: 'Agent not found' }, 404);
       return;
     }
+
+    if (!assertSameProject(req, agent, sendJson)) return;
 
     const { message } = req.body as { message: string };
     if (!message) {
@@ -475,6 +522,8 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       sendJson({ error: 'Agent not found' }, 404);
       return;
     }
+
+    if (!assertSameProject(req, agent, sendJson)) return;
 
     if (agent.ptyId) {
       const ptyProcess = ptyProcesses.get(agent.ptyId);

@@ -305,6 +305,14 @@ export function loadAgents() {
         agent.permissionMode = agent.skipPermissions ? 'auto' : 'normal';
       }
 
+      // Migrate name-substring orchestrator detection → persistent role field
+      if (!agent.role) {
+        const name = agent.name?.toLowerCase() || '';
+        agent.role = (name.includes('super agent') || name.includes('orchestrator') || agent.orchestratorMode)
+          ? 'orchestrator'
+          : 'worker';
+      }
+
       // Backfill createdAt for legacy agents using lastActivity
       if (!agent.createdAt) {
         agent.createdAt = agent.lastActivity || new Date().toISOString();
