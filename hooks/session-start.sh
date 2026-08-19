@@ -26,10 +26,20 @@ if ! curl -s --connect-timeout 1 "$API_URL/api/health" > /dev/null 2>&1; then
   exit 0
 fi
 
-# Register session ID with the agent (keep idle — only UserPromptSubmit sets running)
+# Register this session as the agent's owner. The server recognizes the
+# `source` field (only SessionStart sends it) and records session_id WITHOUT
+# touching status — the status lifecycle belongs to UserPromptSubmit/Stop.
+# Retry once: if registration is lost, the stale-session guard would ignore
+# every later status post from this session.
 RESULT=$(curl -s --max-time 3 -X POST "$API_URL/api/hooks/status" \
   -H "Content-Type: application/json" \
   -d "{\"agent_id\": \"$AGENT_ID\", \"session_id\": \"$SESSION_ID\", \"status\": \"idle\", \"source\": \"$SOURCE\"}" 2>&1)
+if [ -z "$RESULT" ]; then
+  sleep 1
+  RESULT=$(curl -s --max-time 3 -X POST "$API_URL/api/hooks/status" \
+    -H "Content-Type: application/json" \
+    -d "{\"agent_id\": \"$AGENT_ID\", \"session_id\": \"$SESSION_ID\", \"status\": \"idle\", \"source\": \"$SOURCE\"}" 2>&1)
+fi
 echo "[$(date)] SESSION_START curl result: $RESULT" >> /tmp/dorothy-hooks.log
 
 # Get memory context for this agent/project

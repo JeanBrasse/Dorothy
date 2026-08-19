@@ -48,7 +48,14 @@ export interface AgentStatus {
    *  implementation tools available — it can only read, delegate, and use
    *  shell/git commands. See BUG 5. */
   orchestratorMode?: boolean;
+  /** 'orchestrator' agents delegate work and message other agents of the SAME
+   *  project; 'worker' agents receive tasks. Migrated from name-substring
+   *  matching in loadAgents. */
+  role?: 'orchestrator' | 'worker';
   currentSessionId?: string;
+  /** Why the agent is 'waiting': 'permission' = blocking permission dialog
+   *  (auto-continue must NOT type into it), 'idle' = waiting for next prompt. */
+  waitingReason?: string;
   kanbanTaskId?: string;  // For kanban task completion tracking
   statusLine?: string;       // ANSI-stripped last meaningful output line
   lastCleanOutput?: string;  // Clean text output captured from transcript by hooks

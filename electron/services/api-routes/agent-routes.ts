@@ -7,7 +7,189 @@ import { agents, saveAgents, killStalePty, ensureProjectTrusted } from '../../co
 import { ptyProcesses, writeProgrammaticInput } from '../../core/pty-manager';
 import { buildFullPath } from '../../utils/path-builder';
 import { AgentStatus, AgentCharacter } from '../../types';
-import { RouteApp, RouteContext } from './types';
+import { RouteApp, RouteContext, RouteRequest, SendJson } from './types';
+
+type SpawnOpts = {
+  model?: string;
+  permissionMode?: 'normal' | 'auto' | 'bypass';
+  printMode?: boolean;
+};
+
+/**
+ * Spawn a fresh one-shot claude PTY for `agent` with `prompt` as the task.
+ *
+ * Shared by /start, the /message reconnect path, and /dispatch so every entry
+ * point gets identical behavior: skills prefix, MCP config for orchestrators,
+ * model flag, orchestrator tool restrictions (BUG 5), trust pre-acceptance
+ * (BUG 6), stale-PTY kill and ptyCwd invariant (BUG 4), and session-ownership
+ * reset so hooks of the killed session can't flip the new task's status.
+ *
+ * Returns false if validation failed — an error response has already been sent.
+ */
+function spawnAgentSession(
+  agent: AgentStatus,
+  prompt: string,
+  opts: SpawnOpts,
+  ctx: RouteContext,
+  sendJson: SendJson
+): boolean {
+  // Raw cwd for pty.spawn, shell-escaped form for the `cd` command. These
+  // must be separate — passing the shell-escaped form to pty.spawn would
+  // break when the path legitimately contains a single quote.
+  const rawWorkingDir = agent.worktreePath || agent.projectPath;
+  const workingDir = rawWorkingDir.replace(/'/g, "'\\''");
+  let command = `cd '${workingDir}' && claude`;
+
+  const isAutomationAgent = agent.name?.toLowerCase().includes('automation:');
+  const usePrintMode = opts.printMode || isAutomationAgent;
+
+  if (usePrintMode) {
+    command += ' -p';
+  }
+
+  const isSuperAgentApi = agent.name?.toLowerCase().includes('super agent') ||
+                          agent.name?.toLowerCase().includes('orchestrator');
+
+  if (isSuperAgentApi || isAutomationAgent) {
+    const mcpConfigPath = path.join(app.getPath('home'), '.claude', 'mcp.json');
+    if (fs.existsSync(mcpConfigPath)) {
+      command += ` --mcp-config '${mcpConfigPath}'`;
+    }
+  }
+
+  if (agent.secondaryProjectPath) {
+    command += ` --add-dir '${agent.secondaryProjectPath.replace(/'/g, "'\\''")}'`;
+  }
+  const effectiveMode = opts.permissionMode ?? agent.permissionMode ?? (agent.skipPermissions ? 'auto' : 'normal');
+  if (effectiveMode === 'auto' || effectiveMode === 'bypass') {
+    command += ' --dangerously-skip-permissions';
+  }
+  // BUG 5: orchestrator-mode agents cannot edit files directly — must delegate.
+  if (isSuperAgentApi || agent.orchestratorMode) {
+    command += ' --disallowed-tools "Edit" "Write" "MultiEdit" "NotebookEdit"';
+  }
+  const resolvedModel = opts.model || agent.model;
+  // 'default' is a Dorothy UI alias meaning "let Claude CLI pick"; omit the flag.
+  if (resolvedModel && resolvedModel !== 'default') {
+    // Allow the same characters as claude-provider.ts buildInteractiveCommand,
+    // including brackets used by 1M-context variants (e.g. sonnet[1m]).
+    if (!/^[a-zA-Z0-9._:\/\[\]-]+$/.test(resolvedModel)) {
+      sendJson({ error: 'Invalid model name' }, 400);
+      return false;
+    }
+    command += ` --model '${resolvedModel}'`;
+  }
+
+  let finalPrompt = prompt;
+  if (agent.skills && agent.skills.length > 0 && !isSuperAgentApi) {
+    const skillsList = agent.skills.join(', ');
+    finalPrompt = `[IMPORTANT: Use these skills for this session: ${skillsList}. Invoke them with /<skill-name> when relevant to the task.] ${prompt}`;
+  }
+  command += ` '${finalPrompt.replace(/'/g, "'\\''")}'`;
+
+  const shell = '/bin/bash';
+  const fullPath = buildFullPath();
+
+  // Kill any existing PTY for this agent before spawning a new one.
+  // Agents started via the API use one-shot PTYs that stay alive (the claude
+  // process waits at a prompt after each task). Without this, every dispatch
+  // orphans the previous PTY+claude process, eventually exhausting resources.
+  if (agent.ptyId) {
+    const existingPty = ptyProcesses.get(agent.ptyId);
+    if (existingPty) {
+      existingPty.kill();
+      ptyProcesses.delete(agent.ptyId);
+    }
+  }
+
+  // BUG 6: pre-accept Claude Code's workspace trust dialog for this cwd.
+  ensureProjectTrusted(rawWorkingDir);
+
+  const ptyProcess = pty.spawn(shell, ['-l', '-c', command], {
+    name: 'xterm-256color',
+    cols: 120,
+    rows: 40,
+    cwd: rawWorkingDir,
+    env: {
+      ...process.env,
+      PATH: fullPath,
+      TERM: 'xterm-256color',
+      CLAUDE_SKILLS: agent.skills?.join(',') || '',
+      CLAUDE_AGENT_ID: agent.id,
+      CLAUDE_PROJECT_PATH: agent.projectPath,
+    },
+  });
+
+  const ptyId = uuidv4();
+  ptyProcesses.set(ptyId, ptyProcess);
+
+  agent.ptyId = ptyId;
+  agent.ptyCwd = rawWorkingDir;
+  agent.status = 'running';
+  agent.currentTask = prompt;
+  agent.output = [];
+  agent.lastCleanOutput = undefined;  // Clear stale output from previous task
+  agent.error = undefined;            // Clear previous error state
+  agent.waitingReason = undefined;
+  // The old session (if any) died with its PTY. The fresh claude session
+  // re-registers itself via the SessionStart hook; clearing now lets the
+  // hooks-routes stale-session guard reject in-flight posts from the killed
+  // session that would otherwise flip this new task's status.
+  agent.currentSessionId = undefined;
+  agent.lastActivity = new Date().toISOString();
+  saveAgents();
+
+  ptyProcess.onData((data: string) => {
+    agent.output.push(data);
+    if (agent.output.length > 10000) {
+      agent.output = agent.output.slice(-5000);
+    }
+    agent.lastActivity = new Date().toISOString();
+
+    if (ctx.mainWindow && !ctx.mainWindow.isDestroyed()) {
+      ctx.mainWindow.webContents.send('agent:output', { agentId: agent.id, data });
+    }
+  });
+
+  ptyProcess.onExit(({ exitCode }) => {
+    // Delay status change to let hooks (on-stop.sh, task-completed.sh) finish
+    // capturing output before wait_for_agent resolves.
+    setTimeout(() => {
+      // Guard: only mutate if this PTY is still the active one — a newer
+      // dispatch may have replaced it during the delay.
+      if (agent.ptyId !== ptyId) {
+        ptyProcesses.delete(ptyId);
+        return;
+      }
+      if (agent.status === 'running') {
+        agent.status = exitCode === 0 ? 'completed' : 'error';
+      } else if (agent.status === 'waiting') {
+        // PTY exited while agent was waiting for input — the claude process
+        // crashed. Mark as error so /wait is unblocked and the orchestrator
+        // can retry rather than hanging until timeout.
+        agent.status = 'error';
+        agent.waitingReason = undefined;
+      }
+      if (exitCode !== 0) {
+        agent.error = `Process exited with code ${exitCode}`;
+      }
+      agent.lastActivity = new Date().toISOString();
+      ptyProcesses.delete(ptyId);
+      saveAgents();
+      ctx.agentStatusEmitter.emit(`status:${agent.id}`);
+    }, 1500);
+  });
+
+  return true;
+}
+
+/** Serializable agent projection for API responses — excludes the raw ANSI
+ *  `output` buffer (up to 10 000 chunks), which destroys LLM context windows
+ *  when returned to MCP callers. Use /output or ?full=true when needed. */
+function projectAgent(agent: AgentStatus) {
+  const { output, ...rest } = agent;
+  return { ...rest, outputChunks: output.length };
+}
 
 export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
   // GET /api/agents/:id/wait — long-poll until agent status changes
@@ -27,6 +209,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
         status: agent.status,
         lastCleanOutput: agent.lastCleanOutput,
         error: agent.error,
+        waitingReason: agent.waitingReason,
       });
       return;
     }
@@ -43,6 +226,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
         status: a?.status || 'idle',
         lastCleanOutput: a?.lastCleanOutput,
         error: a?.error,
+        waitingReason: a?.waitingReason,
       });
     };
 
@@ -97,7 +281,8 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       sendJson({ error: 'Agent not found' }, 404);
       return;
     }
-    sendJson({ agent });
+    const full = req.url.searchParams.get('full') === 'true';
+    sendJson({ agent: full ? agent : projectAgent(agent) });
   });
 
   // GET /api/agents/:id/output
@@ -164,141 +349,54 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       return;
     }
 
-    // Raw cwd for pty.spawn, shell-escaped form for the `cd` command. These
-    // must be separate — passing the shell-escaped form to pty.spawn would
-    // break when the path legitimately contains a single quote.
-    const rawWorkingDir = agent.worktreePath || agent.projectPath;
-    const workingDir = rawWorkingDir.replace(/'/g, "'\\''");
-    let command = `cd '${workingDir}' && claude`;
-
-    const isAutomationAgent = agent.name?.toLowerCase().includes('automation:');
-    const usePrintMode = printMode || isAutomationAgent;
-
-    if (usePrintMode) {
-      command += ' -p';
+    if (!spawnAgentSession(agent, prompt, { model, permissionMode: bodyPermissionMode, printMode }, ctx, sendJson)) {
+      return;
     }
-
-    const isSuperAgentApi = agent.name?.toLowerCase().includes('super agent') ||
-                            agent.name?.toLowerCase().includes('orchestrator');
-
-    if (isSuperAgentApi || isAutomationAgent) {
-      const mcpConfigPath = path.join(app.getPath('home'), '.claude', 'mcp.json');
-      if (fs.existsSync(mcpConfigPath)) {
-        command += ` --mcp-config '${mcpConfigPath}'`;
-      }
-    }
-
-    if (agent.secondaryProjectPath) {
-      command += ` --add-dir '${agent.secondaryProjectPath.replace(/'/g, "'\\''")}'`;
-    }
-    const effectiveMode = bodyPermissionMode ?? agent.permissionMode ?? (agent.skipPermissions ? 'auto' : 'normal');
-    if (effectiveMode === 'auto' || effectiveMode === 'bypass') {
-      command += ' --dangerously-skip-permissions';
-    }
-    // BUG 5: orchestrator-mode agents cannot edit files directly — must delegate.
-    if (isSuperAgentApi || agent.orchestratorMode) {
-      command += ' --disallowed-tools "Edit" "Write" "MultiEdit" "NotebookEdit"';
-    }
-    const resolvedModel = model || agent.model;
-    // 'default' is a Dorothy UI alias meaning "let Claude CLI pick"; omit the flag.
-    if (resolvedModel && resolvedModel !== 'default') {
-      // Allow the same characters as claude-provider.ts buildInteractiveCommand,
-      // including brackets used by 1M-context variants (e.g. sonnet[1m]).
-      if (!/^[a-zA-Z0-9._:\/\[\]-]+$/.test(resolvedModel)) {
-        sendJson({ error: 'Invalid model name' }, 400);
-        return;
-      }
-      command += ` --model '${resolvedModel}'`;
-    }
-
-    let finalPrompt = prompt;
-    if (agent.skills && agent.skills.length > 0 && !isSuperAgentApi) {
-      const skillsList = agent.skills.join(', ');
-      finalPrompt = `[IMPORTANT: Use these skills for this session: ${skillsList}. Invoke them with /<skill-name> when relevant to the task.] ${prompt}`;
-    }
-    command += ` '${finalPrompt.replace(/'/g, "'\\''")}'`;
-
-    const shell = '/bin/bash';
-    const fullPath = buildFullPath();
-
-    // Kill any existing PTY for this agent before spawning a new one.
-    // Agents started via the API use one-shot PTYs that stay alive (the claude
-    // process waits at a prompt after each task). Without this, every /start call
-    // orphans the previous PTY+claude process, eventually exhausting resources.
-    if (agent.ptyId) {
-      const existingPty = ptyProcesses.get(agent.ptyId);
-      if (existingPty) {
-        existingPty.kill();
-        ptyProcesses.delete(agent.ptyId);
-      }
-    }
-
-    // BUG 6: pre-accept Claude Code's workspace trust dialog for this cwd.
-    ensureProjectTrusted(rawWorkingDir);
-
-    const ptyProcess = pty.spawn(shell, ['-l', '-c', command], {
-      name: 'xterm-256color',
-      cols: 120,
-      rows: 40,
-      cwd: rawWorkingDir,
-      env: {
-        ...process.env,
-        PATH: fullPath,
-        TERM: 'xterm-256color',
-        CLAUDE_SKILLS: agent.skills?.join(',') || '',
-        CLAUDE_AGENT_ID: agent.id,
-        CLAUDE_PROJECT_PATH: agent.projectPath,
-      },
-    });
-
-    const ptyId = uuidv4();
-    ptyProcesses.set(ptyId, ptyProcess);
-
-    agent.ptyId = ptyId;
-    agent.ptyCwd = rawWorkingDir;
-    agent.status = 'running';
-    agent.currentTask = prompt;
-    agent.output = [];
-    agent.lastCleanOutput = undefined;  // Clear stale output from previous task
-    agent.error = undefined;            // Clear previous error state
-    agent.lastActivity = new Date().toISOString();
-    saveAgents();
-
-    ptyProcess.onData((data: string) => {
-      agent.output.push(data);
-      if (agent.output.length > 10000) {
-        agent.output = agent.output.slice(-5000);
-      }
-      agent.lastActivity = new Date().toISOString();
-
-      if (ctx.mainWindow && !ctx.mainWindow.isDestroyed()) {
-        ctx.mainWindow.webContents.send('agent:output', { agentId: agent.id, data });
-      }
-    });
-
-    ptyProcess.onExit(({ exitCode }) => {
-      // Delay status change to let hooks (on-stop.sh, task-completed.sh) finish
-      // capturing output before wait_for_agent resolves.
-      setTimeout(() => {
-        if (agent.status === 'running') {
-          agent.status = exitCode === 0 ? 'completed' : 'error';
-        } else if (agent.status === 'waiting') {
-          // PTY exited while agent was waiting for input — the claude process
-          // crashed. Mark as error so /wait is unblocked and the orchestrator
-          // can retry rather than hanging until timeout.
-          agent.status = 'error';
-        }
-        if (exitCode !== 0) {
-          agent.error = `Process exited with code ${exitCode}`;
-        }
-        agent.lastActivity = new Date().toISOString();
-        ptyProcesses.delete(ptyId);
-        saveAgents();
-        ctx.agentStatusEmitter.emit(`status:${agent.id}`);
-      }, 1500);
-    });
 
     sendJson({ success: true, agent: { id: agent.id, status: agent.status } });
+  });
+
+  // POST /api/agents/:id/dispatch — atomic "send this task to the agent".
+  // Decides message-vs-spawn server-side, under the single-threaded event
+  // loop, eliminating the GET-status-then-POST race that MCP tools had when
+  // they made that decision client-side on stale status.
+  app_.post(/^\/api\/agents\/([^/]+)\/dispatch$/, (req, sendJson) => {
+    const agent = agents.get(req.params.id);
+    if (!agent) {
+      sendJson({ error: 'Agent not found' }, 404);
+      return;
+    }
+
+    const { message, model, permissionMode } = req.body as {
+      message: string; model?: string; permissionMode?: 'normal' | 'auto' | 'bypass';
+    };
+    if (!message) {
+      sendJson({ error: 'message is required' }, 400);
+      return;
+    }
+
+    // BUG 4 guard: kill the PTY if its cwd no longer matches the agent's
+    // worktree so the spawn path below restarts it in the right directory.
+    killStalePty(agent);
+
+    const previousStatus = agent.status;
+    const livePty = agent.ptyId ? ptyProcesses.get(agent.ptyId) : undefined;
+    if (livePty && (agent.status === 'running' || agent.status === 'waiting')) {
+      // Live claude session mid-task or at a prompt: type the message into it.
+      writeProgrammaticInput(livePty, message, true);
+      agent.status = 'running';
+      agent.waitingReason = undefined;
+      agent.lastActivity = new Date().toISOString();
+      saveAgents();
+      sendJson({ success: true, mode: 'message', previousStatus, agent: { id: agent.id, name: agent.name, status: agent.status } });
+      return;
+    }
+
+    // No usable session — spawn a fresh one with the message as the prompt.
+    if (!spawnAgentSession(agent, message, { model, permissionMode }, ctx, sendJson)) {
+      return;
+    }
+    sendJson({ success: true, mode: 'start', previousStatus, agent: { id: agent.id, name: agent.name, status: agent.status } });
   });
 
   // POST /api/agents/:id/stop
@@ -318,6 +416,8 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     }
     agent.status = 'idle';
     agent.currentTask = undefined;
+    agent.waitingReason = undefined;
+    agent.currentSessionId = undefined;
     agent.lastActivity = new Date().toISOString();
     saveAgents();
     ctx.agentStatusEmitter.emit(`status:${agent.id}`);
@@ -348,71 +448,9 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       // Auto-respawn: start a fresh one-shot claude session using the message
       // as the prompt, identical to the /start path.  This ensures send_message
       // and delegate_task reconnect transparently instead of timing out.
-      const rawWorkingDir = agent.worktreePath || agent.projectPath;
-      const workingDir = rawWorkingDir.replace(/'/g, "'\\''");
-      const effectiveMode = agent.permissionMode ?? (agent.skipPermissions ? 'auto' : 'normal');
-      let reconnectCmd = `cd '${workingDir}' && claude`;
-      if (effectiveMode === 'auto' || effectiveMode === 'bypass') {
-        reconnectCmd += ' --dangerously-skip-permissions';
+      if (!spawnAgentSession(agent, message, {}, ctx, sendJson)) {
+        return;
       }
-      // BUG 5: orchestrator-mode agents cannot edit files directly — must delegate.
-      const reconnectIsSuper = agent.name?.toLowerCase().includes('super agent') ||
-                               agent.name?.toLowerCase().includes('orchestrator');
-      if (reconnectIsSuper || agent.orchestratorMode) {
-        reconnectCmd += ' --disallowed-tools "Edit" "Write" "MultiEdit" "NotebookEdit"';
-      }
-      reconnectCmd += ` '${message.replace(/'/g, "'\\''")}'`;
-
-      const reconnectShell = '/bin/bash';
-      const reconnectPath = buildFullPath();
-      // BUG 6: pre-accept Claude Code's workspace trust dialog for this cwd.
-      ensureProjectTrusted(rawWorkingDir);
-      const reconnectPty = pty.spawn(reconnectShell, ['-l', '-c', reconnectCmd], {
-        name: 'xterm-256color',
-        cols: 120,
-        rows: 40,
-        cwd: rawWorkingDir,
-        env: {
-          ...process.env as { [key: string]: string },
-          PATH: reconnectPath,
-          CLAUDE_AGENT_ID: agent.id,
-          CLAUDE_PROJECT_PATH: agent.projectPath,
-        },
-      });
-
-      const reconnectPtyId = uuidv4();
-      ptyProcesses.set(reconnectPtyId, reconnectPty);
-      agent.ptyId = reconnectPtyId;
-      agent.ptyCwd = rawWorkingDir;
-      agent.status = 'running';
-      agent.currentTask = message.slice(0, 100);
-      agent.lastActivity = new Date().toISOString();
-
-      reconnectPty.onData((data: string) => {
-        agent.output.push(data);
-        if (agent.output.length > 10000) agent.output = agent.output.slice(-5000);
-        agent.lastActivity = new Date().toISOString();
-        if (ctx.mainWindow && !ctx.mainWindow.isDestroyed()) {
-          ctx.mainWindow.webContents.send('agent:output', { agentId: agent.id, data });
-        }
-      });
-
-      reconnectPty.onExit(({ exitCode }) => {
-        setTimeout(() => {
-          if (agent.status === 'running') {
-            agent.status = exitCode === 0 ? 'completed' : 'error';
-          } else if (agent.status === 'waiting') {
-            agent.status = 'error';
-          }
-          if (exitCode !== 0) agent.error = `Process exited with code ${exitCode}`;
-          agent.lastActivity = new Date().toISOString();
-          ptyProcesses.delete(reconnectPtyId);
-          saveAgents();
-          ctx.agentStatusEmitter.emit(`status:${agent.id}`);
-        }, 1500);
-      });
-
-      saveAgents();
       sendJson({ success: true });
       return;
     }
@@ -421,6 +459,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     if (ptyProcess) {
       writeProgrammaticInput(ptyProcess, message, true);
       agent.status = 'running';
+      agent.waitingReason = undefined;
       agent.lastActivity = new Date().toISOString();
       saveAgents();
       sendJson({ success: true });

@@ -88,6 +88,7 @@ beforeEach(() => {
   ptyProcesses.clear();
   vi.mocked(saveAgents).mockClear();
   vi.mocked(killStalePty).mockClear();
+  vi.mocked(writeProgrammaticInput).mockClear();
   mockPtyProcess.onData.mockClear();
   mockPtyProcess.onExit.mockClear();
   mockPtyProcess.kill.mockClear();
@@ -130,8 +131,8 @@ describe('agent-routes', () => {
   });
 
   describe('GET /api/agents/:id', () => {
-    it('returns single agent', async () => {
-      const agent = makeAgent({ id: 'a1' });
+    it('returns projected agent without the raw output buffer', async () => {
+      const agent = makeAgent({ id: 'a1', output: ['ansi-chunk-1', 'ansi-chunk-2'] });
       agents.set('a1', agent);
 
       const app = makeRouteApp();
@@ -139,7 +140,26 @@ describe('agent-routes', () => {
       const handler = findHandler(app, 'GET', 'agents\\/([^/]+)$');
 
       const sendJson = vi.fn();
-      await handler(makeReq({ params: { id: 'a1' } }), sendJson, ctx);
+      await handler(makeReq({ params: { id: 'a1' }, url: new URL('http://localhost/api/agents/a1') }), sendJson, ctx);
+
+      const result = sendJson.mock.calls[0][0] as { agent: Record<string, unknown> };
+      // The ANSI output buffer (up to 10 000 chunks) must never be serialized
+      // into MCP responses — it destroys the orchestrator's context window.
+      expect(result.agent.output).toBeUndefined();
+      expect(result.agent.outputChunks).toBe(2);
+      expect(result.agent.id).toBe('a1');
+    });
+
+    it('returns the full agent with ?full=true', async () => {
+      const agent = makeAgent({ id: 'a1', output: ['chunk'] });
+      agents.set('a1', agent);
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = findHandler(app, 'GET', 'agents\\/([^/]+)$');
+
+      const sendJson = vi.fn();
+      await handler(makeReq({ params: { id: 'a1' }, url: new URL('http://localhost/api/agents/a1?full=true') }), sendJson, ctx);
       expect(sendJson).toHaveBeenCalledWith({ agent });
     });
 
@@ -259,6 +279,105 @@ describe('agent-routes', () => {
       await new Promise(r => setTimeout(r, 1600));
       expect(agent.status).toBe('error');
     });
+
+    it('clears session ownership so stale hooks cannot flip the new task', async () => {
+      const agent = makeAgent({
+        id: 'a1',
+        status: 'waiting',
+        currentSessionId: 'old-sess',
+        waitingReason: 'permission',
+        lastCleanOutput: 'old output',
+      });
+      agents.set('a1', agent);
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = findHandler(app, 'POST', 'start');
+
+      await handler(makeReq({ params: { id: 'a1' }, body: { prompt: 'new task' } }), vi.fn(), ctx);
+
+      expect(agent.status).toBe('running');
+      expect(agent.currentSessionId).toBeUndefined();
+      expect(agent.waitingReason).toBeUndefined();
+      expect(agent.lastCleanOutput).toBeUndefined();
+    });
+  });
+
+  describe('POST /api/agents/:id/dispatch', () => {
+    it('types into the live PTY when the agent is running', async () => {
+      const mockPty = { write: vi.fn() };
+      ptyProcesses.set('pty-1', mockPty as any);
+      const agent = makeAgent({ id: 'a1', name: 'Worker', status: 'running', ptyId: 'pty-1' });
+      agents.set('a1', agent);
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = findHandler(app, 'POST', 'dispatch');
+
+      const sendJson = vi.fn();
+      await handler(makeReq({ params: { id: 'a1' }, body: { message: 'next step' } }), sendJson, ctx);
+
+      expect(writeProgrammaticInput).toHaveBeenCalledWith(mockPty, 'next step', true);
+      expect(sendJson).toHaveBeenCalledWith({
+        success: true,
+        mode: 'message',
+        previousStatus: 'running',
+        agent: { id: 'a1', name: 'Worker', status: 'running' },
+      });
+    });
+
+    it('spawns a fresh session when the agent is idle', async () => {
+      const agent = makeAgent({ id: 'a1', name: 'Worker', status: 'idle' });
+      agents.set('a1', agent);
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = findHandler(app, 'POST', 'dispatch');
+
+      const sendJson = vi.fn();
+      await handler(makeReq({ params: { id: 'a1' }, body: { message: 'do the task' } }), sendJson, ctx);
+
+      const pty = await import('node-pty');
+      expect(pty.spawn).toHaveBeenCalled();
+      expect(agent.status).toBe('running');
+      expect(sendJson).toHaveBeenCalledWith({
+        success: true,
+        mode: 'start',
+        previousStatus: 'idle',
+        agent: { id: 'a1', name: 'Worker', status: 'running' },
+      });
+    });
+
+    it('spawns fresh when status says waiting but the PTY is dead', async () => {
+      // The "agent ne répond plus" scenario: status stuck at waiting with no
+      // live PTY. Dispatch must NOT try to message a ghost — it respawns.
+      const agent = makeAgent({ id: 'a1', status: 'waiting', ptyId: 'gone-pty' });
+      agents.set('a1', agent);
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = findHandler(app, 'POST', 'dispatch');
+
+      const sendJson = vi.fn();
+      await handler(makeReq({ params: { id: 'a1' }, body: { message: 'retry task' } }), sendJson, ctx);
+
+      expect(writeProgrammaticInput).not.toHaveBeenCalled();
+      const result = sendJson.mock.calls[0][0] as { mode: string };
+      expect(result.mode).toBe('start');
+      expect(agent.status).toBe('running');
+    });
+
+    it('returns 400 without message', async () => {
+      agents.set('a1', makeAgent({ id: 'a1' }));
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = findHandler(app, 'POST', 'dispatch');
+
+      const sendJson = vi.fn();
+      await handler(makeReq({ params: { id: 'a1' }, body: {} }), sendJson, ctx);
+      expect(sendJson).toHaveBeenCalledWith({ error: 'message is required' }, 400);
+    });
   });
 
   describe('POST /api/agents/:id/message', () => {
@@ -351,6 +470,24 @@ describe('agent-routes', () => {
       expect(pty.spawn).toHaveBeenCalled();
       const spawnOpts = (pty.spawn as any).mock.calls.at(-1)[2];
       expect(spawnOpts.cwd).toBe('/test/project/.worktrees/feat/backend');
+    });
+
+    it('reconnect path applies the skills prefix like /start does', async () => {
+      // The old reconnect path rebuilt the claude command from scratch and
+      // silently dropped the skills prefix — reconnected agents "forgot" their
+      // skills. Both paths now share spawnAgentSession.
+      const agent = makeAgent({ id: 'a1', status: 'waiting', skills: ['frontend-design'] });
+      agents.set('a1', agent);
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = findHandler(app, 'POST', 'message');
+
+      await handler(makeReq({ params: { id: 'a1' }, body: { message: 'continue' } }), vi.fn(), ctx);
+
+      const pty = await import('node-pty');
+      const command = (pty.spawn as any).mock.calls.at(-1)[1][2] as string;
+      expect(command).toContain('Use these skills for this session: frontend-design');
     });
   });
 

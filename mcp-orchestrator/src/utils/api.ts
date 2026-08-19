@@ -21,7 +21,8 @@ function readApiToken(): string | null {
 export async function apiRequest(
   endpoint: string,
   method: "GET" | "POST" | "DELETE" = "GET",
-  body?: Record<string, unknown>
+  body?: Record<string, unknown>,
+  timeoutMsOverride?: number
 ): Promise<unknown> {
   const url = `${API_URL}${endpoint}`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -30,9 +31,11 @@ export async function apiRequest(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  // Long-poll wait endpoints need a longer timeout
+  // Long-poll wait endpoints need a longer timeout. Callers passing a custom
+  // wait timeout must override this so the client never aborts before the
+  // server-side long-poll resolves.
   const isLongPoll = endpoint.includes("/wait");
-  const timeoutMs = isLongPoll ? 600_000 : 30_000; // 10 min for long-poll, 30s default
+  const timeoutMs = timeoutMsOverride ?? (isLongPoll ? 600_000 : 30_000);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);

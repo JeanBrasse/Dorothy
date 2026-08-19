@@ -5,6 +5,18 @@ import { AgentStatus } from '../../types';
 import { broadcastToAllWindows } from '../../utils/broadcast';
 import { scheduleTick } from '../../utils/agents-tick';
 
+/**
+ * Session ownership contract:
+ * - A task dispatch (/start, /message respawn, /dispatch) kills the old PTY and
+ *   clears `currentSessionId`. The freshly booted claude session announces
+ *   itself via the SessionStart hook (recognizable by its `source` field) and
+ *   is registered WITHOUT changing status — otherwise its startup "idle" would
+ *   resolve the orchestrator's long-poll before the task even begins.
+ * - Status posts carrying a session_id that doesn't match the registered
+ *   session are stale (hooks of a killed PTY still in flight) and are ignored.
+ * - `currentSessionId` is NOT cleared on idle: the one-shot claude process is
+ *   still alive at its prompt and its later hooks must keep matching.
+ */
 export function registerHooksRoutes(app: RouteApp, ctx: RouteContext): void {
   // POST /api/hooks/output — capture clean text output from agent transcript
   app.post('/api/hooks/output', (req, sendJson) => {
@@ -21,6 +33,13 @@ export function registerHooksRoutes(app: RouteApp, ctx: RouteContext): void {
 
     const agent = findAgentByIdOrSession(agent_id, session_id);
     if (agent) {
+      if (agent.currentSessionId && session_id && session_id !== agent.currentSessionId) {
+        // Stale session — don't let a killed PTY's Stop hook overwrite the
+        // live task's output.
+        console.log(`[hooks] Ignored stale output post for ${agent.id} (session ${session_id} ≠ ${agent.currentSessionId})`);
+        sendJson({ success: false, stale: true });
+        return;
+      }
       agent.lastCleanOutput = output;
       saveAgents();
     }
@@ -30,7 +49,7 @@ export function registerHooksRoutes(app: RouteApp, ctx: RouteContext): void {
 
   // POST /api/hooks/status
   app.post('/api/hooks/status', (req, sendJson) => {
-    const { agent_id, session_id, status, waiting_reason, current_task } = req.body as {
+    const { agent_id, session_id, status, source, waiting_reason, current_task } = req.body as {
       agent_id: string;
       session_id: string;
       status: 'running' | 'waiting' | 'idle' | 'completed';
@@ -40,7 +59,7 @@ export function registerHooksRoutes(app: RouteApp, ctx: RouteContext): void {
       current_task?: string;
     };
 
-    console.log(`[hooks] POST /api/hooks/status — agent_id=${agent_id}, status=${status}, session_id=${session_id}`);
+    console.log(`[hooks] POST /api/hooks/status — agent_id=${agent_id}, status=${status}, session_id=${session_id}, source=${source ?? '-'}`);
 
     if (!agent_id || !status) {
       sendJson({ error: 'agent_id and status are required' }, 400);
@@ -53,19 +72,44 @@ export function registerHooksRoutes(app: RouteApp, ctx: RouteContext): void {
       return;
     }
 
+    // SessionStart registration (source is only ever sent by session-start.sh):
+    // record which session now owns this agent, but never touch status — the
+    // agent was just dispatched a task and is about to work on it.
+    if (source) {
+      agent.currentSessionId = session_id;
+      agent.lastActivity = new Date().toISOString();
+      saveAgents();
+      sendJson({ success: true, registered: true, agent: { id: agent.id, status: agent.status } });
+      return;
+    }
+
+    // Stale-session guard: only the registered session may drive status.
+    if (agent.currentSessionId && session_id && session_id !== agent.currentSessionId) {
+      console.log(`[hooks] Ignored stale status post for ${agent.id}: ${status} from session ${session_id} (current: ${agent.currentSessionId})`);
+      sendJson({ success: false, stale: true, agent: { id: agent.id, status: agent.status } });
+      return;
+    }
+    // Registration fallback: if SessionStart never reached us (API briefly
+    // down at boot), adopt the first session that reports in.
+    if (!agent.currentSessionId && session_id) {
+      agent.currentSessionId = session_id;
+    }
+
     const oldStatus = agent.status;
 
     if (status === 'running' && agent.status !== 'running') {
       agent.status = 'running';
-      agent.currentSessionId = session_id;
+      agent.waitingReason = undefined;
       if (current_task) agent.currentTask = current_task;
     } else if (status === 'waiting' && agent.status !== 'waiting') {
       agent.status = 'waiting';
+      agent.waitingReason = waiting_reason;
     } else if (status === 'idle') {
       agent.status = 'idle';
-      agent.currentSessionId = undefined;
+      agent.waitingReason = undefined;
     } else if (status === 'completed') {
       agent.status = 'completed';
+      agent.waitingReason = undefined;
     }
 
     agent.lastActivity = new Date().toISOString();
@@ -104,8 +148,16 @@ export function registerHooksRoutes(app: RouteApp, ctx: RouteContext): void {
       return;
     }
 
+    // Same stale-session guard as /api/hooks/status.
+    if (agent.currentSessionId && session_id && session_id !== agent.currentSessionId) {
+      console.log(`[hooks] Ignored stale task-completed for ${agent.id} from session ${session_id}`);
+      sendJson({ success: false, stale: true, agent: { id: agent.id, status: agent.status } });
+      return;
+    }
+
     const oldStatus = agent.status;
     agent.status = 'completed';
+    agent.waitingReason = undefined;
     agent.lastActivity = new Date().toISOString();
 
     const agentName = agent.name || `Agent ${agent.id.slice(0, 6)}`;

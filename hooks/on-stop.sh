@@ -16,10 +16,14 @@ echo "  last_assistant_message length: ${#LAST_MSG}" >> "$LOG"
 if [ -z "$LAST_MSG" ]; then
   TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // empty')
   if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
-    LAST_MSG=$(tac "$TRANSCRIPT_PATH" 2>/dev/null | while IFS= read -r line; do
-      msg=$(echo "$line" | jq -r 'select(.type=="assistant") | .message.content[] | select(.type=="text") | .text // empty' 2>/dev/null)
-      if [ -n "$msg" ]; then echo "$msg"; break; fi
-    done | head -c 4000)
+    # Portable last-assistant-message extraction (macOS has no GNU `tac`):
+    # slurp the JSONL and take the last non-empty assistant text block.
+    LAST_MSG=$(jq -rs '
+      [ .[] | select(.type=="assistant")
+            | (.message.content // [])
+            | if type=="array" then map(select(type=="object" and .type=="text") | .text) | join("\n") else tostring end
+            | select(length>0) ]
+      | last // empty' "$TRANSCRIPT_PATH" 2>/dev/null | head -c 4000)
   fi
 fi
 if [ -n "$LAST_MSG" ]; then

@@ -6,6 +6,68 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { apiRequest } from "../utils/api.js";
 
+type WaitResult = {
+  status: string;
+  lastCleanOutput?: string;
+  error?: string;
+  timeout?: boolean;
+  waitingReason?: string;
+};
+
+type DispatchResult = {
+  success: boolean;
+  mode: "message" | "start";
+  previousStatus?: string;
+  agent: { id: string; name?: string; status: string };
+};
+
+/**
+ * Atomically hand a task to an agent. The server decides message-vs-spawn
+ * under its single-threaded event loop — the old GET-status-then-POST pattern
+ * raced against status changes and could message a dead PTY.
+ */
+async function dispatchToAgent(id: string, message: string, model?: string): Promise<DispatchResult> {
+  return (await apiRequest(`/api/agents/${id}/dispatch`, "POST", {
+    message,
+    model,
+    // Delegated agents must run autonomously — a permission prompt inside a
+    // hidden PTY would hang the delegation.
+    permissionMode: "bypass",
+  })) as DispatchResult;
+}
+
+/** Long-poll the wait endpoint, with a client-side abort comfortably beyond
+ *  the server-side timeout so the client never gives up first. */
+async function waitForAgentStatus(id: string, timeoutSeconds: number): Promise<WaitResult> {
+  return (await apiRequest(
+    `/api/agents/${id}/wait?timeout=${timeoutSeconds}`,
+    "GET",
+    undefined,
+    (timeoutSeconds + 30) * 1000
+  )) as WaitResult;
+}
+
+/**
+ * Fetch the agent's captured clean output, retrying briefly: the Stop hook
+ * posts output and status through separate HTTP calls, so the status event
+ * that resolves /wait can beat the output write by a moment.
+ */
+async function fetchCleanOutput(
+  id: string,
+  attempts = 3,
+  delayMs = 700
+): Promise<{ output?: string; status: string; name?: string }> {
+  let last: { agent: { status: string; name?: string; lastCleanOutput?: string } } | undefined;
+  for (let i = 0; i < attempts; i++) {
+    last = (await apiRequest(`/api/agents/${id}`)) as typeof last;
+    if (last?.agent.lastCleanOutput) {
+      return { output: last.agent.lastCleanOutput, status: last.agent.status, name: last.agent.name };
+    }
+    if (i < attempts - 1) await new Promise((r) => setTimeout(r, delayMs));
+  }
+  return { output: undefined, status: last?.agent.status ?? "unknown", name: last?.agent.name };
+}
+
 export function registerAgentTools(server: McpServer): void {
   // Tool: List all agents
   server.tool(
@@ -182,29 +244,20 @@ export function registerAgentTools(server: McpServer): void {
     },
     async ({ id, prompt, model }) => {
       try {
-        const agentData = (await apiRequest(`/api/agents/${id}`)) as {
-          agent: { status: string; name?: string };
-        };
-        const agentName = agentData.agent.name || id;
-        const status = agentData.agent.status;
+        const data = await dispatchToAgent(id, prompt, model);
+        const agentName = data.agent.name || id;
 
-        if (status === "running" || status === "waiting") {
-          await apiRequest(`/api/agents/${id}/message`, "POST", { message: prompt });
+        if (data.mode === "message") {
           return {
             content: [
               {
                 type: "text",
-                text: `Agent "${agentName}" was already ${status}. Sent message: "${prompt}"`,
+                text: `Agent "${agentName}" was already ${data.previousStatus ?? "running"}. Sent message: "${prompt}"`,
               },
             ],
           };
         }
 
-        const data = (await apiRequest(`/api/agents/${id}/start`, "POST", {
-          prompt,
-          model,
-          skipPermissions: true,
-        })) as { success: boolean; agent: { id: string; status: string } };
         return {
           content: [
             {
@@ -278,29 +331,22 @@ export function registerAgentTools(server: McpServer): void {
         };
       }
       try {
-        const agentData = (await apiRequest(`/api/agents/${id}`)) as {
-          agent: { status: string; name?: string };
-        };
-        const status = agentData.agent.status;
-        const agentName = agentData.agent.name || id;
+        const data = await dispatchToAgent(id, resolvedMessage);
+        const agentName = data.agent.name || id;
+        const previousStatus = data.previousStatus ?? "idle";
 
-        if (status === "idle" || status === "completed" || status === "error") {
-          const startResult = (await apiRequest(`/api/agents/${id}/start`, "POST", {
-            prompt: resolvedMessage,
-            skipPermissions: true,
-          })) as { success: boolean; agent: { status: string } };
+        if (data.mode === "start") {
           return {
             content: [
               {
                 type: "text",
-                text: `Agent "${agentName}" was ${status}, started it with prompt: "${resolvedMessage}". New status: ${startResult.agent.status}`,
+                text: `Agent "${agentName}" was ${previousStatus}, started it with prompt: "${resolvedMessage}". New status: ${data.agent.status}`,
               },
             ],
           };
         }
 
-        if (status === "running") {
-          await apiRequest(`/api/agents/${id}/message`, "POST", { message: resolvedMessage });
+        if (previousStatus === "running") {
           return {
             content: [
               {
@@ -311,12 +357,11 @@ export function registerAgentTools(server: McpServer): void {
           };
         }
 
-        await apiRequest(`/api/agents/${id}/message`, "POST", { message: resolvedMessage });
         return {
           content: [
             {
               type: "text",
-              text: `Sent message to agent "${agentName}" (${status}): "${resolvedMessage}"`,
+              text: `Sent message to agent "${agentName}" (${previousStatus}): "${resolvedMessage}"`,
             },
           ],
         };
@@ -377,14 +422,7 @@ export function registerAgentTools(server: McpServer): void {
     async ({ id, timeoutSeconds = 300 }) => {
       try {
         // Single long-poll request to the wait endpoint
-        const data = (await apiRequest(
-          `/api/agents/${id}/wait?timeout=${timeoutSeconds}`
-        )) as {
-          status: string;
-          lastCleanOutput?: string;
-          error?: string;
-          timeout?: boolean;
-        };
+        const data = await waitForAgentStatus(id, timeoutSeconds);
 
         const agentData = (await apiRequest(`/api/agents/${id}`)) as {
           agent: { name?: string };
@@ -430,11 +468,14 @@ export function registerAgentTools(server: McpServer): void {
         }
 
         if (data.status === "waiting") {
+          const reasonInfo = data.waitingReason === "permission"
+            ? " It is blocked on a PERMISSION dialog — send_message cannot answer it; resolve it in the Dorothy UI or stop_agent and re-delegate."
+            : " Use send_message to respond, or get_agent_output to see what it's asking.";
           return {
             content: [
               {
                 type: "text",
-                text: `Agent "${agentName}" is waiting for input. Use send_message to respond, or get_agent_output to see what it's asking.`,
+                text: `Agent "${agentName}" is waiting for input.${reasonInfo}`,
               },
             ],
           };
@@ -474,33 +515,65 @@ export function registerAgentTools(server: McpServer): void {
     },
     async ({ id, prompt, model, timeoutSeconds = 300 }) => {
       try {
-        // Get agent info
-        const agentData = (await apiRequest(`/api/agents/${id}`)) as {
-          agent: { status: string; name?: string };
-        };
-        const agentName = agentData.agent.name || id;
-        const status = agentData.agent.status;
-
-        // Start or send message
-        if (status === "running" || status === "waiting") {
-          await apiRequest(`/api/agents/${id}/message`, "POST", { message: prompt });
-        } else {
-          await apiRequest(`/api/agents/${id}/start`, "POST", {
-            prompt,
-            model,
-            skipPermissions: true,
-          });
-        }
+        // Atomic dispatch: the server decides message-vs-spawn under its own
+        // lock, so a stale status can never route the prompt to a dead PTY.
+        const dispatched = await dispatchToAgent(id, prompt, model);
+        const agentName = dispatched.agent.name || id;
 
         // Wait for completion via long-poll
-        const waitData = (await apiRequest(
-          `/api/agents/${id}/wait?timeout=${timeoutSeconds}`
-        )) as {
-          status: string;
-          lastCleanOutput?: string;
-          error?: string;
-          timeout?: boolean;
-        };
+        let waitData = await waitForAgentStatus(id, timeoutSeconds);
+
+        if (waitData.status === "waiting") {
+          if (waitData.waitingReason === "permission") {
+            // A blocking permission dialog — typing text into it does nothing
+            // useful (it expects arrow keys/enter). Surface it instead.
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Agent "${agentName}" is blocked on a PERMISSION dialog and cannot proceed autonomously. Resolve it in the Dorothy UI, or stop_agent and re-delegate.`,
+                },
+              ],
+              isError: true,
+            };
+          }
+          // Agent asked for confirmation — auto-reply "continue" and wait again
+          try {
+            await dispatchToAgent(
+              id,
+              "Yes, continue. Do not ask for confirmation — complete the task and report your results."
+            );
+            waitData = await waitForAgentStatus(id, Math.max(timeoutSeconds - 30, 60));
+
+            if (waitData.status === "waiting") {
+              // Still waiting after retry — give up and let orchestrator handle it
+              const outputInfo = waitData.lastCleanOutput
+                ? `\n\nAgent output:\n${waitData.lastCleanOutput}`
+                : "";
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text: `Agent "${agentName}" is still waiting for input after auto-continue.${outputInfo}\n\nUse send_message to respond.`,
+                  },
+                ],
+              };
+            }
+          } catch {
+            // If auto-continue fails, report the waiting state as-is below.
+            const outputInfo = waitData.lastCleanOutput
+              ? `\n\nAgent output:\n${waitData.lastCleanOutput}`
+              : "";
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Agent "${agentName}" is waiting for input.${outputInfo}\n\nUse send_message to respond.`,
+                },
+              ],
+            };
+          }
+        }
 
         if (waitData.timeout) {
           return {
@@ -526,88 +599,11 @@ export function registerAgentTools(server: McpServer): void {
           };
         }
 
-        if (waitData.status === "waiting") {
-          // Agent asked for confirmation — auto-reply "continue" and wait again
-          try {
-            await apiRequest(`/api/agents/${id}/message`, "POST", {
-              message: "Yes, continue. Do not ask for confirmation — complete the task and report your results.",
-            });
-            // Wait again for the agent to finish
-            const retryData = (await apiRequest(
-              `/api/agents/${id}/wait?timeout=${Math.max(timeoutSeconds - 30, 60)}`
-            )) as {
-              status: string;
-              lastCleanOutput?: string;
-              error?: string;
-              timeout?: boolean;
-            };
-
-            if (retryData.status === "waiting") {
-              // Still waiting after retry — give up and let orchestrator handle it
-              const outputInfo = retryData.lastCleanOutput
-                ? `\n\nAgent output:\n${retryData.lastCleanOutput}`
-                : "";
-              return {
-                content: [
-                  {
-                    type: "text",
-                    text: `Agent "${agentName}" is still waiting for input after auto-continue.${outputInfo}\n\nUse send_message to respond.`,
-                  },
-                ],
-              };
-            }
-
-            if (retryData.timeout) {
-              return {
-                content: [
-                  {
-                    type: "text",
-                    text: `Agent "${agentName}" is still running after auto-continue. Use wait_for_agent to continue waiting.`,
-                  },
-                ],
-                isError: true,
-              };
-            }
-
-            // Agent finished after auto-continue — get output
-            const retryAgent = (await apiRequest(`/api/agents/${id}`)) as {
-              agent: { lastCleanOutput?: string; status: string };
-            };
-            const retryOutput = retryAgent.agent.lastCleanOutput || retryData.lastCleanOutput;
-            if (retryOutput) {
-              return {
-                content: [
-                  {
-                    type: "text",
-                    text: `Agent "${agentName}" completed.\n\n${retryOutput}`,
-                  },
-                ],
-              };
-            }
-          } catch {
-            // If auto-continue fails, fall through to original behavior
-          }
-
-          const outputInfo = waitData.lastCleanOutput
-            ? `\n\nAgent output:\n${waitData.lastCleanOutput}`
-            : "";
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Agent "${agentName}" is waiting for input.${outputInfo}\n\nUse send_message to respond.`,
-              },
-            ],
-          };
-        }
-
-        // Completed or idle — get the output
-        // Re-fetch to get latest lastCleanOutput (hooks may have updated it)
-        const finalAgent = (await apiRequest(`/api/agents/${id}`)) as {
-          agent: { lastCleanOutput?: string; status: string };
-        };
-
-        const output = finalAgent.agent.lastCleanOutput || waitData.lastCleanOutput;
+        // Completed or idle — fetch the clean output, retrying briefly since
+        // the Stop hook's output post can arrive just after the status event
+        // that resolved the long-poll.
+        const { output: fetchedOutput } = await fetchCleanOutput(id);
+        const output = fetchedOutput || waitData.lastCleanOutput;
 
         if (output) {
           return {
@@ -624,7 +620,7 @@ export function registerAgentTools(server: McpServer): void {
           content: [
             {
               type: "text",
-              text: `Agent "${agentName}" completed (${waitData.status}). No clean output captured — check the agent's terminal in Dorothy UI for details.`,
+              text: `Agent "${agentName}" finished (${waitData.status}) but no clean output was captured. Use get_agent_output to retry, or check the agent's terminal in the Dorothy UI.`,
             },
           ],
         };
