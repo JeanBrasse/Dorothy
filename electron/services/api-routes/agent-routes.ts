@@ -81,11 +81,33 @@ function spawnAgentSession(
     command += ` --model '${resolvedModel}'`;
   }
 
+  // Load ~/.dorothy/CLAUDE.md (autonomy rules) exactly like UI-spawned agents
+  // do — without it, delegated agents ask for confirmations and get stuck in
+  // 'waiting' inside a hidden PTY.
+  const dorothyDir = path.join(app.getPath('home'), '.dorothy');
+  if (fs.existsSync(dorothyDir)) {
+    command += ` --add-dir '${dorothyDir.replace(/'/g, "'\\''")}'`;
+  }
+
   let finalPrompt = prompt;
   if (agent.skills && agent.skills.length > 0 && !isSuperAgentApi) {
     const skillsList = agent.skills.join(', ');
     finalPrompt = `[IMPORTANT: Use these skills for this session: ${skillsList}. Invoke them with /<skill-name> when relevant to the task.] ${prompt}`;
   }
+  // Identity header: agents must know who they are without the orchestrator
+  // having to explain it in every delegation ("les agents ne comprennent pas
+  // qui ils sont"). The SessionStart bootstrap injection adds the full team
+  // roster; this header guarantees the essentials even if hooks are absent.
+  const identityHeader =
+    `[Dorothy: you are agent "${agent.name || agent.id}" (id ${agent.id}), ` +
+    `${agent.role || 'worker'} of project ${agent.projectPath}` +
+    (agent.worktreePath
+      ? `, working in worktree ${agent.worktreePath}${agent.branchName ? ` (branch ${agent.branchName})` : ''} — stay inside this directory`
+      : '') +
+    `. Work autonomously without asking for confirmation and end with a clear report of your results` +
+    (isSuperAgentApi ? '' : ' — an orchestrator reads your final message') +
+    `.]`;
+  finalPrompt = `${identityHeader}\n\n${finalPrompt}`;
   command += ` '${finalPrompt.replace(/'/g, "'\\''")}'`;
 
   const shell = '/bin/bash';
@@ -118,6 +140,8 @@ function spawnAgentSession(
       CLAUDE_SKILLS: agent.skills?.join(',') || '',
       CLAUDE_AGENT_ID: agent.id,
       CLAUDE_PROJECT_PATH: agent.projectPath,
+      // Load CLAUDE.md from --add-dir directories (e.g. ~/.dorothy)
+      CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
     },
   });
 
@@ -317,6 +341,79 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     }
     const full = req.url.searchParams.get('full') === 'true';
     sendJson({ agent: full ? agent : projectAgent(agent) });
+  });
+
+  // GET /api/agents/:id/bootstrap — identity + team roster context, injected
+  // into every fresh claude session by session-start.sh. This is what makes
+  // the "who am I / who is my team" handshake automatic instead of a manual
+  // ritual at the start of every working session.
+  app_.get(/^\/api\/agents\/([^/]+)\/bootstrap$/, (req, sendJson) => {
+    const agent = agents.get(req.params.id);
+    if (!agent) {
+      sendJson({ error: 'Agent not found' }, 404);
+      return;
+    }
+
+    const isOrchestrator = agent.role === 'orchestrator' ||
+                           agent.name?.toLowerCase().includes('super agent') ||
+                           agent.name?.toLowerCase().includes('orchestrator');
+
+    const teammates = Array.from(agents.values())
+      .filter(a => a.projectPath === agent.projectPath && a.id !== agent.id)
+      .map(a => `- "${a.name || a.id}" (id: ${a.id}) — ${a.role || 'worker'}, status: ${a.status}` +
+                (a.branchName ? `, branch: ${a.branchName}` : '') +
+                (a.skills?.length ? `, skills: ${a.skills.join(', ')}` : ''));
+
+    const lines = [
+      `# Dorothy agent identity`,
+      ``,
+      `You are "${agent.name || agent.id}" (agent id: ${agent.id}), ${agent.role || 'worker'} of project ${agent.projectPath}.`,
+    ];
+    if (agent.worktreePath) {
+      lines.push(`You work in the worktree ${agent.worktreePath}${agent.branchName ? ` (branch ${agent.branchName})` : ''} — stay inside this directory.`);
+    }
+    if (agent.savedPrompt) {
+      lines.push(``, `## Your role`, agent.savedPrompt);
+    }
+    lines.push(``, `## Your team (project ${agent.projectPath})`);
+    lines.push(teammates.length ? teammates.join('\n') : '(no other agents in this project)');
+    if (isOrchestrator) {
+      lines.push(
+        ``,
+        `## Orchestration rules`,
+        `- Delegate ONLY to the agents listed above — they are your project's team. Other projects' agents are off-limits and the API rejects cross-project actions.`,
+        `- Use delegate_task with the agent id for one-shot delegation; list_agents already returns only your project's agents.`,
+        `- No greeting ritual is needed: this roster is current as of session start, and each agent receives its own identity automatically when you delegate.`
+      );
+    } else {
+      lines.push(
+        ``,
+        `## Working rules`,
+        `- You may receive tasks from your project's orchestrator. Work autonomously, never ask for confirmation, and end with a clear report — the orchestrator reads your final message.`
+      );
+    }
+
+    sendJson({ context: lines.join('\n') });
+  });
+
+  // GET /api/agents/:id/health — liveness of the agent's PTY and session,
+  // so orchestrators/tools can distinguish "working" from "ghost status".
+  app_.get(/^\/api\/agents\/([^/]+)\/health$/, (req, sendJson) => {
+    const agent = agents.get(req.params.id);
+    if (!agent) {
+      sendJson({ error: 'Agent not found' }, 404);
+      return;
+    }
+    const ptyAlive = !!(agent.ptyId && ptyProcesses.has(agent.ptyId));
+    const lastActivityMs = Date.parse(agent.lastActivity || '') || 0;
+    sendJson({
+      id: agent.id,
+      status: agent.status,
+      waitingReason: agent.waitingReason,
+      ptyAlive,
+      hasLiveSession: !!agent.currentSessionId,
+      secondsSinceActivity: lastActivityMs ? Math.round((Date.now() - lastActivityMs) / 1000) : null,
+    });
   });
 
   // GET /api/agents/:id/output

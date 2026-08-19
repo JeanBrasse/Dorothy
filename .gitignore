@@ -60,3 +60,7 @@ mcp-world/dist
 electron/dist
 
 .idea
+
+# Dorothy runtime worktrees (embedded checkouts, never commit)
+.worktrees/
+.claude/worktrees/

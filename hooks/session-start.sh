@@ -42,20 +42,40 @@ if [ -z "$RESULT" ]; then
 fi
 echo "[$(date)] SESSION_START curl result: $RESULT" >> /tmp/dorothy-hooks.log
 
+# Identity + team roster bootstrap: injected into EVERY fresh session so the
+# agent knows who it is, which project it belongs to, and (for orchestrators)
+# which agents it may delegate to — no manual "say hello to the team" ritual.
+BOOTSTRAP=""
+if [ -n "$CLAUDE_AGENT_ID" ]; then
+  BOOTSTRAP=$(curl -s --connect-timeout 2 "$API_URL/api/agents/$CLAUDE_AGENT_ID/bootstrap" 2>/dev/null | jq -r '.context // empty' 2>/dev/null)
+fi
+
 # Get memory context for this agent/project
 CONTEXT=$(curl -s --connect-timeout 2 "$API_URL/api/memory/context?agent_id=$AGENT_ID&project_path=$PROJECT_PATH" 2>/dev/null)
-
-# Check if we got valid context
+MEMORY_CONTENT=""
 if [ -n "$CONTEXT" ] && [ "$CONTEXT" != "null" ] && [ "$CONTEXT" != "{}" ]; then
-  HAS_CONTENT=$(echo "$CONTEXT" | jq -r '.context // empty' 2>/dev/null)
-
-  if [ -n "$HAS_CONTENT" ] && [ "$HAS_CONTENT" != "No previous context found for this agent/project." ]; then
-    # Escape the content for JSON
-    ESCAPED_CONTENT=$(echo "$HAS_CONTENT" | jq -Rs .)
-    # Output the context as hookSpecificOutput so it gets injected into the session
-    echo "{\"continue\":true,\"suppressOutput\":false,\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":$ESCAPED_CONTENT}}"
-    exit 0
+  MEMORY_CONTENT=$(echo "$CONTEXT" | jq -r '.context // empty' 2>/dev/null)
+  if [ "$MEMORY_CONTENT" = "No previous context found for this agent/project." ]; then
+    MEMORY_CONTENT=""
   fi
+fi
+
+# Combine bootstrap + memory into one injection
+COMBINED="$BOOTSTRAP"
+if [ -n "$MEMORY_CONTENT" ]; then
+  if [ -n "$COMBINED" ]; then
+    COMBINED="$COMBINED
+
+$MEMORY_CONTENT"
+  else
+    COMBINED="$MEMORY_CONTENT"
+  fi
+fi
+
+if [ -n "$COMBINED" ]; then
+  ESCAPED_CONTENT=$(printf '%s' "$COMBINED" | jq -Rs .)
+  echo "{\"continue\":true,\"suppressOutput\":false,\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":$ESCAPED_CONTENT}}"
+  exit 0
 fi
 
 # No context to inject

@@ -380,6 +380,73 @@ describe('agent-routes', () => {
     });
   });
 
+  describe('identity bootstrap', () => {
+    it('spawn command carries an identity header so agents know who they are', async () => {
+      const agent = makeAgent({
+        id: 'a1',
+        name: 'Backend-Dorothy',
+        status: 'idle',
+        role: 'worker',
+        projectPath: '/proj/dorothy',
+        worktreePath: '/proj/dorothy/.worktrees/feat/backend',
+        branchName: 'feat/backend',
+      });
+      agents.set('a1', agent);
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = findHandler(app, 'POST', 'start');
+      await handler(makeReq({ params: { id: 'a1' }, body: { prompt: 'fix the API' } }), vi.fn(), ctx);
+
+      const pty = await import('node-pty');
+      const command = (pty.spawn as any).mock.calls.at(-1)[1][2] as string;
+      expect(command).toContain('you are agent "Backend-Dorothy" (id a1), worker of project /proj/dorothy');
+      expect(command).toContain('worktree /proj/dorothy/.worktrees/feat/backend');
+      expect(command).toContain('fix the API');
+
+      const spawnEnv = (pty.spawn as any).mock.calls.at(-1)[2].env;
+      expect(spawnEnv.CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD).toBe('1');
+    });
+
+    it('GET /:id/bootstrap returns identity and same-project roster only', async () => {
+      agents.set('orch', makeAgent({ id: 'orch', name: 'Orchestrator-Dorothy', role: 'orchestrator', projectPath: '/proj/dorothy' }));
+      agents.set('w1', makeAgent({ id: 'w1', name: 'Frontend-Dorothy', role: 'worker', projectPath: '/proj/dorothy', branchName: 'feat/frontend' }));
+      agents.set('w2', makeAgent({ id: 'w2', name: 'Tars-Worker', role: 'worker', projectPath: '/proj/tars' }));
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = findHandler(app, 'GET', 'bootstrap');
+
+      const sendJson = vi.fn();
+      await handler(makeReq({ params: { id: 'orch' }, url: new URL('http://localhost/api/agents/orch/bootstrap') }), sendJson, ctx);
+
+      const context = (sendJson.mock.calls[0][0] as { context: string }).context;
+      expect(context).toContain('You are "Orchestrator-Dorothy"');
+      expect(context).toContain('Frontend-Dorothy');
+      expect(context).not.toContain('Tars-Worker');
+      expect(context).toContain('Delegate ONLY to the agents listed above');
+    });
+
+    it('GET /:id/health reports PTY liveness and session presence', async () => {
+      const mockPty = { kill: vi.fn() };
+      ptyProcesses.set('pty-live', mockPty as any);
+      agents.set('alive', makeAgent({ id: 'alive', status: 'running', ptyId: 'pty-live', currentSessionId: 'sess' }));
+      agents.set('ghost', makeAgent({ id: 'ghost', status: 'waiting', ptyId: 'pty-gone' }));
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = findHandler(app, 'GET', 'health');
+
+      const sendAlive = vi.fn();
+      await handler(makeReq({ params: { id: 'alive' }, url: new URL('http://localhost/api/agents/alive/health') }), sendAlive, ctx);
+      expect(sendAlive.mock.calls[0][0]).toMatchObject({ ptyAlive: true, hasLiveSession: true, status: 'running' });
+
+      const sendGhost = vi.fn();
+      await handler(makeReq({ params: { id: 'ghost' }, url: new URL('http://localhost/api/agents/ghost/health') }), sendGhost, ctx);
+      expect(sendGhost.mock.calls[0][0]).toMatchObject({ ptyAlive: false, hasLiveSession: false, status: 'waiting' });
+    });
+  });
+
   describe('project scoping', () => {
     function reqFromProject(project: string, overrides: Partial<RouteRequest> = {}): RouteRequest {
       return makeReq({

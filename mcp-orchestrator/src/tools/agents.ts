@@ -69,6 +69,60 @@ async function fetchCleanOutput(
 }
 
 export function registerAgentTools(server: McpServer): void {
+  // Tool: Who am I — identity handshake for orchestrator sessions
+  server.tool(
+    "whoami",
+    "Get YOUR identity as a Dorothy agent: id, name, project, role, and the roster of your project's agents. Call this first if you are unsure who you are or who you can delegate to.",
+    {},
+    async () => {
+      const { agentId, projectPath } = getCallerIdentity();
+      if (!agentId && !projectPath) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "No agent identity found in the environment (CLAUDE_AGENT_ID / CLAUDE_PROJECT_PATH are unset). You are probably running outside a Dorothy-managed session; list_agents will return ALL agents unscoped.",
+            },
+          ],
+        };
+      }
+      try {
+        let selfInfo: string;
+        if (agentId) {
+          const data = (await apiRequest(`/api/agents/${agentId}`)) as {
+            agent: { name?: string; role?: string; projectPath: string; branchName?: string; worktreePath?: string };
+          };
+          selfInfo =
+            `You are "${data.agent.name || agentId}" (agent id: ${agentId}), ` +
+            `${data.agent.role || "agent"} of project ${data.agent.projectPath}` +
+            (data.agent.branchName ? ` (branch ${data.agent.branchName})` : "") +
+            ".";
+        } else {
+          selfInfo = `Your project: ${projectPath} (no agent id available).`;
+        }
+        const list = (await apiRequest("/api/agents")) as { agents: unknown[] };
+        return {
+          content: [
+            {
+              type: "text",
+              text: `${selfInfo}\n\nYour project's agents:\n${JSON.stringify(list.agents, null, 2)}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error resolving identity: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
+
   // Tool: List agents (scoped to the caller's project by default)
   server.tool(
     "list_agents",
