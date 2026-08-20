@@ -11,6 +11,7 @@ import type { AgentCharacter, AgentProvider } from '@/types/electron';
 import NewChatModal from '@/components/NewChatModal';
 import type { EditAgentData } from '@/components/NewChatModal/types';
 import AgentTerminalDialog from '@/components/AgentWorld/AgentTerminalDialog';
+import { TemplatesManagerDialog } from '@/components/Templates/TemplatesManagerDialog';
 import {
   DesktopRequiredMessage,
   AgentListHeader,
@@ -40,6 +41,7 @@ export default function AgentsPage() {
   // Local state
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [showSuperAgentModal, setShowSuperAgentModal] = useState(false);
+  const [showTemplatesDialog, setShowTemplatesDialog] = useState(false);
   const [viewAgentId, setViewAgentId] = useState<string | null>(null);  // terminal dialog
   const [editAgentId, setEditAgentId] = useState<string | null>(null);  // edit dialog
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
@@ -219,6 +221,7 @@ export default function AgentsPage() {
         isCreatingSuperAgent={isCreatingSuperAgent}
         onSuperAgentClick={handleSuperAgentClick}
         onNewAgentClick={() => setShowNewChatModal(true)}
+        onTemplatesClick={() => setShowTemplatesDialog(true)}
       />
 
       <ProjectFilterTabs
@@ -375,6 +378,12 @@ export default function AgentsPage() {
         allInstalledSkills={claudeData?.skills || []}
         onRefreshSkills={refreshSkills}
         initialStep={1}
+      />
+
+      {/* Templates manager — browse, edit, and instantiate agent templates */}
+      <TemplatesManagerDialog
+        open={showTemplatesDialog}
+        onClose={() => setShowTemplatesDialog(false)}
       />
 
       {/* Terminal Dialog — click card body to view */}

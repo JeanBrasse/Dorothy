@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, Crown, Loader2 } from 'lucide-react';
+import { Plus, Crown, Loader2, Sparkles } from 'lucide-react';
 import type { AgentStatus } from '@/types/electron';
 
 interface AgentListHeaderProps {
@@ -8,6 +8,7 @@ interface AgentListHeaderProps {
   isCreatingSuperAgent: boolean;
   onSuperAgentClick: () => void;
   onNewAgentClick: () => void;
+  onTemplatesClick: () => void;
 }
 
 export function AgentListHeader({
@@ -15,6 +16,7 @@ export function AgentListHeader({
   isCreatingSuperAgent,
   onSuperAgentClick,
   onNewAgentClick,
+  onTemplatesClick,
 }: AgentListHeaderProps) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 lg:mb-6">
@@ -59,6 +61,16 @@ export function AgentListHeader({
           <span className="hidden sm:inline">
             {isCreatingSuperAgent ? 'Creating...' : 'Super Agent'}
           </span>
+        </button>
+
+        {/* Templates Button */}
+        <button
+          onClick={onTemplatesClick}
+          className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-bg-tertiary border border-border-primary text-text-secondary font-medium hover:bg-bg-secondary hover:text-foreground transition-colors text-sm cursor-pointer"
+          title="Manage agent templates"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Templates</span>
         </button>
 
         {/* New Agent Button */}

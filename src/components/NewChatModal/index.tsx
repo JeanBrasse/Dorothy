@@ -5,9 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronRight, Play, Check } from 'lucide-react';
 
 import type { NewChatModalProps, AgentPersonaValues } from './types';
-import type { AgentProvider } from '@/types/electron';
+import type { AgentProvider, AgentTemplate } from '@/types/electron';
 import { CHARACTER_OPTIONS } from './constants';
 import { computeProviderAvailability } from '@/lib/providers';
+import { useElectronTemplates } from '@/hooks/useElectronTemplates';
 import { useSkillInstall } from './hooks/useSkillInstall';
 import StepProject from './StepProject';
 import StepModel from './StepModel';
@@ -126,6 +127,10 @@ export default function NewChatModal({
   const [registeredVaults, setRegisteredVaults] = useState<string[]>([]);
   const [detectedVault, setDetectedVault] = useState<string | null>(null);
 
+  // Template picker (create mode): applying a template prefills the form
+  const { templates: agentTemplates } = useElectronTemplates();
+  const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null);
+
   // Step 4: Task
   const [prompt, setPrompt] = useState('');
   const [useWorktree, setUseWorktree] = useState(false);
@@ -206,6 +211,7 @@ export default function NewChatModal({
         setCliPath('');
         setSelectedObsidianVaults([]);
         setDetectedVault(null);
+        setAppliedTemplateId(null);
 
         if (initialOrchestrator) {
           agentPersonaRef.current = { character: 'wizard', name: 'Super Agent (Orchestrator)' };
@@ -335,6 +341,27 @@ export default function NewChatModal({
     }
   }, []);
 
+  // Prefill the whole form from a template. Arms skipNextSkillsClear when the
+  // provider changes so the provider-change effect doesn't wipe the template's
+  // skills (same contract as edit-mode prepopulation).
+  const applyTemplate = useCallback((t: AgentTemplate) => {
+    if (t.provider !== provider) skipNextSkillsClear.current = true;
+    setProvider(t.provider);
+    setModel(t.model || 'default');
+    setLocalModel(t.localModel || '');
+    setCliPath('');
+    setPermissionMode(t.permissionMode);
+    setEffort(t.effort || 'medium');
+    setSelectedSkills(t.skills || []);
+    if (t.obsidianVaultPaths && t.obsidianVaultPaths.length > 0) {
+      setSelectedObsidianVaults(t.obsidianVaultPaths);
+    }
+    setPrompt(t.savedPrompt || '');
+    agentPersonaRef.current = { character: t.character, name: t.displayName };
+    setIsOrchestrator(false);
+    setAppliedTemplateId(t.id);
+  }, [provider]);
+
   const handleToggleVault = useCallback((vp: string) => {
     setSelectedObsidianVaults(prev =>
       prev.includes(vp) ? prev.filter(p => p !== vp) : [...prev, vp]
@@ -441,6 +468,31 @@ export default function NewChatModal({
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-5">
+            {step === 1 && !isEditMode && agentTemplates.length > 0 && (
+              <div className="mb-5">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                  Start from a template <span className="normal-case font-normal">(optional)</span>
+                </p>
+                <div className="flex gap-1.5 overflow-x-auto pb-1">
+                  {agentTemplates.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => applyTemplate(t)}
+                      title={t.description}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs whitespace-nowrap border transition-colors ${
+                        appliedTemplateId === t.id
+                          ? 'bg-foreground text-background border-foreground'
+                          : 'bg-secondary border-border text-foreground hover:bg-accent/50'
+                      }`}
+                    >
+                      <span>{t.icon}</span>
+                      {t.displayName}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {step === 1 && (
               <StepProject
                 projects={projects}
