@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   X,
   Sparkles,
@@ -12,7 +12,7 @@ import {
   BookOpen,
   Wrench,
 } from 'lucide-react';
-import { SKILLS_DATABASE, SKILL_CATEGORIES, type Skill } from '@/lib/skills-database';
+import { SKILLS_DATABASE, SKILL_CATEGORIES, fetchSkillsFromMarketplace, type Skill } from '@/lib/skills-database';
 import type { ClaudeSkill } from '@/lib/claude-code';
 import type { AgentProvider } from '@/types/electron';
 import { PROVIDER_REGISTRY } from '@/lib/providers';
@@ -35,6 +35,10 @@ interface StepToolsProps {
 /** CLI-based providers that have their own skill directories */
 const PROVIDER_IDS = PROVIDER_REGISTRY.filter((p) => p.requiresCli).map((p) => p.id);
 
+// Module-level memo: StepTools unmounts on every step change, so without this
+// each visit to the Tools step would re-hit the marketplace.
+let cachedLiveSkills: Skill[] | null = null;
+
 const StepTools = React.memo(function StepTools({
   selectedSkills,
   onToggleSkill,
@@ -51,6 +55,21 @@ const StepTools = React.memo(function StepTools({
   const [skillSearch, setSkillSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  // Live marketplace catalog; the bundled SKILLS_DATABASE snapshot is the
+  // fallback when the fetch fails or hasn't landed yet.
+  const [liveSkills, setLiveSkills] = useState<Skill[] | null>(cachedLiveSkills);
+
+  useEffect(() => {
+    if (cachedLiveSkills) return;
+    fetchSkillsFromMarketplace()
+      .then(s => {
+        if (s && s.length > 0) {
+          cachedLiveSkills = s;
+          setLiveSkills(s);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const isSkillInstalled = useCallback(
     (name: string) => installedSkillSet.has(name.toLowerCase()),
@@ -87,7 +106,7 @@ const StepTools = React.memo(function StepTools({
   }, [registeredVaults, detectedVault]);
 
   const filteredSkills = useMemo(() => {
-    let skills = SKILLS_DATABASE;
+    let skills = liveSkills ?? SKILLS_DATABASE;
 
     if (skillSearch) {
       const q = skillSearch.toLowerCase();
@@ -104,7 +123,7 @@ const StepTools = React.memo(function StepTools({
     }
 
     return skills;
-  }, [skillSearch, selectedCategory]);
+  }, [liveSkills, skillSearch, selectedCategory]);
 
   return (
     <div className="space-y-5">
