@@ -19,15 +19,11 @@ import {
   Archive,
   Brain,
   Gift,
-  Heart,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { LATEST_RELEASE, WHATS_NEW_STORAGE_KEY } from '@/data/changelog';
 
 // Custom icon component for Pallet Town using the pokemon logo
-const PalletTownIcon = ({ className }: { className?: string }) => (
-  <img src="/pokemon/p.png" alt="" className={className} style={{ imageRendering: 'pixelated', objectFit: 'contain' }} />
-);
 import { useStore } from '@/store';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -35,7 +31,6 @@ import { usePathname } from 'next/navigation';
 const navItems = [
   { href: '/', icon: LayoutDashboard, label: 'Dashboard', shortcut: '1' },
   { href: '/agents', icon: Bot, label: 'Agents', shortcut: '2' },
-  { href: '/templates', icon: Sparkles, label: 'Templates', shortcut: 'T' },
   { href: '/kanban', icon: Columns, label: 'Kanban', shortcut: '3' },
   { href: '/vault', icon: Archive, label: 'Vault', shortcut: '4' },
   { href: '/projects', icon: FolderKanban, label: 'Projects', shortcut: '5' },
@@ -45,7 +40,6 @@ const navItems = [
   { href: '/automations', icon: Zap, label: 'Automations', shortcut: '9' },
   { href: '/usage', icon: BarChart2, label: 'Usage', shortcut: '0' },
   { href: '/memory', icon: Brain, label: 'Memory', shortcut: 'M' },
-  { href: '/pallet-town', icon: PalletTownIcon, label: 'ClaudeMon' },
 ];
 
 interface SidebarProps {
@@ -216,21 +210,6 @@ export default function Sidebar({ isMobile = false }: SidebarProps) {
             <Settings className="w-5 h-5" />
             {showLabels && <span className="text-sm">Settings</span>}
           </Link>
-          <Link
-            href="/support"
-            aria-label="Support"
-            title="Support"
-            className={`
-              flex items-center gap-3 px-5 py-3 transition-colors
-              ${pathname === '/support'
-                ? 'bg-primary/20 text-primary border-l-2 border-primary'
-                : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-              }
-            `}
-          >
-            <Heart className="w-5 h-5 text-red-500" fill="currentColor" />
-            {showLabels && <span className="text-sm">Support</span>}
-          </Link>
           <button
             onClick={toggleDarkMode}
             className="w-full flex items-center gap-3 px-5 py-3 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer"
@@ -363,20 +342,6 @@ export default function Sidebar({ isMobile = false }: SidebarProps) {
             >
               <Settings className="w-5 h-5" />
               <span className="text-sm">Settings</span>
-            </Link>
-            <Link
-              href="/support"
-              onClick={handleNavClick}
-              className={`
-                flex items-center gap-3 px-5 py-3 transition-colors
-                ${pathname === '/support'
-                  ? 'bg-primary/20 text-primary border-l-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                }
-              `}
-            >
-              <Heart className="w-5 h-5 text-red-500" fill="currentColor" />
-              <span className="text-sm">Support</span>
             </Link>
             <button
               onClick={toggleDarkMode}
