@@ -230,7 +230,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
     const shell = '/bin/bash';
 
     // Validate effort against allowed values to prevent shell injection
-    const VALID_EFFORTS: AgentEffort[] = ['low', 'medium', 'high'];
+    const VALID_EFFORTS: AgentEffort[] = ['low', 'medium', 'high', 'xhigh', 'max'];
     if (config.effort && !VALID_EFFORTS.includes(config.effort)) {
       throw new Error(`Invalid effort level: ${config.effort}`);
     }
@@ -793,6 +793,20 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       agent.model = params.model === null ? undefined : params.model;
     }
     if (params.provider !== undefined) {
+      if (params.provider !== agent.provider && agent.ptyId) {
+        // The live PTY still carries the OLD provider's ANTHROPIC_* env —
+        // messages would silently route to the previous vendor. Kill it so
+        // the next start/dispatch respawns with the new provider's env.
+        const staleProviderPty = ptyProcesses.get(agent.ptyId);
+        if (staleProviderPty) {
+          staleProviderPty.kill();
+          ptyProcesses.delete(agent.ptyId);
+        }
+        agent.ptyId = undefined;
+        agent.ptyCwd = undefined;
+        agent.status = 'idle';
+        agent.currentTask = undefined;
+      }
       agent.provider = params.provider;
     }
     if (params.localModel !== undefined) {
@@ -808,7 +822,21 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       agent.orchestratorMode = params.orchestratorMode;
     }
     if (params.cliPath !== undefined) {
-      agent.cliPath = params.cliPath === null ? undefined : params.cliPath;
+      const newCliPath = params.cliPath === null ? undefined : params.cliPath;
+      if (newCliPath !== agent.cliPath && agent.ptyId) {
+        // Same reasoning as a provider change: the running PTY was spawned
+        // with the old binary.
+        const staleCliPty = ptyProcesses.get(agent.ptyId);
+        if (staleCliPty) {
+          staleCliPty.kill();
+          ptyProcesses.delete(agent.ptyId);
+        }
+        agent.ptyId = undefined;
+        agent.ptyCwd = undefined;
+        agent.status = 'idle';
+        agent.currentTask = undefined;
+      }
+      agent.cliPath = newCliPath;
     }
     if (params.worktree !== undefined && !agent.worktreePath) {
       // Only allow worktree setup if agent doesn't already have one

@@ -174,6 +174,15 @@ function getModelPricing(modelId: string) {
 
   // Try partial match
   const lowerModel = modelId.toLowerCase();
+  if (lowerModel.includes('fable') || lowerModel.includes('mythos')) {
+    return MODEL_PRICING['claude-fable-5'];
+  }
+  if (lowerModel.includes('opus-5') || lowerModel.includes('opus5')) {
+    return MODEL_PRICING['claude-opus-5'];
+  }
+  if (lowerModel.includes('sonnet-5') || lowerModel.includes('sonnet5')) {
+    return MODEL_PRICING['claude-sonnet-5'];
+  }
   if (lowerModel.includes('opus-4-6') || lowerModel.includes('opus-4.6')) {
     return MODEL_PRICING['claude-opus-4-6'];
   }
@@ -236,6 +245,11 @@ function calculateModelCost(
 
 // Get friendly model name
 function getModelDisplayName(modelId: string): string {
+  const lower = modelId.toLowerCase();
+  if (lower.includes('fable')) return 'Fable 5';
+  if (lower.includes('mythos')) return 'Mythos 5';
+  if (lower.includes('opus-5') || lower.includes('opus5')) return 'Opus 5';
+  if (lower.includes('sonnet-5') || lower.includes('sonnet5')) return 'Sonnet 5';
   const lowerModel = modelId.toLowerCase();
   if (lowerModel.includes('opus-4-6') || lowerModel.includes('opus-4.6')) return 'Claude Opus 4.6';
   if (lowerModel.includes('opus-4-5') || lowerModel.includes('opus-4.5')) return 'Claude Opus 4.5';
@@ -944,13 +958,13 @@ export default function UsagePage() {
                 if (modelCostBreakdown.length > 0) {
                   modelCostBreakdown.forEach((m) => {
                     const lower = m.displayName.toLowerCase();
-                    const family = lower.includes('opus') ? 'Opus' : lower.includes('sonnet') ? 'Sonnet' : 'Haiku';
+                    const family = lower.includes('fable') || lower.includes('mythos') ? 'Fable' : lower.includes('opus') ? 'Opus' : lower.includes('sonnet') ? 'Sonnet' : lower.includes('haiku') ? 'Haiku' : 'Other';
                     familyMap[family] = (familyMap[family] || 0) + m.inputTokens + m.outputTokens;
                   });
                 } else if (data?.tokenStats?.modelTokens) {
                   Object.entries(data.tokenStats.modelTokens).forEach(([modelId, tokens]) => {
                     const lower = modelId.toLowerCase();
-                    const family = lower.includes('opus') ? 'Opus' : lower.includes('sonnet') ? 'Sonnet' : lower.includes('haiku') ? 'Haiku' : 'Other';
+                    const family = lower.includes('fable') || lower.includes('mythos') ? 'Fable' : lower.includes('opus') ? 'Opus' : lower.includes('sonnet') ? 'Sonnet' : lower.includes('haiku') ? 'Haiku' : 'Other';
                     familyMap[family] = (familyMap[family] || 0) + tokens.in + tokens.out;
                   });
                 }
@@ -1348,14 +1362,7 @@ export default function UsagePage() {
                       <tr key={providerId} className="border-b border-border-primary/50 hover:bg-bg-tertiary/50">
                         <td className="py-2 px-2">
                           <div className="flex items-center gap-1.5">
-                            {icon?.type === 'image' && <img src={icon.src} alt={label} className="w-3.5 h-3.5 object-contain" />}
-                            {icon?.type === 'svg-gemini' && (
-                              <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-black shrink-0">
-                                <path d="M12 0C12 6.627 6.627 12 0 12c6.627 0 12 5.373 12 12 0-6.627 5.373-12 12-12-6.627 0-12-5.373-12-12Z" />
-                              </svg>
-                            )}
-                            {icon?.type === 'cpu' && <Cpu className="w-3.5 h-3.5 text-cyan-500 shrink-0" />}
-                            {icon?.type === 'text' && <span className="font-bold text-[9px] text-text-muted">{icon.content}</span>}
+                            {icon && <ProviderIconRenderer icon={icon} className="w-3.5 h-3.5 shrink-0" />}
                             <span className="font-medium">{label}</span>
                           </div>
                         </td>

@@ -11,11 +11,16 @@ interface CreateAgentConfig {
   permissionMode?: 'normal' | 'auto' | 'bypass';
   effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
   orchestratorMode?: boolean;
+  provider?: import('@/types/electron').AgentProvider;
+  model?: string;
+  localModel?: string;
+  obsidianVaultPaths?: string[];
+  cliPath?: string;
 }
 
 interface UseAgentActionsProps {
   stopAgent: (id: string) => void;
-  startAgent: (id: string, prompt: string, options?: { model?: string }) => Promise<void>;
+  startAgent: (id: string, prompt: string, options?: { model?: string; provider?: import('@/types/electron').AgentProvider; localModel?: string }) => Promise<void>;
   createAgent: (config: CreateAgentConfig) => Promise<AgentStatus>;
   projects: { path: string; name: string }[];
   superAgent: AgentStatus | null;
@@ -75,20 +80,22 @@ export function useAgentActions({
     name?: string,
     secondaryProjectPath?: string,
     permissionMode?: 'normal' | 'auto' | 'bypass',
-    _provider?: string,
-    _localModel?: string,
-    _obsidianVaultPaths?: string[],
+    provider?: import('@/types/electron').AgentProvider,
+    localModel?: string,
+    obsidianVaultPaths?: string[],
     effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max',
     orchestratorMode?: boolean,
+    cliPath?: string,
   ) => {
     try {
-      const agent = await createAgent({ projectPath, skills, worktree, character, name, secondaryProjectPath, permissionMode, effort, orchestratorMode });
+      const resolvedModel = (provider !== 'local' && model && model !== 'default') ? model : undefined;
+      const agent = await createAgent({ projectPath, skills, worktree, character, name, secondaryProjectPath, permissionMode, effort, provider, model: resolvedModel, localModel, obsidianVaultPaths, orchestratorMode, cliPath });
       setShowCreateAgentModal(false);
       setCreateAgentProjectPath(null);
 
       if (prompt) {
         setTimeout(async () => {
-          await startAgent(agent.id, prompt, { model });
+          await startAgent(agent.id, prompt, { model: resolvedModel, provider, localModel });
           setTerminalAgentId(agent.id);
         }, 600);
       }

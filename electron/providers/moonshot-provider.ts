@@ -10,15 +10,30 @@ import type {
   ProviderModel,
   HookConfig,
 } from './cli-provider';
+import { readAppSettingsFromDisk } from './cli-provider';
 
-const MOONSHOT_BASE_URL = 'https://api.moonshot.cn/v1';
-const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const MOONSHOT_BASE_URL = 'https://api.moonshot.ai/anthropic'; // Anthropic-compatible endpoint
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api'; // claude appends /v1/messages
+
+/** Registry (OpenRouter-namespace) id -> vendor-native id for the direct endpoint. */
+const DIRECT_MODEL_MAP: Record<string, string> = {
+  'moonshotai/kimi-k2': 'kimi-k2-0905-preview'
+};
 
 export class MoonshotProvider implements CLIProvider {
   readonly id = 'moonshot' as const;
   readonly displayName = 'MoonshotAI (Kimi)';
   readonly binaryName = 'claude';
   readonly configDir = path.join(os.homedir(), '.claude');
+
+  /** OpenRouter-style ids ('vendor/model') are only valid via OpenRouter.
+   *  On the vendor's direct Anthropic-compatible endpoint, translate to the
+   *  native id (mapping table, else strip the vendor prefix). */
+  private mapModelForEndpoint(model: string): string {
+    const direct = !!readAppSettingsFromDisk().moonshotApiKey;
+    if (!direct) return model;
+    return DIRECT_MODEL_MAP[model] ?? model.replace(/^[^/]+\//, '');
+  }
 
   getModels(): ProviderModel[] {
     return [
@@ -38,7 +53,7 @@ export class MoonshotProvider implements CLIProvider {
     if (params.systemPromptFile && fs.existsSync(params.systemPromptFile)) command += ` --append-system-prompt-file '${params.systemPromptFile.replace(/'/g, "'\\''")}'`;
     if (params.model && params.model !== 'default') {
       if (!/^[a-zA-Z0-9._:\/\-]+$/.test(params.model)) throw new Error('Invalid model name');
-      command += ` --model '${params.model}'`;
+      command += ` --model '${this.mapModelForEndpoint(params.model)}'`;
     }
     if (params.verbose) command += ' --verbose';
     if (params.permissionMode === 'auto') command += ' --permission-mode auto';
@@ -67,7 +82,7 @@ export class MoonshotProvider implements CLIProvider {
   buildOneShotCommand(params: OneShotCommandParams): string {
     let command = `'${params.binaryPath.replace(/'/g, "'\\''")}'`;
     command += ' -p';
-    if (params.model && params.model !== 'default') command += ` --model ${params.model}`;
+    if (params.model && params.model !== 'default') command += ` --model ${this.mapModelForEndpoint(params.model)}`;
     command += ` '${params.prompt.replace(/'/g, "'\\''")}'`;
     return command;
   }
@@ -150,6 +165,12 @@ export class MoonshotProvider implements CLIProvider {
     const promptWithSkills = (params.skills && params.skills.length > 0)
       ? `[IMPORTANT: Use these skills for this session: ${params.skills.join(', ')}. Invoke them with /<skill-name> when relevant to the task.] ${params.prompt}`
       : params.prompt;
+    const settings = readAppSettingsFromDisk();
+    const direct = !!settings.moonshotApiKey;
+    const schedBase = direct ? MOONSHOT_BASE_URL : OPENROUTER_BASE_URL;
+    const schedKeyJq = direct ? '.moonshotApiKey' : '.openRouterApiKey';
+    const envExports = `export ANTHROPIC_BASE_URL="${schedBase}"\nexport ANTHROPIC_API_KEY="$(jq -r '${schedKeyJq} // empty' "$HOME/.dorothy/app-settings.json")"\n`;
+
     return `#!/bin/bash
 export HOME="${params.homeDir}"
 if [ -s "${params.homeDir}/.nvm/nvm.sh" ]; then source "${params.homeDir}/.nvm/nvm.sh" 2>/dev/null || true; fi
@@ -158,7 +179,8 @@ export PATH="${params.binaryDir}:$PATH"
 cd "${params.projectPath}"
 echo "=== Task started at $(date) ===" >> "${params.logPath}"
 unset CLAUDECODE
-"${params.binaryPath}" ${flags} --output-format stream-json --verbose --mcp-config "${params.mcpConfigPath}" --add-dir "${params.homeDir}/.dorothy" -p '${promptWithSkills}' >> "${params.logPath}" 2>&1
+export CLAUDE_PROVIDER="moonshot"
+${envExports}"${params.binaryPath}" ${flags} --output-format stream-json --verbose --mcp-config "${params.mcpConfigPath}" --add-dir "${params.homeDir}/.dorothy" -p '${promptWithSkills}' >> "${params.logPath}" 2>&1
 echo "=== Task completed at $(date) ===" >> "${params.logPath}"
 `;
   }

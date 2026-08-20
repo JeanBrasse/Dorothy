@@ -10,9 +10,17 @@ import type {
   ProviderModel,
   HookConfig,
 } from './cli-provider';
+import { readAppSettingsFromDisk } from './cli-provider';
 
-const MINIMAX_BASE_URL = 'https://api.minimax.chat/v1';
-const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const MINIMAX_BASE_URL = 'https://api.minimax.io/anthropic'; // Anthropic-compatible endpoint
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api'; // claude appends /v1/messages
+
+/** Registry (OpenRouter-namespace) id -> vendor-native id for the direct endpoint. */
+const DIRECT_MODEL_MAP: Record<string, string> = {
+  'minimax/minimax-m2': 'MiniMax-M2',
+  'minimax/minimax-m1': 'MiniMax-M1',
+  'minimax/minimax-01': 'MiniMax-Text-01'
+};
 
 export class MiniMaxProvider implements CLIProvider {
   readonly id = 'minimax' as const;
@@ -20,11 +28,20 @@ export class MiniMaxProvider implements CLIProvider {
   readonly binaryName = 'claude';
   readonly configDir = path.join(os.homedir(), '.claude');
 
+  /** OpenRouter-style ids ('vendor/model') are only valid via OpenRouter.
+   *  On the vendor's direct Anthropic-compatible endpoint, translate to the
+   *  native id (mapping table, else strip the vendor prefix). */
+  private mapModelForEndpoint(model: string): string {
+    const direct = !!readAppSettingsFromDisk().minimaxApiKey;
+    if (!direct) return model;
+    return DIRECT_MODEL_MAP[model] ?? model.replace(/^[^/]+\//, '');
+  }
+
   getModels(): ProviderModel[] {
     return [
-      { id: 'minimax/abab7', name: 'ABAB 7', description: 'Flagship' },
-      { id: 'minimax/abab6.5s', name: 'ABAB 6.5s', description: 'Fast' },
-      { id: 'minimax/abab5.5', name: 'ABAB 5.5', description: 'Balanced' },
+      { id: 'minimax/minimax-m2', name: 'MiniMax M2', description: 'Agentic flagship' },
+      { id: 'minimax/minimax-m1', name: 'MiniMax M1', description: 'Long-context reasoning' },
+      { id: 'minimax/minimax-01', name: 'MiniMax Text-01', description: 'Fast' },
     ];
   }
 
@@ -47,7 +64,7 @@ export class MiniMaxProvider implements CLIProvider {
       if (!/^[a-zA-Z0-9._:\/\-]+$/.test(params.model)) {
         throw new Error('Invalid model name');
       }
-      command += ` --model '${params.model}'`;
+      command += ` --model '${this.mapModelForEndpoint(params.model)}'`;
     }
 
     if (params.verbose) command += ' --verbose';
@@ -90,7 +107,7 @@ export class MiniMaxProvider implements CLIProvider {
   buildOneShotCommand(params: OneShotCommandParams): string {
     let command = `'${params.binaryPath.replace(/'/g, "'\\''")}'`;
     command += ' -p';
-    if (params.model && params.model !== 'default') command += ` --model ${params.model}`;
+    if (params.model && params.model !== 'default') command += ` --model ${this.mapModelForEndpoint(params.model)}`;
     command += ` '${params.prompt.replace(/'/g, "'\\''")}'`;
     return command;
   }
@@ -190,6 +207,12 @@ export class MiniMaxProvider implements CLIProvider {
     const promptWithSkills = (params.skills && params.skills.length > 0)
       ? `[IMPORTANT: Use these skills for this session: ${params.skills.join(', ')}. Invoke them with /<skill-name> when relevant to the task.] ${params.prompt}`
       : params.prompt;
+    const settings = readAppSettingsFromDisk();
+    const direct = !!settings.minimaxApiKey;
+    const schedBase = direct ? MINIMAX_BASE_URL : OPENROUTER_BASE_URL;
+    const schedKeyJq = direct ? '.minimaxApiKey' : '.openRouterApiKey';
+    const envExports = `export ANTHROPIC_BASE_URL="${schedBase}"\nexport ANTHROPIC_API_KEY="$(jq -r '${schedKeyJq} // empty' "$HOME/.dorothy/app-settings.json")"\n`;
+
     return `#!/bin/bash
 export HOME="${params.homeDir}"
 if [ -s "${params.homeDir}/.nvm/nvm.sh" ]; then source "${params.homeDir}/.nvm/nvm.sh" 2>/dev/null || true; fi
@@ -198,7 +221,8 @@ export PATH="${params.binaryDir}:$PATH"
 cd "${params.projectPath}"
 echo "=== Task started at $(date) ===" >> "${params.logPath}"
 unset CLAUDECODE
-"${params.binaryPath}" ${flags} --output-format stream-json --verbose --mcp-config "${params.mcpConfigPath}" --add-dir "${params.homeDir}/.dorothy" -p '${promptWithSkills}' >> "${params.logPath}" 2>&1
+export CLAUDE_PROVIDER="minimax"
+${envExports}"${params.binaryPath}" ${flags} --output-format stream-json --verbose --mcp-config "${params.mcpConfigPath}" --add-dir "${params.homeDir}/.dorothy" -p '${promptWithSkills}' >> "${params.logPath}" 2>&1
 echo "=== Task completed at $(date) ===" >> "${params.logPath}"
 `;
   }

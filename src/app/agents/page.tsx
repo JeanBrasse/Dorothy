@@ -89,7 +89,10 @@ export default function AgentsPage() {
       orchestratorMode: agent.orchestratorMode,
       cliPath: agent.cliPath,
     };
-  }, [editAgentId, agents]);
+  // Snapshot on open: depending on `agents` would rebuild this object on every
+  // status tick and reset the edit form mid-typing.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editAgentId]);
 
   // Handlers
   const handleCreateAgent = useCallback(async (

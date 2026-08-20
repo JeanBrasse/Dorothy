@@ -330,12 +330,15 @@ export default function ProjectsPage() {
     name?: string,
     secondaryProjectPath?: string,
     permissionMode?: 'normal' | 'auto' | 'bypass',
-    _provider?: string,
-    _localModel?: string,
-    _obsidianVaultPaths?: string[],
+    provider?: import('@/types/electron').AgentProvider,
+    localModel?: string,
+    obsidianVaultPaths?: string[],
     effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max',
+    orchestratorMode?: boolean,
+    cliPath?: string,
   ) => {
     try {
+      const resolvedModel = (provider !== 'local' && model && model !== 'default') ? model : undefined;
       const agent = await createAgent({
         projectPath,
         skills,
@@ -345,11 +348,17 @@ export default function ProjectsPage() {
         secondaryProjectPath,
         permissionMode,
         effort,
+        provider,
+        model: resolvedModel,
+        localModel,
+        obsidianVaultPaths,
+        orchestratorMode,
+        cliPath,
       });
 
       if (prompt) {
         setTimeout(async () => {
-          await startAgent(agent.id, prompt, { model });
+          await startAgent(agent.id, prompt, { model: resolvedModel, provider, localModel });
         }, 600);
       }
 

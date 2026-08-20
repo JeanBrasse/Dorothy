@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Settings, RefreshCw, Download, ExternalLink, CheckCircle, AlertCircle, Loader2, RotateCw } from 'lucide-react';
 import { Toggle } from './Toggle';
 import type { ClaudeInfo, AppSettings } from './types';
-import { PROVIDER_REGISTRY } from '@/lib/providers';
+import { PROVIDER_REGISTRY, computeProviderAvailability } from '@/lib/providers';
 
 /** Strip HTML tags and collapse whitespace so release notes render as plain text. */
 function stripHtml(html: string): string {
@@ -50,20 +50,10 @@ export const GeneralSection = ({ info, appSettings, onSaveAppSettings }: General
       window.electronAPI?.appSettings?.get(),
     ]).then(([paths, settings]) => {
       if (paths || settings) {
-        setInstalledProviders({
-          claude: !!paths?.claude,
-          codex: !!paths?.codex,
-          gemini: !!paths?.gemini,
-          opencode: !!(paths as Record<string, string> | undefined)?.opencode,
-          pi: !!(paths as Record<string, string> | undefined)?.pi,
-          openrouter: !!(settings?.openRouterEnabled && settings?.openRouterApiKey),
-          deepseek: !!(settings?.deepSeekEnabled && settings?.deepSeekApiKey) || !!(settings?.openRouterEnabled && settings?.openRouterApiKey),
-          moonshot: !!(settings?.moonshotEnabled && settings?.moonshotApiKey) || !!(settings?.openRouterEnabled && settings?.openRouterApiKey),
-          mimo: !!(settings?.mimoEnabled && settings?.mimoApiKey) || !!(settings?.openRouterEnabled && settings?.openRouterApiKey),
-          qwen: !!(settings?.qwenEnabled && settings?.qwenApiKey) || !!(settings?.openRouterEnabled && settings?.openRouterApiKey),
-          zhipu: !!(settings?.zhipuEnabled && settings?.zhipuApiKey) || !!(settings?.openRouterEnabled && settings?.openRouterApiKey),
-          minimax: !!(settings?.minimaxEnabled && (settings?.minimaxApiKey || (settings?.openRouterEnabled && settings?.openRouterApiKey))),
-        });
+        setInstalledProviders(computeProviderAvailability(
+          paths as Record<string, string | undefined> | undefined,
+          settings,
+        ));
       }
     });
   }, []);

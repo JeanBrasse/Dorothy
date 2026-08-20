@@ -160,6 +160,7 @@ const StepModel = React.memo(function StepModel({
         { key: 'claude', label: 'Claude' },
         { key: 'codex', label: 'Codex' },
         { key: 'gemini', label: 'Gemini' },
+        { key: 'grok', label: 'Grok' },
         { key: 'opencode', label: 'OpenCode' },
         { key: 'pi', label: 'Pi' },
         { key: 'qwencode', label: 'Qwen Code' },
@@ -235,7 +236,7 @@ const StepModel = React.memo(function StepModel({
       <div>
         <label className="block text-sm font-medium mb-2">Provider</label>
         <div className="grid gap-2 grid-cols-4">
-          {PROVIDER_REGISTRY.filter(p => p.id !== 'opencode' && p.id !== 'pi').map(({ id, label, icon, accent, requiresCli }) => {
+          {PROVIDER_REGISTRY.filter((p) => p.id === provider || (p.id !== 'opencode' && p.id !== 'pi' && p.id !== 'local')).map(({ id, label, icon, accent, requiresCli }) => {
             const installed = installedProviders?.[id] === true;
             const disabledReason = !installed
               ? requiresCli ? 'Not installed' : 'Add API key in Settings > AI Providers'

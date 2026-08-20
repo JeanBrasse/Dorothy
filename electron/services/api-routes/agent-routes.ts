@@ -5,7 +5,7 @@ import { app } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import { agents, saveAgents, killStalePty, ensureProjectTrusted } from '../../core/agent-manager';
 import { ptyProcesses, writeProgrammaticInput } from '../../core/pty-manager';
-import { getProvider } from '../../providers';
+import { getProvider, isValidProvider } from '../../providers';
 import { buildFullPath } from '../../utils/path-builder';
 import { AgentStatus, AgentCharacter } from '../../types';
 import { RouteApp, RouteContext, RouteRequest, SendJson } from './types';
@@ -27,95 +27,79 @@ type SpawnOpts = {
  *
  * Returns false if validation failed — an error response has already been sent.
  */
-function spawnAgentSession(
+async function spawnAgentSession(
   agent: AgentStatus,
   prompt: string,
   opts: SpawnOpts,
   ctx: RouteContext,
   sendJson: SendJson
-): boolean {
+): Promise<boolean> {
   // Raw cwd for pty.spawn, shell-escaped form for the `cd` command. These
   // must be separate — passing the shell-escaped form to pty.spawn would
   // break when the path legitimately contains a single quote.
   const rawWorkingDir = agent.worktreePath || agent.projectPath;
   const workingDir = rawWorkingDir.replace(/'/g, "'\\''");
 
-  // Resolve provider and binary — honours custom CLI paths in Settings and
-  // the agent's provider (claude / openrouter / deepseek / moonshot / etc.).
+  // Resolve provider and binary — honours the per-agent CLI override, custom
+  // CLI paths in Settings, and the agent's provider (claude / codex / gemini /
+  // grok / openrouter / deepseek / moonshot / etc.).
   const appSettings = ctx.getAppSettings();
   const cliProvider = getProvider(agent.provider);
-  const binaryPath = cliProvider.resolveBinaryPath(appSettings);
-  const escapedBinary = binaryPath.replace(/'/g, "'\\''");
-  let command = `cd '${workingDir}' && '${escapedBinary}'`;
+  const binaryPath = agent.cliPath || cliProvider.resolveBinaryPath(appSettings);
 
   const isAutomationAgent = agent.name?.toLowerCase().includes('automation:');
   const usePrintMode = opts.printMode || isAutomationAgent;
-
-  if (usePrintMode) {
-    command += ' -p';
-  }
 
   const isSuperAgentApi = agent.role === 'orchestrator' ||
                           agent.name?.toLowerCase().includes('super agent') ||
                           agent.name?.toLowerCase().includes('orchestrator');
 
-  // Pass MCP config to all agents using a flag-strategy provider (all
-  // claude-based providers, including OpenRouter/DeepSeek/etc.). Mirrors
-  // ipc-handlers behaviour.
-  if (cliProvider.getMcpConfigStrategy() === 'flag') {
-    const mcpConfigPath = path.join(app.getPath('home'), '.claude', 'mcp.json');
-    if (fs.existsSync(mcpConfigPath)) {
-      command += ` --mcp-config '${mcpConfigPath}'`;
-    }
+  // Provider env vars: CLAUDE_* tracking vars + ANTHROPIC_BASE_URL /
+  // ANTHROPIC_API_KEY for alt providers (OpenRouter, DeepSeek, Moonshot...).
+  const providerEnvVars = cliProvider.getPtyEnvVars(agent.id, agent.projectPath, agent.skills || [], appSettings);
+
+  // Alt providers re-point the claude binary at another vendor. Without a key
+  // there is no ANTHROPIC_BASE_URL and the session would silently run on the
+  // user's Anthropic account — refuse instead.
+  const isAltProvider = cliProvider.binaryName === 'claude' &&
+                        !!agent.provider && agent.provider !== 'claude' && agent.provider !== 'local';
+  if (isAltProvider && !providerEnvVars.ANTHROPIC_BASE_URL) {
+    sendJson({
+      error: `No API key configured for provider "${agent.provider}". Add it (or an OpenRouter key) in Settings > AI Providers.`,
+    }, 400);
+    return false;
   }
 
-  if (agent.secondaryProjectPath) {
-    command += ` --add-dir '${agent.secondaryProjectPath.replace(/'/g, "'\\''")}'`;
-  }
-  const effectiveMode = opts.permissionMode ?? agent.permissionMode ?? (agent.skipPermissions ? 'auto' : 'normal');
-  if (effectiveMode === 'auto' || effectiveMode === 'bypass') {
-    command += ' --dangerously-skip-permissions';
-  }
-  // BUG 5: orchestrator-mode agents cannot edit files directly — must delegate.
-  if (isSuperAgentApi || agent.orchestratorMode) {
-    command += ' --disallowed-tools "Edit" "Write" "MultiEdit" "NotebookEdit"';
-  }
-  const resolvedModel = opts.model || agent.model;
-  // 'default' is a Dorothy UI alias meaning "let Claude CLI pick"; omit the flag.
-  if (resolvedModel && resolvedModel !== 'default') {
-    // Allow the same characters as claude-provider.ts buildInteractiveCommand,
-    // including brackets used by 1M-context variants (e.g. sonnet[1m]).
-    if (!/^[a-zA-Z0-9._:\/\[\]-]+$/.test(resolvedModel)) {
-      sendJson({ error: 'Invalid model name' }, 400);
+  // Local provider (Tasmania): point the claude binary at the local server,
+  // mirroring initAgentPty. Reject cleanly when Tasmania isn't running —
+  // otherwise the session silently runs on Anthropic cloud.
+  let tasmaniaEnv: Record<string, string> = {};
+  if (agent.provider === 'local') {
+    try {
+      const { getTasmaniaStatus } = require('../tasmania-client') as typeof import('../tasmania-client');
+      const tasmaniaStatus = await getTasmaniaStatus();
+      if (tasmaniaStatus.status === 'running' && tasmaniaStatus.endpoint) {
+        tasmaniaEnv = {
+          // Strip /v1 suffix — Claude Code SDK appends /v1/messages itself
+          ANTHROPIC_BASE_URL: tasmaniaStatus.endpoint.replace(/\/v1\/?$/, ''),
+          ANTHROPIC_MODEL: agent.localModel || tasmaniaStatus.modelName || 'default',
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+        };
+      } else {
+        sendJson({ error: 'Local provider (Tasmania) is not running — start it before dispatching to this agent.' }, 409);
+        return false;
+      }
+    } catch (err) {
+      sendJson({ error: `Local provider (Tasmania) unavailable: ${err instanceof Error ? err.message : String(err)}` }, 409);
       return false;
     }
-    command += ` --model '${resolvedModel}'`;
   }
 
-  // Effort level — supported by the claude binary (which all ANTHROPIC-env
-  // alt providers run under the hood); other CLIs don't take the flag.
-  // Mirrors claude-provider.buildInteractiveCommand: 'medium' is the default.
-  if (agent.effort && agent.effort !== 'medium' && cliProvider.binaryName === 'claude') {
-    command += ` --effort ${agent.effort}`;
-  }
-
-  // Load ~/.dorothy/CLAUDE.md (autonomy rules) exactly like UI-spawned agents
-  // do — without it, delegated agents ask for confirmations and get stuck in
-  // 'waiting' inside a hidden PTY.
-  const dorothyDir = path.join(app.getPath('home'), '.dorothy');
-  if (fs.existsSync(dorothyDir)) {
-    command += ` --add-dir '${dorothyDir.replace(/'/g, "'\\''")}'`;
-  }
-
-  let finalPrompt = prompt;
-  if (agent.skills && agent.skills.length > 0 && !isSuperAgentApi) {
-    const skillsList = agent.skills.join(', ');
-    finalPrompt = `[IMPORTANT: Use these skills for this session: ${skillsList}. Invoke them with /<skill-name> when relevant to the task.] ${prompt}`;
-  }
   // Identity header: agents must know who they are without the orchestrator
   // having to explain it in every delegation ("les agents ne comprennent pas
   // qui ils sont"). The SessionStart bootstrap injection adds the full team
   // roster; this header guarantees the essentials even if hooks are absent.
+  // (The provider builder handles the skills prefix itself.)
   const identityHeader =
     `[Dorothy: you are agent "${agent.name || agent.id}" (id ${agent.id}), ` +
     `${agent.role || 'worker'} of project ${agent.projectPath}` +
@@ -125,11 +109,67 @@ function spawnAgentSession(
     `. Work autonomously without asking for confirmation and end with a clear report of your results` +
     (isSuperAgentApi ? '' : ' — an orchestrator reads your final message') +
     `.]`;
-  finalPrompt = `${identityHeader}\n\n${finalPrompt}`;
-  command += ` '${finalPrompt.replace(/'/g, "'\\''")}'`;
+
+  // MCP config for flag-strategy providers (all claude-based ones).
+  let mcpConfigPath: string | undefined;
+  if (cliProvider.getMcpConfigStrategy() === 'flag') {
+    const candidate = path.join(app.getPath('home'), '.claude', 'mcp.json');
+    if (fs.existsSync(candidate)) mcpConfigPath = candidate;
+  }
+
+  const resolvedModel = opts.model || agent.model;
+  const effectiveMode = opts.permissionMode ?? agent.permissionMode ?? (agent.skipPermissions ? 'auto' : 'normal');
+
+  // Build the CLI command through the provider so non-claude CLIs (codex,
+  // gemini, grok, opencode, pi) get their own syntax instead of claude flags.
+  let cliCommand: string;
+  try {
+    cliCommand = cliProvider.buildInteractiveCommand({
+      binaryPath,
+      prompt: `${identityHeader}\n\n${prompt}`,
+      model: resolvedModel && resolvedModel !== 'default' ? resolvedModel : undefined,
+      permissionMode: effectiveMode,
+      effort: agent.effort,
+      secondaryProjectPath: agent.secondaryProjectPath,
+      obsidianVaultPaths: agent.obsidianVaultPaths,
+      mcpConfigPath,
+      skills: agent.skills,
+      isSuperAgent: isSuperAgentApi,
+      // BUG 5: orchestrator-mode agents cannot edit files directly.
+      orchestratorMode: isSuperAgentApi || agent.orchestratorMode,
+      verbose: appSettings.verboseModeEnabled,
+      chrome: appSettings.chromeEnabled,
+    });
+  } catch (err) {
+    sendJson({ error: err instanceof Error ? err.message : 'Invalid agent configuration' }, 400);
+    return false;
+  }
+
+  // Print mode for automation agents: inject -p right after the binary token.
+  if (usePrintMode) {
+    const binToken = `'${binaryPath.replace(/'/g, "'\\''")}'`;
+    if (cliCommand.startsWith(binToken)) {
+      cliCommand = `${binToken} -p${cliCommand.slice(binToken.length)}`;
+    }
+  }
+
+  const command = `cd '${workingDir}' && ${cliCommand}`;
 
   const shell = '/bin/bash';
-  const fullPath = buildFullPath();
+  // Include user-configured CLI dirs so non-claude binaries resolve too.
+  const cliExtraPaths: string[] = [];
+  const cliPaths = appSettings.cliPaths as unknown as Record<string, unknown> | undefined;
+  if (cliPaths) {
+    for (const key of ['claude', 'codex', 'gemini', 'grok', 'qwencode', 'opencode', 'pi', 'gws', 'gh', 'node']) {
+      if (typeof cliPaths[key] === 'string' && cliPaths[key]) {
+        cliExtraPaths.push(path.dirname(cliPaths[key] as string));
+      }
+    }
+    if (Array.isArray(cliPaths.additionalPaths)) {
+      cliExtraPaths.push(...(cliPaths.additionalPaths as string[]).filter(Boolean));
+    }
+  }
+  const fullPath = buildFullPath(cliExtraPaths);
 
   // Kill any existing PTY for this agent before spawning a new one.
   // Agents started via the API use one-shot PTYs that stay alive (the claude
@@ -153,27 +193,31 @@ function spawnAgentSession(
   // BUG 6: pre-accept Claude Code's workspace trust dialog for this cwd.
   ensureProjectTrusted(rawWorkingDir);
 
-  // Provider env vars: CLAUDE_* tracking vars + ANTHROPIC_BASE_URL /
-  // ANTHROPIC_API_KEY for alt providers (OpenRouter, DeepSeek, MiMo,
-  // Moonshot, Qwen, ZhipuAI). The identity vars are re-asserted explicitly —
-  // MCP project scoping and the hooks depend on them.
-  const providerEnvVars = cliProvider.getPtyEnvVars(agent.id, agent.projectPath, agent.skills || [], appSettings);
+  // Assemble the environment. Identity vars are re-asserted explicitly —
+  // MCP project scoping and the hooks depend on them — and provider-specified
+  // vars (e.g. CLAUDECODE) are purged so nested sessions don't inherit them.
+  const spawnEnv: Record<string, string | undefined> = {
+    ...process.env,
+    PATH: fullPath,
+    TERM: 'xterm-256color',
+    ...providerEnvVars,
+    ...tasmaniaEnv,
+    CLAUDE_SKILLS: agent.skills?.join(',') || '',
+    CLAUDE_AGENT_ID: agent.id,
+    CLAUDE_PROJECT_PATH: agent.projectPath,
+    // Load CLAUDE.md from --add-dir directories (e.g. ~/.dorothy)
+    CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
+  };
+  for (const key of cliProvider.getEnvVarsToDelete()) {
+    delete spawnEnv[key];
+  }
+
   const ptyProcess = pty.spawn(shell, ['-l', '-c', command], {
     name: 'xterm-256color',
     cols: 120,
     rows: 40,
     cwd: rawWorkingDir,
-    env: {
-      ...process.env,
-      PATH: fullPath,
-      TERM: 'xterm-256color',
-      ...providerEnvVars,
-      CLAUDE_SKILLS: agent.skills?.join(',') || '',
-      CLAUDE_AGENT_ID: agent.id,
-      CLAUDE_PROJECT_PATH: agent.projectPath,
-      // Load CLAUDE.md from --add-dir directories (e.g. ~/.dorothy)
-      CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
-    },
+    env: spawnEnv as { [key: string]: string },
   });
 
   const ptyId = uuidv4();
@@ -470,7 +514,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
 
   // POST /api/agents
   app_.post('/api/agents', (req, sendJson) => {
-    const { projectPath, name, skills = [], character, permissionMode, secondaryProjectPath, orchestratorMode } = req.body as {
+    const { projectPath, name, skills = [], character, permissionMode, secondaryProjectPath, orchestratorMode, provider, model, effort, cliPath } = req.body as {
       projectPath: string;
       name?: string;
       skills?: string[];
@@ -478,10 +522,26 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       permissionMode?: 'normal' | 'auto' | 'bypass';
       secondaryProjectPath?: string;
       orchestratorMode?: boolean;
+      provider?: string;
+      model?: string;
+      effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+      cliPath?: string;
     };
 
     if (!projectPath) {
       sendJson({ error: 'projectPath is required' }, 400);
+      return;
+    }
+    if (provider !== undefined && !isValidProvider(provider)) {
+      sendJson({ error: `Unknown provider "${provider}"` }, 400);
+      return;
+    }
+    if (model !== undefined && !/^[a-zA-Z0-9._:\/\[\]-]+$/.test(model)) {
+      sendJson({ error: 'Invalid model name' }, 400);
+      return;
+    }
+    if (effort !== undefined && !['low', 'medium', 'high', 'xhigh', 'max'].includes(effort)) {
+      sendJson({ error: 'Invalid effort level' }, 400);
       return;
     }
 
@@ -500,6 +560,10 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       name: resolvedName,
       permissionMode: permissionMode || 'auto',
       orchestratorMode: orchestratorMode || false,
+      provider: provider as AgentStatus['provider'],
+      model,
+      effort,
+      cliPath,
       // role mirrors the historical name-based isSuperAgent semantics.
       // orchestratorMode stays an independent tool-restriction toggle — it
       // must NOT promote an agent into the Telegram/Slack super-agent pool.
@@ -513,7 +577,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
   });
 
   // POST /api/agents/:id/start
-  app_.post(/^\/api\/agents\/([^/]+)\/start$/, (req, sendJson) => {
+  app_.post(/^\/api\/agents\/([^/]+)\/start$/, async (req, sendJson) => {
     const agent = agents.get(req.params.id);
     if (!agent) {
       sendJson({ error: 'Agent not found' }, 404);
@@ -530,7 +594,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       return;
     }
 
-    if (!spawnAgentSession(agent, prompt, { model, permissionMode: bodyPermissionMode, printMode }, ctx, sendJson)) {
+    if (!(await spawnAgentSession(agent, prompt, { model, permissionMode: bodyPermissionMode, printMode }, ctx, sendJson))) {
       return;
     }
 
@@ -541,7 +605,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
   // Decides message-vs-spawn server-side, under the single-threaded event
   // loop, eliminating the GET-status-then-POST race that MCP tools had when
   // they made that decision client-side on stale status.
-  app_.post(/^\/api\/agents\/([^/]+)\/dispatch$/, (req, sendJson) => {
+  app_.post(/^\/api\/agents\/([^/]+)\/dispatch$/, async (req, sendJson) => {
     const agent = agents.get(req.params.id);
     if (!agent) {
       sendJson({ error: 'Agent not found' }, 404);
@@ -589,7 +653,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     }
 
     // No usable session — spawn a fresh one with the message as the prompt.
-    if (!spawnAgentSession(agent, message, { model, permissionMode }, ctx, sendJson)) {
+    if (!(await spawnAgentSession(agent, message, { model, permissionMode }, ctx, sendJson))) {
       return;
     }
     sendJson({ success: true, mode: 'start', previousStatus, agent: { id: agent.id, name: agent.name, status: agent.status } });
@@ -663,7 +727,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       // Auto-respawn: start a fresh one-shot claude session using the message
       // as the prompt, identical to the /start path.  This ensures send_message
       // and delegate_task reconnect transparently instead of timing out.
-      if (!spawnAgentSession(agent, message, {}, ctx, sendJson)) {
+      if (!(await spawnAgentSession(agent, message, {}, ctx, sendJson))) {
         return;
       }
       sendJson({ success: true });

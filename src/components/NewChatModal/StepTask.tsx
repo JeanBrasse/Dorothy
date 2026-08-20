@@ -27,6 +27,9 @@ interface StepTaskProps {
   selectedSkills: string[];
   useWorktree: boolean;
   onToggleWorktree: () => void;
+  /** Edit mode with an existing worktree: the branch can't be changed without
+   *  destructive git surgery, so lock the controls and say so. */
+  worktreeLocked?: boolean;
   branchName: string;
   onBranchNameChange: (name: string) => void;
   permissionMode: AgentPermissionMode;
@@ -62,6 +65,7 @@ const StepTask = React.memo(function StepTask({
   selectedSkills,
   useWorktree,
   onToggleWorktree,
+  worktreeLocked,
   branchName,
   onBranchNameChange,
   permissionMode,
@@ -190,10 +194,11 @@ const StepTask = React.memo(function StepTask({
                 <div className="p-3 rounded-lg border border-border-primary bg-bg-tertiary/30">
                   <div className="flex items-start gap-3">
                     <button
-                      onClick={onToggleWorktree}
+                      onClick={worktreeLocked ? undefined : onToggleWorktree}
+                      disabled={worktreeLocked}
                       className={`
                         mt-0.5 w-5 h-5 rounded border flex items-center justify-center transition-all shrink-0
-                        ${useWorktree
+                        ${worktreeLocked ? 'opacity-60 cursor-not-allowed ' : ''}${useWorktree
                           ? 'bg-accent-purple border-accent-purple'
                           : 'border-border-primary hover:border-accent-purple'
                         }
@@ -228,8 +233,14 @@ const StepTask = React.memo(function StepTask({
                                 value={branchName}
                                 onChange={(e) => onBranchNameChange(e.target.value.replace(/\s+/g, '-'))}
                                 placeholder="feature/my-task"
-                                className="w-full px-3 py-2 rounded-lg text-sm font-mono bg-bg-primary border border-border-primary focus:border-accent-blue focus:outline-none"
+                                disabled={worktreeLocked}
+                                className={`w-full px-3 py-2 rounded-lg text-sm font-mono bg-bg-primary border border-border-primary focus:border-accent-blue focus:outline-none ${worktreeLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
                               />
+                              {worktreeLocked && (
+                                <p className="text-xs text-text-muted mt-1.5">
+                                  The worktree of an existing agent can&apos;t be changed here. To move it to another branch, remove the agent and create a new one.
+                                </p>
+                              )}
                             </div>
                           </motion.div>
                         )}

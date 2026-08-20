@@ -1,4 +1,21 @@
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import type { AgentProvider, AppSettings, AgentPermissionMode, AgentEffort } from '../types';
+
+/**
+ * Synchronously read the persisted app settings. Providers use this in
+ * command/script builders that don't receive live settings (the same pattern
+ * initAgentPty and the automation handlers already use).
+ */
+export function readAppSettingsFromDisk(): Partial<AppSettings> {
+  try {
+    const settingsFile = path.join(os.homedir(), '.dorothy', 'app-settings.json');
+    return JSON.parse(fs.readFileSync(settingsFile, 'utf-8')) as Partial<AppSettings>;
+  } catch {
+    return {};
+  }
+}
 
 /**
  * Parameters for building an interactive (PTY) agent command.

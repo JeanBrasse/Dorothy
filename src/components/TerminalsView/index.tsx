@@ -49,7 +49,7 @@ export default function TerminalsView() {
   const [viewFullscreen, setViewFullscreen] = useState(false);
   const lastCustomTabRef = useRef<{ type: 'custom'; tabId: string } | null>(null);
   const [terminalFontSize, setTerminalFontSize] = useState(11);
-  const pendingStartRef = useRef<{ agentId: string; prompt: string; options?: { model?: string } } | null>(null);
+  const pendingStartRef = useRef<{ agentId: string; prompt: string; options?: { model?: string; provider?: import('@/types/electron').AgentProvider; localModel?: string } } | null>(null);
   const [terminalTheme, setTerminalTheme] = useState<'dark' | 'light'>('dark');
   const [terminalSettingsLoaded, setTerminalSettingsLoaded] = useState(!isElectron());
   // Remember last focused agent per custom tab so Ctrl+Tab restores focus where the user left it
@@ -311,11 +311,14 @@ export default function TerminalsView() {
     name?: string,
     secondaryProjectPath?: string,
     permissionMode?: 'normal' | 'auto' | 'bypass',
-    _provider?: string,
-    _localModel?: string,
-    _obsidianVaultPaths?: string[],
+    provider?: import('@/types/electron').AgentProvider,
+    localModel?: string,
+    obsidianVaultPaths?: string[],
     effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max',
+    orchestratorMode?: boolean,
+    cliPath?: string,
   ) => {
+    const resolvedModel = (provider !== 'local' && model && model !== 'default') ? model : undefined;
     const agent = await createAgent({
       projectPath,
       skills,
@@ -325,6 +328,12 @@ export default function TerminalsView() {
       secondaryProjectPath,
       permissionMode,
       effort,
+      provider,
+      model: resolvedModel,
+      localModel,
+      obsidianVaultPaths,
+      orchestratorMode,
+      cliPath,
     });
     // Auto-add to active custom tab
     if (tabManager.isCustomTabActive && tabManager.activeCustomTab) {
@@ -333,7 +342,7 @@ export default function TerminalsView() {
     // Defer start until the terminal for this agent is initialized.
     // The onTerminalReady callback will fire startAgent once xterm is ready.
     if (prompt) {
-      pendingStartRef.current = { agentId: agent.id, prompt, options: { model } };
+      pendingStartRef.current = { agentId: agent.id, prompt, options: { model: resolvedModel, provider, localModel } };
     }
     setShowNewChatModal(false);
   }, [createAgent, tabManager]);

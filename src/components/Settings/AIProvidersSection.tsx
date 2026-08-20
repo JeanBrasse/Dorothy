@@ -299,7 +299,7 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
         onApiKeyChange={(v) => onUpdateLocalSettings({ openRouterApiKey: v })}
         onApiKeyBlur={() => onSaveAppSettings({ openRouterApiKey: appSettings.openRouterApiKey })}
         models={['deepseek/deepseek-r1', 'moonshotai/kimi-k2', 'xiaomi/mimo-v2-pro', 'qwen/qwq-32b', 'openai/gpt-4.1', 'google/gemini-2.5-pro', '300+ more…']}
-        routingNote="Provider: openrouter — uses Claude CLI with ANTHROPIC_BASE_URL=https://openrouter.ai/api/v1"
+        routingNote="Provider: openrouter — Claude CLI with ANTHROPIC_BASE_URL=https://openrouter.ai/api (Anthropic-compatible)."
       />
 
       {/* DeepSeek */}
@@ -314,7 +314,7 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
         onApiKeyChange={(v) => onUpdateLocalSettings({ deepSeekApiKey: v })}
         onApiKeyBlur={() => onSaveAppSettings({ deepSeekApiKey: appSettings.deepSeekApiKey })}
         models={['deepseek/deepseek-r1', 'deepseek/deepseek-chat', 'deepseek/deepseek-r1-distill-llama-70b']}
-        routingNote="Provider: deepseek — direct via https://api.deepseek.com/v1. Falls back to OpenRouter key if no DeepSeek key set."
+        routingNote="Provider: deepseek — direct via https://api.deepseek.com/anthropic (Anthropic-compatible). Falls back to OpenRouter if no DeepSeek key set."
       />
 
       {/* Moonshot / Kimi */}
@@ -329,7 +329,7 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
         onApiKeyChange={(v) => onUpdateLocalSettings({ moonshotApiKey: v })}
         onApiKeyBlur={() => onSaveAppSettings({ moonshotApiKey: appSettings.moonshotApiKey })}
         models={['moonshotai/kimi-k2', 'moonshotai/moonlight-16k', 'moonshotai/kimi-vl-a3b-thinking']}
-        routingNote="Provider: moonshot — direct via https://api.moonshot.cn/v1. Falls back to OpenRouter key if no Moonshot key set."
+        routingNote="Provider: moonshot — direct via https://api.moonshot.ai/anthropic (Anthropic-compatible). Falls back to OpenRouter if no Moonshot key set."
       />
 
       {/* Xiaomi MiMo */}
@@ -344,7 +344,7 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
         onApiKeyChange={(v) => onUpdateLocalSettings({ mimoApiKey: v })}
         onApiKeyBlur={() => onSaveAppSettings({ mimoApiKey: appSettings.mimoApiKey })}
         models={['xiaomi/mimo-v2-pro', 'xiaomi/mimo-v2-flash', 'xiaomi/mimo-v2-omni']}
-        routingNote="Provider: mimo — direct via https://api.mimo.com/v1. Falls back to OpenRouter key if no MiMo key set."
+        routingNote="Provider: mimo — no Anthropic-compatible endpoint: requests always route via your OpenRouter key."
       />
 
       {/* Alibaba Qwen */}
@@ -359,7 +359,7 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
         onApiKeyChange={(v) => onUpdateLocalSettings({ qwenApiKey: v })}
         onApiKeyBlur={() => onSaveAppSettings({ qwenApiKey: appSettings.qwenApiKey })}
         models={['qwen/qwq-32b', 'qwen/qwen-2.5-72b-instruct', 'qwen/qwen-2.5-coder-32b-instruct', 'qwen/qwen3-235b-a22b']}
-        routingNote="Provider: qwen — direct via https://dashscope.aliyuncs.com/compatible-mode/v1. Falls back to OpenRouter key if no Qwen key set."
+        routingNote="Provider: qwen — no Anthropic-compatible endpoint: requests always route via your OpenRouter key."
       />
 
       {/* Zai GLM */}
@@ -374,13 +374,13 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
         onApiKeyChange={(v) => onUpdateLocalSettings({ zhipuApiKey: v })}
         onApiKeyBlur={() => onSaveAppSettings({ zhipuApiKey: appSettings.zhipuApiKey })}
         models={['zhipuai/glm-4.6', 'zhipuai/glm-4.5', 'zhipuai/glm-4-plus', 'zhipuai/glm-4-air', 'zhipuai/glm-4-flash']}
-        routingNote="Provider: zai — direct via https://open.bigmodel.cn/api/paas/v4/. Falls back to OpenRouter key if no Zai key set."
+        routingNote="Provider: zhipu — direct via https://open.bigmodel.cn/api/anthropic (Anthropic-compatible). Falls back to OpenRouter if no Zhipu key set."
       />
 
       {/* MiniMax */}
       <ProviderCard
         title="MiniMax"
-        description="ABAB series — MiniMax's flagship models for code and reasoning."
+        description="MiniMax M-series — agentic flagship models for code and reasoning."
         docsUrl="https://www.minimax.chat/platform"
         enabled={!!appSettings.minimaxEnabled}
         onToggle={() => onSaveAppSettings({ minimaxEnabled: !appSettings.minimaxEnabled })}
@@ -388,8 +388,8 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
         apiKeyPlaceholder="..."
         onApiKeyChange={(v) => onUpdateLocalSettings({ minimaxApiKey: v })}
         onApiKeyBlur={() => onSaveAppSettings({ minimaxApiKey: appSettings.minimaxApiKey })}
-        models={['minimax/abab7', 'minimax/abab6.5s', 'minimax/abab5.5']}
-        routingNote="Provider: minimax — direct via https://api.minimax.chat/v1. Falls back to OpenRouter key if no MiniMax key set."
+        models={['minimax/minimax-m2', 'minimax/minimax-m1', 'minimax/minimax-01']}
+        routingNote="Provider: minimax — direct via https://api.minimax.io/anthropic (Anthropic-compatible). Falls back to OpenRouter if no MiniMax key set."
       />
 
       {/* Routing note */}

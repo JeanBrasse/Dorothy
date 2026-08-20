@@ -21,13 +21,13 @@ export interface CLIPathsHandlerDependencies {
  * Detect CLI paths from the system.
  * If savedPaths is provided, manually-set paths are checked first and used if the binary exists.
  */
-async function detectCLIPaths(savedPaths?: Partial<CLIPaths>): Promise<{ claude: string; codex: string; gemini: string; grok: string; opencode: string; pi: string; gws: string; gcloud: string; gh: string; node: string; minimax: string }> {
+async function detectCLIPaths(savedPaths?: Partial<CLIPaths>): Promise<{ claude: string; codex: string; gemini: string; grok: string; qwencode: string; opencode: string; pi: string; gws: string; gcloud: string; gh: string; node: string; minimax: string }> {
   const homeDir = os.homedir();
-  const paths = { claude: '', codex: '', gemini: '', grok: '', opencode: '', pi: '', gws: '', gcloud: '', gh: '', node: '', minimax: '' };
+  const paths = { claude: '', codex: '', gemini: '', grok: '', qwencode: '', opencode: '', pi: '', gws: '', gcloud: '', gh: '', node: '', minimax: '' };
 
   // If a user manually set a path in settings, use it if the binary exists
   if (savedPaths) {
-    const cliKeys = ['claude', 'codex', 'gemini', 'grok', 'opencode', 'pi', 'gws', 'gcloud', 'gh', 'node', 'minimax'] as const;
+    const cliKeys = ['claude', 'codex', 'gemini', 'grok', 'qwencode', 'opencode', 'pi', 'gws', 'gcloud', 'gh', 'node', 'minimax'] as const;
     for (const key of cliKeys) {
       const savedPath = savedPaths[key];
       if (savedPath && fs.existsSync(savedPath)) {
@@ -308,6 +308,27 @@ async function detectCLIPaths(savedPaths?: Partial<CLIPaths>): Promise<{ claude:
       });
       if (stdout.trim()) {
         paths.node = stdout.trim();
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  // Check for Qwen Code (Alibaba) — the CLI installs as `qwen`
+  if (!paths.qwencode) for (const dir of commonPaths) {
+    const qwenPath = path.join(dir, 'qwen');
+    if (fs.existsSync(qwenPath)) {
+      paths.qwencode = qwenPath;
+      break;
+    }
+  }
+  if (!paths.qwencode) {
+    try {
+      const { stdout } = await execAsync('which qwen', {
+        env: { ...process.env, PATH: `${commonPaths.join(':')}:${process.env.PATH}` },
+      });
+      if (stdout.trim()) {
+        paths.qwencode = stdout.trim();
       }
     } catch {
       // Ignore

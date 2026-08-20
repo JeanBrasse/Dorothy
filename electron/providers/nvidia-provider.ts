@@ -11,8 +11,7 @@ import type {
   HookConfig,
 } from './cli-provider';
 
-const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
-const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api'; // claude appends /v1/messages
 
 export class NvidiaProvider implements CLIProvider {
   readonly id = 'nvidia' as const;
@@ -105,10 +104,9 @@ export class NvidiaProvider implements CLIProvider {
       CLAUDE_PROVIDER: this.id,
     };
 
-    if (appSettings?.nvidiaApiKey) {
-      vars.ANTHROPIC_BASE_URL = NVIDIA_BASE_URL;
-      vars.ANTHROPIC_API_KEY = appSettings.nvidiaApiKey;
-    } else if (appSettings?.openRouterApiKey) {
+    // This vendor has no Anthropic-compatible endpoint; the claude binary
+    // can only reach its models through OpenRouter.
+    if (appSettings?.openRouterApiKey) {
       vars.ANTHROPIC_BASE_URL = OPENROUTER_BASE_URL;
       vars.ANTHROPIC_API_KEY = appSettings.openRouterApiKey;
     }
@@ -198,6 +196,9 @@ export PATH="${params.binaryDir}:$PATH"
 cd "${params.projectPath}"
 echo "=== Task started at $(date) ===" >> "${params.logPath}"
 unset CLAUDECODE
+export CLAUDE_PROVIDER="nvidia"
+export ANTHROPIC_BASE_URL="https://openrouter.ai/api"
+export ANTHROPIC_API_KEY="$(jq -r '.openRouterApiKey // empty' "$HOME/.dorothy/app-settings.json")"
 "${params.binaryPath}" ${flags} --output-format stream-json --verbose --mcp-config "${params.mcpConfigPath}" --add-dir "${params.homeDir}/.dorothy" -p '${promptWithSkills}' >> "${params.logPath}" 2>&1
 echo "=== Task completed at $(date) ===" >> "${params.logPath}"
 `;

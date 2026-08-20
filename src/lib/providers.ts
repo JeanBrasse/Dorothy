@@ -10,6 +10,7 @@ import type { AgentProvider } from '@/types/electron';
 export type ProviderIconDef =
   | { type: 'image'; src: string }
   | { type: 'svg-gemini' }
+  | { type: 'svg-grok' }
   | { type: 'svg-openrouter' }
   | { type: 'svg-deepseek' }
   | { type: 'svg-moonshot' }
@@ -100,7 +101,7 @@ export const PROVIDER_REGISTRY: ProviderDef[] = [
   {
     id: 'grok',
     label: 'Grok',
-    icon: { type: 'text', content: 'GR' },
+    icon: { type: 'svg-grok' },
     accent: 'foreground',
     badgeClass: 'bg-neutral-500/15 text-neutral-700 dark:text-neutral-300',
     requiresCli: true,
@@ -228,13 +229,12 @@ export const PROVIDER_REGISTRY: ProviderDef[] = [
     icon: { type: 'svg-minimax' },
     accent: 'rose-500',
     badgeClass: 'bg-rose-500/15 text-rose-600 dark:text-rose-400',
-    requiresCli: true,
     models: [
-      { id: 'minimax/abab7', name: 'ABAB 7', description: 'Flagship' },
-      { id: 'minimax/abab6.5s', name: 'ABAB 6.5s', description: 'Fast' },
-      { id: 'minimax/abab5.5', name: 'ABAB 5.5', description: 'Balanced' },
+      { id: 'minimax/minimax-m2', name: 'MiniMax M2', description: 'Agentic flagship' },
+      { id: 'minimax/minimax-m1', name: 'MiniMax M1', description: 'Long-context reasoning' },
+      { id: 'minimax/minimax-01', name: 'MiniMax Text-01', description: 'Fast' },
     ],
-    defaultModel: 'minimax/abab7',
+    defaultModel: 'minimax/minimax-m2',
   },
   {
     id: 'nvidia',
@@ -264,6 +264,56 @@ export const PROVIDER_REGISTRY: ProviderDef[] = [
     defaultModel: 'nous/hermes-3-llama-3.1-405b',
   },
 ];
+
+
+/** Minimal shape of the app settings needed to compute provider availability. */
+interface ProviderAvailabilitySettings {
+  openRouterEnabled?: boolean;
+  openRouterApiKey?: string;
+  deepSeekEnabled?: boolean;
+  deepSeekApiKey?: string;
+  moonshotEnabled?: boolean;
+  moonshotApiKey?: string;
+  zhipuEnabled?: boolean;
+  zhipuApiKey?: string;
+  minimaxEnabled?: boolean;
+  minimaxApiKey?: string;
+}
+
+/**
+ * Single source of truth for "can this provider be selected?" — used by
+ * NewChatModal and Settings so the two can't diverge again.
+ *
+ * Semantics mirror the electron providers: deepseek/moonshot/zhipu/minimax
+ * have documented Anthropic-compatible direct endpoints (own key or OpenRouter
+ * fallback); qwen/mimo/nvidia/nous-portal have none and are reachable ONLY
+ * through OpenRouter.
+ */
+export function computeProviderAvailability(
+  paths: Record<string, string | undefined> | null | undefined,
+  settings: ProviderAvailabilitySettings | null | undefined,
+): Record<string, boolean> {
+  const viaOpenRouter = !!(settings?.openRouterEnabled && settings?.openRouterApiKey);
+  return {
+    claude: !!paths?.claude,
+    codex: !!paths?.codex,
+    gemini: !!paths?.gemini,
+    grok: !!paths?.grok,
+    qwencode: !!paths?.qwencode,
+    opencode: !!paths?.opencode,
+    pi: !!paths?.pi,
+    local: true,
+    openrouter: viaOpenRouter,
+    deepseek: !!(settings?.deepSeekEnabled && settings?.deepSeekApiKey) || viaOpenRouter,
+    moonshot: !!(settings?.moonshotEnabled && settings?.moonshotApiKey) || viaOpenRouter,
+    zhipu: !!(settings?.zhipuEnabled && settings?.zhipuApiKey) || viaOpenRouter,
+    minimax: !!(settings?.minimaxEnabled && settings?.minimaxApiKey) || viaOpenRouter,
+    qwen: viaOpenRouter,
+    mimo: viaOpenRouter,
+    nvidia: viaOpenRouter,
+    'nous-portal': viaOpenRouter,
+  };
+}
 
 /** Look up a provider definition by ID. */
 export function getProviderDef(id: string): ProviderDef | undefined {

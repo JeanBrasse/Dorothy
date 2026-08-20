@@ -7,6 +7,7 @@ import { X, ChevronRight, Play, Check } from 'lucide-react';
 import type { NewChatModalProps, AgentPersonaValues } from './types';
 import type { AgentProvider } from '@/types/electron';
 import { CHARACTER_OPTIONS } from './constants';
+import { computeProviderAvailability } from '@/lib/providers';
 import { useSkillInstall } from './hooks/useSkillInstall';
 import StepProject from './StepProject';
 import StepModel from './StepModel';
@@ -113,6 +114,10 @@ export default function NewChatModal({
   const [installedProviders, setInstalledProviders] = useState<Record<string, boolean>>({ claude: true, codex: true, gemini: true, grok: true, opencode: true, pi: true });
   const [cliPath, setCliPath] = useState('');
   const agentPersonaRef = useRef<AgentPersonaValues>({ character: 'robot', name: '' });
+  // Armed when the open-effect programmatically changes the provider (edit
+  // prepopulation) so the provider-change effect doesn't wipe the agent's
+  // pre-filled skills.
+  const skipNextSkillsClear = useRef(false);
 
   // Step 3: Tools
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
@@ -172,6 +177,9 @@ export default function NewChatModal({
         setCustomSecondaryPath('');
         setPermissionMode(editAgent.permissionMode ?? (editAgent.skipPermissions ? 'auto' : 'normal'));
         setEffort(editAgent.effort || 'medium');
+        if ((editAgent.provider || 'claude') !== provider) {
+          skipNextSkillsClear.current = true;
+        }
         setProvider(editAgent.provider || 'claude');
         setLocalModel(editAgent.localModel || '');
         setSelectedObsidianVaults(editAgent.obsidianVaultPaths || []);
@@ -239,23 +247,10 @@ export default function NewChatModal({
         window.electronAPI?.cliPaths?.detect(),
         window.electronAPI?.appSettings?.get(),
       ]).then(([paths, settings]) => {
-        const providers: Record<string, boolean> = {
-          claude: !!paths?.claude,
-          codex: !!paths?.codex,
-          gemini: !!paths?.gemini,
-          grok: !!(paths as Record<string, string> | undefined)?.grok,
-          opencode: !!(paths as Record<string, string> | undefined)?.opencode,
-          pi: !!(paths as Record<string, string> | undefined)?.pi,
-          // Non-CLI providers: available only when API key is configured
-          openrouter: !!(settings?.openRouterEnabled && settings?.openRouterApiKey),
-          deepseek: !!(settings?.deepSeekEnabled && settings?.deepSeekApiKey) || !!(settings?.openRouterEnabled && settings?.openRouterApiKey),
-          moonshot: !!(settings?.moonshotEnabled && settings?.moonshotApiKey) || !!(settings?.openRouterEnabled && settings?.openRouterApiKey),
-          mimo: !!(settings?.mimoEnabled && settings?.mimoApiKey) || !!(settings?.openRouterEnabled && settings?.openRouterApiKey),
-          qwen: !!(settings?.qwenEnabled && settings?.qwenApiKey) || !!(settings?.openRouterEnabled && settings?.openRouterApiKey),
-          zhipu: !!(settings?.zhipuEnabled && settings?.zhipuApiKey) || !!(settings?.openRouterEnabled && settings?.openRouterApiKey),
-          minimax: !!(settings?.minimaxEnabled && (settings?.minimaxApiKey || (settings?.openRouterEnabled && settings?.openRouterApiKey))),
-        };
-        setInstalledProviders(providers);
+        setInstalledProviders(computeProviderAvailability(
+          paths as Record<string, string | undefined> | undefined,
+          settings,
+        ));
       });
 
       // Fetch per-provider installed skills
@@ -265,8 +260,13 @@ export default function NewChatModal({
     }
   }, [open, initialProjectPath, initialStep, editAgent, initialOrchestrator]);
 
-  // Clear selected skills when provider changes
+  // Clear selected skills when the USER changes provider — not when edit-mode
+  // prepopulation does (that would wipe the agent's saved skills on open).
   useEffect(() => {
+    if (skipNextSkillsClear.current) {
+      skipNextSkillsClear.current = false;
+      return;
+    }
     setSelectedSkills([]);
   }, [provider]);
 
@@ -503,6 +503,7 @@ export default function NewChatModal({
                 selectedSkills={selectedSkills}
                 useWorktree={useWorktree}
                 onToggleWorktree={() => setUseWorktree(prev => !prev)}
+                worktreeLocked={isEditMode && !!editAgent?.branchName}
                 branchName={branchName}
                 onBranchNameChange={setBranchName}
                 permissionMode={permissionMode}
