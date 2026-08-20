@@ -314,7 +314,7 @@ export default function TerminalsView() {
     _provider?: string,
     _localModel?: string,
     _obsidianVaultPaths?: string[],
-    effort?: 'low' | 'medium' | 'high',
+    effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max',
   ) => {
     const agent = await createAgent({
       projectPath,

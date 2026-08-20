@@ -9,7 +9,7 @@ interface CreateAgentConfig {
   name?: string;
   secondaryProjectPath?: string;
   permissionMode?: 'normal' | 'auto' | 'bypass';
-  effort?: 'low' | 'medium' | 'high';
+  effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
   orchestratorMode?: boolean;
 }
 
@@ -78,7 +78,7 @@ export function useAgentActions({
     _provider?: string,
     _localModel?: string,
     _obsidianVaultPaths?: string[],
-    effort?: 'low' | 'medium' | 'high',
+    effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max',
     orchestratorMode?: boolean,
   ) => {
     try {

@@ -58,6 +58,7 @@ export const PROVIDER_REGISTRY: ProviderDef[] = [
     requiresCli: true,
     models: [
       { id: 'default', name: 'Default', description: 'Recommended' },
+      { id: 'fable', name: 'Fable', description: 'Most intelligent (Claude 5)' },
       { id: 'sonnet', name: 'Sonnet', description: 'Daily coding' },
       { id: 'opus', name: 'Opus', description: 'Complex reasoning' },
       { id: 'haiku', name: 'Haiku', description: 'Fast & efficient' },

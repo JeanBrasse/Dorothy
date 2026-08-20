@@ -122,6 +122,13 @@ const MODEL_PRICING: Record<string, {
   cache5mWritePerMTok: number;
   cache1hWritePerMTok: number;
 }> = {
+  // Fable 5 — Anthropic's most capable widely released model
+  'claude-fable-5': { inputPerMTok: 10, outputPerMTok: 50, cacheHitsPerMTok: 1.00, cache5mWritePerMTok: 12.50, cache1hWritePerMTok: 20 },
+  'fable': { inputPerMTok: 10, outputPerMTok: 50, cacheHitsPerMTok: 1.00, cache5mWritePerMTok: 12.50, cache1hWritePerMTok: 20 },
+  // Opus 5
+  'claude-opus-5': { inputPerMTok: 5, outputPerMTok: 25, cacheHitsPerMTok: 0.50, cache5mWritePerMTok: 6.25, cache1hWritePerMTok: 10 },
+  // Sonnet 5
+  'claude-sonnet-5': { inputPerMTok: 3, outputPerMTok: 15, cacheHitsPerMTok: 0.30, cache5mWritePerMTok: 3.75, cache1hWritePerMTok: 6 },
   // Opus 4.6
   'claude-opus-4-6-20250514': { inputPerMTok: 5, outputPerMTok: 25, cacheHitsPerMTok: 0.50, cache5mWritePerMTok: 6.25, cache1hWritePerMTok: 10 },
   'claude-opus-4-6': { inputPerMTok: 5, outputPerMTok: 25, cacheHitsPerMTok: 0.50, cache5mWritePerMTok: 6.25, cache1hWritePerMTok: 10 },

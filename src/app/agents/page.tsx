@@ -105,7 +105,7 @@ export default function AgentsPage() {
     provider?: AgentProvider,
     localModel?: string,
     obsidianVaultPaths?: string[],
-    effort?: 'low' | 'medium' | 'high',
+    effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max',
     orchestratorMode?: boolean,
     cliPath?: string,
   ) => {
@@ -123,10 +123,11 @@ export default function AgentsPage() {
   }, [createAgent, startAgent]);
 
   const handleUpdateAgent = useCallback(async (id: string, updates: {
+    projectPath?: string;
     skills?: string[];
     secondaryProjectPath?: string | null;
     permissionMode?: 'normal' | 'auto' | 'bypass';
-    effort?: 'low' | 'medium' | 'high';
+    effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
     name?: string;
     character?: AgentCharacter;
     model?: string | null;
@@ -136,6 +137,7 @@ export default function AgentsPage() {
     obsidianVaultPaths?: string[];
     worktree?: { enabled: boolean; branchName: string };
     orchestratorMode?: boolean;
+    cliPath?: string | null;
   }) => {
     try {
       await updateAgent({ id, ...updates });

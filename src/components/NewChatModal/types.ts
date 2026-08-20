@@ -59,6 +59,7 @@ export interface NewChatModalProps {
     cliPath?: string,
   ) => void;
   onUpdate?: (id: string, updates: {
+    projectPath?: string;
     skills?: string[];
     secondaryProjectPath?: string | null;
     permissionMode?: AgentPermissionMode;

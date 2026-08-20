@@ -720,6 +720,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
   // Update an agent (supports all editable fields)
   ipcMain.handle('agent:update', async (_event, params: {
     id: string;
+    projectPath?: string;
     skills?: string[];
     secondaryProjectPath?: string | null;
     permissionMode?: AgentPermissionMode;
@@ -741,6 +742,22 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
     }
 
     // Update fields if provided
+    if (params.projectPath !== undefined && params.projectPath !== agent.projectPath) {
+      if (!fs.existsSync(params.projectPath)) {
+        return { success: false, error: 'Project path does not exist' };
+      }
+      agent.projectPath = params.projectPath;
+      agent.pathMissing = false;
+      // The old worktree belongs to the previous repository — detach it so the
+      // agent works directly in the new project (a new worktree can be set up
+      // via the worktree param below).
+      agent.worktreePath = undefined;
+      agent.branchName = undefined;
+      // BUG 4: any live PTY still has the old repo as cwd.
+      killStalePty(agent);
+      agent.status = 'idle';
+      agent.currentTask = undefined;
+    }
     if (params.skills !== undefined) {
       agent.skills = params.skills;
     }

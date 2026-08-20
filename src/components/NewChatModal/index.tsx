@@ -126,7 +126,7 @@ export default function NewChatModal({
   const [useWorktree, setUseWorktree] = useState(false);
   const [branchName, setBranchName] = useState('');
   const [permissionMode, setPermissionMode] = useState<'normal' | 'auto' | 'bypass'>('normal');
-  const [effort, setEffort] = useState<'low' | 'medium' | 'high'>('medium');
+  const [effort, setEffort] = useState<'low' | 'medium' | 'high' | 'xhigh' | 'max'>('medium');
   const [isOrchestrator, setIsOrchestrator] = useState(false);
 
   const projectPath = selectedProject || customPath;
@@ -356,6 +356,7 @@ export default function NewChatModal({
         ? { enabled: true, branchName: branchName.trim() }
         : undefined;
       onUpdate(editAgent.id, {
+        projectPath,
         skills: selectedSkills,
         secondaryProjectPath: secondaryPath || null,
         permissionMode,

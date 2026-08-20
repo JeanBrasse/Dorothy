@@ -35,7 +35,7 @@ export type AgentPermissionMode = 'normal' | 'auto' | 'bypass';
  * - medium: default balanced mode
  * - high: extended thinking (--think flag)
  */
-export type AgentEffort = 'low' | 'medium' | 'high';
+export type AgentEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 export interface AgentStatus {
   id: string;

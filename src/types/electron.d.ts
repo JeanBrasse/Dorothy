@@ -163,7 +163,7 @@ export interface AgentStatus {
   /** @deprecated Use permissionMode instead */
   skipPermissions?: boolean;
   permissionMode?: 'normal' | 'auto' | 'bypass';
-  effort?: 'low' | 'medium' | 'high';
+  effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
   /** Orchestrator mode: agent cannot edit files directly; must delegate. */
   orchestratorMode?: boolean;
   provider?: AgentProvider;   // 'claude' (default) or 'local' (Tasmania)
@@ -189,7 +189,7 @@ export interface AgentTemplate {
   model?: string;
   localModel?: string;
   permissionMode: 'normal' | 'auto' | 'bypass';
-  effort?: 'low' | 'medium' | 'high';
+  effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
   skills: string[];
   obsidianVaultPaths?: string[];
   savedPrompt?: string;
@@ -207,7 +207,7 @@ export interface AgentTemplateInput {
   model?: string;
   localModel?: string;
   permissionMode?: 'normal' | 'auto' | 'bypass';
-  effort?: 'low' | 'medium' | 'high';
+  effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
   skills?: string[];
   obsidianVaultPaths?: string[];
   savedPrompt?: string;
@@ -260,7 +260,7 @@ export interface ElectronAPI {
       name?: string;
       secondaryProjectPath?: string;
       permissionMode?: 'normal' | 'auto' | 'bypass';
-      effort?: 'low' | 'medium' | 'high';
+      effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
       provider?: AgentProvider;
       localModel?: string;
       obsidianVaultPaths?: string[];
@@ -268,13 +268,21 @@ export interface ElectronAPI {
     }) => Promise<AgentStatus & { ptyId: string }>;
     update: (params: {
       id: string;
+      projectPath?: string;
       skills?: string[];
       secondaryProjectPath?: string | null;
       permissionMode?: 'normal' | 'auto' | 'bypass';
-      effort?: 'low' | 'medium' | 'high';
+      effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
       name?: string;
       character?: AgentCharacter;
+      model?: string | null;
+      provider?: AgentProvider;
+      localModel?: string | null;
+      savedPrompt?: string | null;
+      obsidianVaultPaths?: string[];
+      worktree?: WorktreeConfig;
       orchestratorMode?: boolean;
+      cliPath?: string | null;
     }) => Promise<{ success: boolean; error?: string; agent?: AgentStatus }>;
     start: (params: { id: string; prompt: string; options?: { model?: string; resume?: boolean; provider?: AgentProvider; localModel?: string } }) => Promise<{ success: boolean }>;
     get: (id: string) => Promise<AgentStatus | null>;

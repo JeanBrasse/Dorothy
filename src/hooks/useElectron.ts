@@ -54,7 +54,7 @@ export function useElectronAgents() {
     name?: string;
     secondaryProjectPath?: string;
     permissionMode?: 'normal' | 'auto' | 'bypass';
-    effort?: 'low' | 'medium' | 'high';
+    effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
     provider?: AgentProvider;
     model?: string;
     localModel?: string;
@@ -73,10 +73,11 @@ export function useElectronAgents() {
   // Update an agent
   const updateAgent = useCallback(async (params: {
     id: string;
+    projectPath?: string;
     skills?: string[];
     secondaryProjectPath?: string | null;
     permissionMode?: 'normal' | 'auto' | 'bypass';
-    effort?: 'low' | 'medium' | 'high';
+    effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
     name?: string;
     character?: AgentCharacter;
     model?: string | null;

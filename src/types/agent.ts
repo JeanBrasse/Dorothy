@@ -10,7 +10,7 @@ export interface AgentConfig {
 export type AgentCharacter = 'robot' | 'ninja' | 'wizard' | 'astronaut' | 'knight' | 'pirate' | 'alien' | 'viking' | 'frog';
 
 export type AgentPermissionMode = 'normal' | 'auto' | 'bypass';
-export type AgentEffort = 'low' | 'medium' | 'high';
+export type AgentEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 export interface AgentStatus {
   id: string;

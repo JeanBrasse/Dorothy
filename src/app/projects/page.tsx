@@ -333,7 +333,7 @@ export default function ProjectsPage() {
     _provider?: string,
     _localModel?: string,
     _obsidianVaultPaths?: string[],
-    effort?: 'low' | 'medium' | 'high',
+    effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max',
   ) => {
     try {
       const agent = await createAgent({

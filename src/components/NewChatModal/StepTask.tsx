@@ -52,6 +52,8 @@ const EFFORT_LEVELS: { value: AgentEffort; label: string; description: string }[
   { value: 'low',    label: 'Low',    description: 'Fast, minimal' },
   { value: 'medium', label: 'Medium', description: 'Balanced (default)' },
   { value: 'high',   label: 'High',   description: 'Extended reasoning' },
+  { value: 'xhigh',  label: 'X-High', description: 'Deep reasoning' },
+  { value: 'max',    label: 'Max',    description: 'Maximum reasoning' },
 ];
 
 const StepTask = React.memo(function StepTask({
@@ -165,20 +167,20 @@ const StepTask = React.memo(function StepTask({
                     <Gauge className="w-4 h-4 text-text-muted" />
                     Effort
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-5 gap-2">
                     {EFFORT_LEVELS.map(({ value, label, description }) => (
                       <button
                         key={value}
                         onClick={() => onEffortChange(value)}
-                        className={`p-3 rounded-lg border transition-all text-center
+                        className={`p-2 rounded-lg border transition-all text-center
                           ${effort === value
                             ? 'border-accent-blue bg-accent-blue/10'
                             : 'border-border-primary hover:border-border-accent'
                           }`}
                       >
-                        <Gauge className={`w-5 h-5 mx-auto mb-1 ${effort === value ? 'text-accent-blue' : 'text-text-muted'}`} />
-                        <span className="font-medium block">{label}</span>
-                        <p className="text-xs text-text-muted mt-0.5">{description}</p>
+                        <Gauge className={`w-4 h-4 mx-auto mb-1 ${effort === value ? 'text-accent-blue' : 'text-text-muted'}`} />
+                        <span className="font-medium block text-sm">{label}</span>
+                        <p className="text-[10px] text-text-muted mt-0.5 leading-tight">{description}</p>
                       </button>
                     ))}
                   </div>
