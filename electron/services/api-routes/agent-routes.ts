@@ -92,6 +92,13 @@ function spawnAgentSession(
     command += ` --model '${resolvedModel}'`;
   }
 
+  // Effort level — supported by the claude binary (which all ANTHROPIC-env
+  // alt providers run under the hood); other CLIs don't take the flag.
+  // Mirrors claude-provider.buildInteractiveCommand: 'medium' is the default.
+  if (agent.effort && agent.effort !== 'medium' && cliProvider.binaryName === 'claude') {
+    command += ` --effort ${agent.effort}`;
+  }
+
   // Load ~/.dorothy/CLAUDE.md (autonomy rules) exactly like UI-spawned agents
   // do — without it, delegated agents ask for confirmations and get stuck in
   // 'waiting' inside a hidden PTY.
