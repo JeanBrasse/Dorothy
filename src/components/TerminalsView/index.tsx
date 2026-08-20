@@ -207,6 +207,12 @@ export default function TerminalsView() {
     }
   }, [stopAgent, removeAgent, multiTerminal, tabManager]);
 
+  const handleAddAgentsToTab = useCallback((agentIds: string[]) => {
+    if (tabManager.isCustomTabActive && tabManager.activeCustomTab) {
+      tabManager.addAgentsToTab(tabManager.activeCustomTab.id, agentIds);
+    }
+  }, [tabManager]);
+
   const handleAddAgentToTab = useCallback((agentId: string) => {
     if (tabManager.activeCustomTab) {
       tabManager.addAgentToTab(tabManager.activeCustomTab.id, agentId);
@@ -407,6 +413,7 @@ export default function TerminalsView() {
           allAgents={agents}
           currentTabAgentIds={currentTabAgentIds}
           onAddAgentToTab={handleAddAgentToTab}
+            onAddAgentsToTab={handleAddAgentsToTab}
           disabledPresets={disabledPresets}
         />
 

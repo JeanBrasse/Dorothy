@@ -36,6 +36,7 @@ interface GlobalToolbarProps {
   allAgents: AgentStatus[];
   currentTabAgentIds: string[];
   onAddAgentToTab: (agentId: string) => void;
+  onAddAgentsToTab?: (agentIds: string[]) => void;
   disabledPresets: LayoutPreset[];
 }
 
@@ -59,6 +60,7 @@ export default function GlobalToolbar({
   allAgents,
   currentTabAgentIds,
   onAddAgentToTab,
+  onAddAgentsToTab,
   disabledPresets,
 }: GlobalToolbarProps) {
   return (
@@ -184,6 +186,7 @@ export default function GlobalToolbar({
             allAgents={allAgents}
             currentTabAgentIds={currentTabAgentIds}
             onAddAgent={onAddAgentToTab}
+            onAddAgents={onAddAgentsToTab}
             onCreateAgent={onNewAgent}
           />
         )}

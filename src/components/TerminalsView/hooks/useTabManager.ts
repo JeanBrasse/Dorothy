@@ -162,6 +162,30 @@ export function useTabManager({ existingAgentIds, isLoading }: UseTabManagerOpti
     });
   }, []);
 
+  /** Bulk membership: add every agent of a project (or any set) in one state
+   *  update, with a single layout auto-upgrade at the end. */
+  const addAgentsToTab = useCallback((tabId: string, agentIds: string[]) => {
+    setState(prev => {
+      const tab = prev.customTabs.find(t => t.id === tabId);
+      if (!tab) return prev;
+      const toAdd = agentIds.filter(id => !tab.agentIds.includes(id));
+      if (toAdd.length === 0) return prev;
+
+      const newAgentIds = [...tab.agentIds, ...toAdd];
+      let newLayout = tab.layout;
+      if (newAgentIds.length > LAYOUT_PRESETS[newLayout].maxPanels) {
+        newLayout = getAutoLayout(newAgentIds.length);
+      }
+
+      return {
+        ...prev,
+        customTabs: prev.customTabs.map(t =>
+          t.id === tabId ? { ...t, agentIds: newAgentIds, layout: newLayout } : t
+        ),
+      };
+    });
+  }, []);
+
   const removeAgentFromTab = useCallback((tabId: string, agentId: string) => {
     setState(prev => ({
       ...prev,
@@ -215,6 +239,7 @@ export function useTabManager({ existingAgentIds, isLoading }: UseTabManagerOpti
     renameTab,
     reorderTabs,
     addAgentToTab,
+    addAgentsToTab,
     removeAgentFromTab,
     setTabLayout,
     setActiveTab,

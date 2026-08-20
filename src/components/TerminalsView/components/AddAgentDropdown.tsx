@@ -6,6 +6,8 @@ import type { AgentStatus } from '@/types/electron';
 import { CHARACTER_FACES, STATUS_COLORS } from '../constants';
 
 interface AddAgentDropdownProps {
+  /** Bulk add — every listed agent of a project in one click. */
+  onAddAgents?: (agentIds: string[]) => void;
   allAgents: AgentStatus[];
   currentTabAgentIds: string[];
   onAddAgent: (agentId: string) => void;
@@ -13,6 +15,7 @@ interface AddAgentDropdownProps {
 }
 
 export default function AddAgentDropdown({
+  onAddAgents,
   allAgents,
   currentTabAgentIds,
   onAddAgent,
@@ -107,9 +110,20 @@ export default function AddAgentDropdown({
           ) : (
             groups.map(group => (
               <div key={group.projectPath}>
-                {/* Project header */}
-                <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground bg-primary/5 font-medium">
-                  {group.projectName}
+                {/* Project header — click "Add all" to pull the whole team in */}
+                <div className="flex items-center justify-between px-3 py-1.5 bg-primary/5">
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                    {group.projectName}
+                  </span>
+                  {onAddAgents && group.agents.length > 1 && (
+                    <button
+                      onClick={() => { onAddAgents(group.agents.map(a => a.id)); setOpen(false); }}
+                      className="text-[10px] font-medium text-primary hover:underline"
+                      title={`Add all ${group.agents.length} agents of ${group.projectName}`}
+                    >
+                      + Add all ({group.agents.length})
+                    </button>
+                  )}
                 </div>
 
                 {/* Agent rows */}
