@@ -3,7 +3,10 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronDown, Plus, Search } from 'lucide-react';
 import type { AgentStatus } from '@/types/electron';
-import { CHARACTER_FACES, STATUS_COLORS } from '../constants';
+import { CHARACTER_FACES, STATUS_COLORS, LAYOUT_PRESETS } from '../constants';
+
+// Largest grid the board can render (3x3); agents beyond it are never shown.
+const MAX_BOARD_PANELS = Math.max(...Object.values(LAYOUT_PRESETS).map(p => p.maxPanels));
 
 interface AddAgentDropdownProps {
   /** Bulk add — every listed agent of a project in one click. */
@@ -115,15 +118,28 @@ export default function AddAgentDropdown({
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                     {group.projectName}
                   </span>
-                  {onAddAgents && group.agents.length > 1 && (
-                    <button
-                      onClick={() => { onAddAgents(group.agents.map(a => a.id)); setOpen(false); }}
-                      className="text-[10px] font-medium text-primary hover:underline"
-                      title={`Add all ${group.agents.length} agents of ${group.projectName}`}
-                    >
-                      + Add all ({group.agents.length})
-                    </button>
-                  )}
+                  {onAddAgents && group.agents.length > 1 && (() => {
+                    const capacity = Math.max(0, MAX_BOARD_PANELS - currentTabAgentIds.length);
+                    const addable = Math.min(group.agents.length, capacity);
+                    if (addable === 0) {
+                      return (
+                        <span className="text-[10px] text-muted-foreground" title={`Board is full (${MAX_BOARD_PANELS} max)`}>
+                          board full
+                        </span>
+                      );
+                    }
+                    return (
+                      <button
+                        onClick={() => { onAddAgents(group.agents.slice(0, addable).map(a => a.id)); setOpen(false); }}
+                        className="text-[10px] font-medium text-primary hover:underline"
+                        title={addable < group.agents.length
+                          ? `Board holds ${MAX_BOARD_PANELS} max — adds the first ${addable} of ${group.agents.length}`
+                          : `Add all ${group.agents.length} agents of ${group.projectName}`}
+                      >
+                        {addable < group.agents.length ? `+ Add first ${addable}` : `+ Add all (${group.agents.length})`}
+                      </button>
+                    );
+                  })()}
                 </div>
 
                 {/* Agent rows */}

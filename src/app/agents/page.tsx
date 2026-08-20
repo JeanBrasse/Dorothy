@@ -165,9 +165,10 @@ export default function AgentsPage() {
   const handleSaveAsTemplate = useCallback(async (agentId: string) => {
     const agent = agents.find(a => a.id === agentId);
     if (!agent) return;
-    const suggested = agent.name?.trim() || `Agent ${agent.id.slice(0, 4)}`;
-    const name = window.prompt('Save as template — name?', suggested);
-    if (!name?.trim()) return;
+    // window.prompt throws in Electron renderers; confirm() works. The name
+    // can be edited afterwards in the Templates manager.
+    const name = agent.name?.trim() || `Agent ${agent.id.slice(0, 4)}`;
+    if (!window.confirm(`Save "${name}" as a template? (You can rename it in Templates.)`)) return;
     const result = await createTemplate({
       displayName: name.trim(),
       description: `Saved from agent "${agent.name ?? ''}"`.trim(),

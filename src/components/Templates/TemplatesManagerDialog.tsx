@@ -20,7 +20,7 @@ interface TemplatesManagerDialogProps {
 
 export function TemplatesManagerDialog({ open, onClose }: TemplatesManagerDialogProps) {
   const router = useRouter();
-  const { builtinTemplates, userTemplates, isLoading, create, update, remove, duplicate, exportTemplates, importTemplates } = useElectronTemplates();
+  const { builtinTemplates, userTemplates, isLoading, refresh: refreshTemplates, create, update, remove, duplicate, exportTemplates, importTemplates } = useElectronTemplates();
   const { installedSkills, refresh: refreshSkills } = useElectronSkills();
 
   const [instantiateTarget, setInstantiateTarget] = useState<AgentTemplate | null>(null);
@@ -36,8 +36,11 @@ export function TemplatesManagerDialog({ open, onClose }: TemplatesManagerDialog
 
   useEffect(() => {
     if (!open) return;
+    // The dialog stays mounted on the Agents page, so refetch on every open —
+    // templates saved elsewhere (e.g. "Save as template" on a card) must show.
+    refreshTemplates();
     fetchSkillsFromMarketplace().then(s => { if (s) setLiveSkills(s); }).catch(() => {});
-  }, [open]);
+  }, [open, refreshTemplates]);
 
   // Escape closes the manager — but only when no nested dialog is open,
   // otherwise both layers would close on one keypress.
@@ -109,7 +112,7 @@ export function TemplatesManagerDialog({ open, onClose }: TemplatesManagerDialog
   return (
     <div
       className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 flex items-center justify-center p-4"
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-card border border-border w-full max-w-5xl max-h-[90vh] flex flex-col">
         <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3">

@@ -319,8 +319,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
     // Each provider may have env vars to delete; always delete CLAUDECODE for Claude
     delete cleanEnv['CLAUDECODE'];
 
-    // Always include world-builder skill so agents can generate game zones
-    const allSkills = [...new Set([...config.skills, 'world-builder'])];
+    const allSkills = [...new Set(config.skills)];
 
     // Get provider-specific env vars
     const agentProvider = getProvider(config.provider);
@@ -634,7 +633,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       }
     }
 
-    const allAgentSkills = [...new Set([...(agent.skills || []), 'world-builder'])];
+    const allAgentSkills = [...new Set(agent.skills || [])];
 
     const resolvedModel = (provider !== 'local') ? (options?.model || agent.model) : undefined;
 

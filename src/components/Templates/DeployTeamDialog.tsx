@@ -14,7 +14,7 @@ interface DeployTeamDialogProps {
 }
 
 export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialogProps) {
-  const { agents, createAgent } = useElectronAgents();
+  const { agents, createAgent, updateAgent } = useElectronAgents();
   const { projects, openFolderDialog } = useElectronFS();
   const { teams, create: createTeam, remove: removeTeam } = useElectronTeamTemplates();
 
@@ -25,6 +25,9 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
   const [progress, setProgress] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  // Non-null while the inline "save project as team" name input is showing.
+  // (window.prompt is not available in Electron renderers.)
+  const [pendingTeamName, setPendingTeamName] = useState<string | null>(null);
 
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -42,6 +45,7 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
       setProgress(null);
       setErrors([]);
       setSaveMessage(null);
+      setPendingTeamName(null);
     }
   }, [open]);
 
@@ -77,10 +81,18 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
     setDeploying(true);
     setErrors([]);
     const projectName = projectPath.split('/').pop() || 'project';
+    const existingNames = new Set(projectAgents.map(a => a.name));
     const createdIds: string[] = [];
-    const failed: string[] = [];
+    const issues: string[] = [];
 
     for (const member of selectedTeam.members) {
+      const agentName = `${member.name} — ${projectName}`;
+      // Re-deploying the same team must not double up agents: two agents with
+      // the same name would share one worktree/branch and fight over files.
+      if (existingNames.has(agentName)) {
+        issues.push(`${member.name}: already deployed on this project — skipped.`);
+        continue;
+      }
       setProgress(`Creating ${member.name}…`);
       try {
         const resolvedModel = member.provider !== 'local' && member.model && member.model !== 'default'
@@ -90,7 +102,7 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
           projectPath,
           skills: member.skills,
           character: member.character,
-          name: `${member.name} — ${projectName}`,
+          name: agentName,
           permissionMode: member.permissionMode,
           effort: member.effort,
           provider: member.provider,
@@ -102,49 +114,70 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
           orchestratorMode: member.orchestratorMode,
         });
         createdIds.push(agent.id);
+        // agent:create swallows git-worktree failures and falls back to the
+        // project root — surface that instead of reporting a clean deploy.
+        if (member.worktreeBranch && !agent.branchName) {
+          issues.push(`${member.name}: worktree "${member.worktreeBranch}" could not be created (not a git repo, or branch busy) — agent works in the project root.`);
+        }
+        if (member.savedPrompt?.trim()) {
+          await updateAgent({ id: agent.id, savedPrompt: member.savedPrompt });
+        }
       } catch (err) {
         console.error(`Failed to create team member "${member.name}":`, err);
-        failed.push(`${member.name}: ${err instanceof Error ? err.message : 'creation failed'}`);
+        issues.push(`${member.name}: ${err instanceof Error ? err.message : 'creation failed'}`);
       }
     }
 
     setProgress(null);
     setDeploying(false);
-    if (failed.length > 0) {
-      setErrors(failed);
-      if (createdIds.length > 0) onDeployed?.(createdIds);
+    if (issues.length > 0) {
+      setErrors(issues);
+      if (createdIds.length > 0) {
+        setSaveMessage(`${createdIds.length} agent${createdIds.length === 1 ? '' : 's'} created.`);
+        onDeployed?.(createdIds);
+      }
       return;
     }
     onDeployed?.(createdIds);
     onClose();
   }
 
-  async function handleSaveProjectAsTeam() {
-    if (!projectPath || projectAgents.length === 0) return;
+  async function handleConfirmSaveTeam() {
+    const name = pendingTeamName?.trim();
+    if (!projectPath || projectAgents.length === 0 || !name) return;
     const projectName = projectPath.split('/').pop() || 'project';
-    const name = window.prompt('Save this project\'s agents as a team — name?', `${projectName} team`);
-    if (!name?.trim()) return;
+    // Deployed agents are named "<role> — <project>"; strip the suffix so
+    // save→redeploy cycles don't accrete " — projA — projB" onto member names.
+    const suffix = ` — ${projectName}`;
 
-    const members: Partial<TeamTemplateMember>[] = projectAgents.map(a => ({
-      name: a.name || `Agent ${a.id.slice(0, 4)}`,
-      character: a.character,
-      provider: a.provider,
-      model: a.model,
-      localModel: a.localModel,
-      permissionMode: a.permissionMode ?? (a.skipPermissions ? 'auto' : 'normal'),
-      effort: a.effort,
-      skills: a.skills,
-      savedPrompt: a.savedPrompt,
-      worktreeBranch: a.branchName,
-      orchestratorMode: a.orchestratorMode,
-    }));
+    const members: Partial<TeamTemplateMember>[] = projectAgents.map(a => {
+      const rawName = a.name || `Agent ${a.id.slice(0, 4)}`;
+      return {
+        name: rawName.endsWith(suffix) ? rawName.slice(0, -suffix.length) : rawName,
+        character: a.character,
+        provider: a.provider,
+        model: a.model,
+        localModel: a.localModel,
+        permissionMode: a.permissionMode ?? (a.skipPermissions ? 'auto' : 'normal'),
+        effort: a.effort,
+        skills: a.skills,
+        savedPrompt: a.savedPrompt,
+        worktreeBranch: a.branchName,
+        orchestratorMode: a.orchestratorMode,
+      };
+    });
 
-    const result = await createTeam({ name: name.trim(), members });
-    if (result.success && result.team) {
-      setSelectedTeamId(result.team.id);
-      setSaveMessage(`Saved "${result.team.name}" (${members.length} member${members.length === 1 ? '' : 's'}).`);
-    } else {
-      setErrors([result.error ?? 'Failed to save team']);
+    try {
+      const result = await createTeam({ name, members });
+      if (result.success && result.team) {
+        setSelectedTeamId(result.team.id);
+        setSaveMessage(`Saved "${result.team.name}" (${members.length} member${members.length === 1 ? '' : 's'}).`);
+        setPendingTeamName(null);
+      } else {
+        setErrors([result.error ?? 'Failed to save team']);
+      }
+    } catch (err) {
+      setErrors([err instanceof Error ? err.message : 'Failed to save team']);
     }
   }
 
@@ -157,7 +190,7 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
   return (
     <div
       className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 flex items-center justify-center p-4"
-      onClick={e => { if (e.target === e.currentTarget && !deploying) onClose(); }}
+      onMouseDown={e => { if (e.target === e.currentTarget && !deploying) onClose(); }}
     >
       <div ref={dialogRef} className="bg-card border border-border w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
@@ -283,15 +316,46 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
         </div>
 
         <div className="px-5 py-3 border-t border-border flex items-center justify-between gap-2">
-          <button
-            onClick={handleSaveProjectAsTeam}
-            disabled={!projectPath || projectAgents.length === 0 || deploying}
-            title={projectPath ? `Save the ${projectAgents.length} agent(s) of this project as a reusable team` : 'Pick a project first'}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border bg-card text-foreground hover:bg-accent/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Save className="w-3 h-3" />
-            Save project as team{projectAgents.length > 0 ? ` (${projectAgents.length})` : ''}
-          </button>
+          {pendingTeamName !== null ? (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                autoFocus
+                value={pendingTeamName}
+                onChange={e => setPendingTeamName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleConfirmSaveTeam(); }}
+                placeholder="Team name"
+                maxLength={40}
+                className="px-2 py-1.5 bg-secondary border border-border text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/40 w-44"
+              />
+              <button
+                onClick={handleConfirmSaveTeam}
+                disabled={!pendingTeamName.trim()}
+                className="px-2.5 py-1.5 text-xs bg-foreground text-background font-medium hover:bg-foreground/90 disabled:opacity-40"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setPendingTeamName(null)}
+                className="px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                const projectName = projectPath?.split('/').pop() || 'project';
+                setPendingTeamName(`${projectName} team`);
+              }}
+              disabled={!projectPath || projectAgents.length === 0 || deploying}
+              title={projectPath ? `Save the ${projectAgents.length} agent(s) of this project as a reusable team` : 'Pick a project first'}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border bg-card text-foreground hover:bg-accent/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Save className="w-3 h-3" />
+              Save project as team{projectAgents.length > 0 ? ` (${projectAgents.length})` : ''}
+            </button>
+          )}
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}

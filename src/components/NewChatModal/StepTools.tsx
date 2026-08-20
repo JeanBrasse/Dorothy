@@ -209,6 +209,11 @@ const StepTools = React.memo(function StepTools({
 
         {/* Skills Card List */}
         <div className="border border-border rounded-lg overflow-hidden max-h-[280px] overflow-y-auto">
+          {filteredSkills.length === 0 && (
+            <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+              No skills match{selectedCategory ? ` "${selectedCategory}"` : ''}{skillSearch ? ` for "${skillSearch}"` : ''}.
+            </div>
+          )}
           {filteredSkills.map((skill) => {
             const isSelected = selectedSkills.includes(skill.name);
             const installedOnProvider = isSkillInstalled(skill.name);

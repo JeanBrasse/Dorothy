@@ -139,7 +139,9 @@ export async function setupMcpOrchestrator(appSettings?: AppSettings): Promise<v
  * provider's first skill directory so they're available to all agents.
  */
 async function installBundledSkills(): Promise<void> {
-  const bundledSkills = ['world-builder'];
+  // world-builder was removed along with the dorothy-world MCP server —
+  // its tools no longer exist, so it must not ship to agents anymore.
+  const bundledSkills: string[] = [];
   const providers = getAllProviders();
 
   for (const skillName of bundledSkills) {

@@ -163,12 +163,16 @@ export function useTabManager({ existingAgentIds, isLoading }: UseTabManagerOpti
   }, []);
 
   /** Bulk membership: add every agent of a project (or any set) in one state
-   *  update, with a single layout auto-upgrade at the end. */
+   *  update, with a single layout auto-upgrade at the end. Clamped to the
+   *  largest layout (3x3 = 9 panels) — members beyond that would be silently
+   *  unrendered by the grid. */
   const addAgentsToTab = useCallback((tabId: string, agentIds: string[]) => {
     setState(prev => {
       const tab = prev.customTabs.find(t => t.id === tabId);
       if (!tab) return prev;
-      const toAdd = agentIds.filter(id => !tab.agentIds.includes(id));
+      const maxPanels = Math.max(...Object.values(LAYOUT_PRESETS).map(p => p.maxPanels));
+      const capacity = Math.max(0, maxPanels - tab.agentIds.length);
+      const toAdd = agentIds.filter(id => !tab.agentIds.includes(id)).slice(0, capacity);
       if (toAdd.length === 0) return prev;
 
       const newAgentIds = [...tab.agentIds, ...toAdd];

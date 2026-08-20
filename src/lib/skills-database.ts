@@ -118,23 +118,39 @@ export const SKILLS_DATABASE: Skill[] = [
  * In dev/web: uses the Next.js API route.
  * Returns null on failure so callers can fall back to SKILLS_DATABASE.
  */
+// Live marketplace entries carry no category; borrow it from the bundled
+// snapshot so category filters/badges keep working with live data.
+const CATEGORY_BY_NAME = new Map(SKILLS_DATABASE.map(s => [s.name, s.category]));
+
+function withCategories(skills: Skill[] | null): Skill[] | null {
+  if (!skills) return null;
+  return skills.map(s => s.category ? s : { ...s, category: CATEGORY_BY_NAME.get(s.name) });
+}
+
 export async function fetchSkillsFromMarketplace(): Promise<Skill[] | null> {
   // Electron path: fetch via IPC (main process, no CORS)
   if (typeof window !== 'undefined' && window.electronAPI?.skill?.fetchMarketplace) {
     try {
       const result = await window.electronAPI.skill.fetchMarketplace();
-      return result.skills;
+      return withCategories(result.skills);
     } catch {
       return null;
     }
   }
 
-  // Dev/web path: use the Next.js API route
+  // Dev/web path: page through the Next.js API route (defaults to 50/page,
+  // which would otherwise shrink the catalog below the bundled snapshot)
   try {
-    const res = await fetch('/api/skills/marketplace');
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data?.skills || null;
+    const all: Skill[] = [];
+    for (let page = 1; page <= 5; page++) {
+      const res = await fetch(`/api/skills/marketplace?limit=200&page=${page}`);
+      if (!res.ok) return all.length > 0 ? withCategories(all) : null;
+      const data = await res.json();
+      if (!data?.skills?.length) break;
+      all.push(...data.skills);
+      if (!data.hasMore) break;
+    }
+    return all.length > 0 ? withCategories(all) : null;
   } catch {
     return null;
   }
