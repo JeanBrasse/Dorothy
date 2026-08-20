@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   FolderKanban,
   Sparkles,
-  Puzzle,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -34,11 +33,10 @@ const navItems = [
   { href: '/kanban', icon: Columns, label: 'Kanban', shortcut: '3' },
   { href: '/vault', icon: Archive, label: 'Vault', shortcut: '4' },
   { href: '/projects', icon: FolderKanban, label: 'Projects', shortcut: '5' },
-  { href: '/skills', icon: Sparkles, label: 'Skills', shortcut: '6' },
-  { href: '/plugins', icon: Puzzle, label: 'Plugins', shortcut: '7' },
-  { href: '/recurring-tasks', icon: CalendarClock, label: 'Scheduled Tasks', shortcut: '8' },
-  { href: '/automations', icon: Zap, label: 'Automations', shortcut: '9' },
-  { href: '/usage', icon: BarChart2, label: 'Usage', shortcut: '0' },
+  { href: '/skills', icon: Sparkles, label: 'Extensions', shortcut: '6' },
+  { href: '/recurring-tasks', icon: CalendarClock, label: 'Scheduled Tasks', shortcut: '7' },
+  { href: '/automations', icon: Zap, label: 'Automations', shortcut: '8' },
+  { href: '/usage', icon: BarChart2, label: 'Usage', shortcut: '9' },
   { href: '/memory', icon: Brain, label: 'Memory', shortcut: 'M' },
 ];
 

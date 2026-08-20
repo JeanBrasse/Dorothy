@@ -181,7 +181,7 @@ const PluginCard = React.memo(function PluginCard({
   );
 });
 
-export default function PluginsPage() {
+export default function PluginsTab() {
   const { data, loading } = useClaude();
   const { plugins: PLUGINS_DATABASE, categories: PLUGIN_CATEGORIES, marketplaces: MARKETPLACES, authors: AUTHORS, loading: pluginsLoading } = usePluginsDatabase();
   const [search, setSearch] = useState('');
@@ -537,16 +537,13 @@ export default function PluginsPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-7rem)] lg:h-[calc(100vh-1.5rem)] pt-4 lg:pt-6 overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex flex-col gap-3 shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-xl lg:text-2xl font-bold tracking-tight">Plugin Marketplace</h1>
-            <p className="text-muted-foreground text-xs lg:text-sm mt-1 hidden sm:block">
-              Extend Claude Code with plugins for code intelligence, integrations, and workflows
-            </p>
-          </div>
+          <p className="text-muted-foreground text-xs lg:text-sm hidden sm:block">
+            Extend Claude Code with plugins for code intelligence, integrations, and workflows
+          </p>
           <a
             href="https://code.claude.com/docs/en/discover-plugins"
             target="_blank"
