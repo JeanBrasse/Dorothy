@@ -319,6 +319,54 @@ function assertSameProject(req: RouteRequest, agent: AgentStatus, sendJson: Send
   return false;
 }
 
+/**
+ * Core of the atomic dispatch — message a live session or spawn a fresh one,
+ * decided server-side. Shared by POST /api/agents/:id/dispatch and the Hermes
+ * webhook so both entry points get identical semantics.
+ */
+export async function performDispatch(
+  agent: AgentStatus,
+  opts: { message: string; model?: string; permissionMode?: 'normal' | 'auto' | 'bypass' },
+  ctx: RouteContext,
+  sendJson: SendJson,
+): Promise<void> {
+  // BUG 4 guard: kill the PTY if its cwd no longer matches the agent's
+  // worktree so the spawn path below restarts it in the right directory.
+  killStalePty(agent);
+
+  const previousStatus = agent.status;
+  const livePty = agent.ptyId ? ptyProcesses.get(agent.ptyId) : undefined;
+  if (livePty && agent.status === 'waiting' && agent.waitingReason === 'permission') {
+    // A blocking permission dialog expects arrow keys/enter, not text — a
+    // typed message is useless and the delayed \r could ACCEPT the pending
+    // permission. Refuse and surface the reason instead.
+    sendJson({
+      error: `Agent "${agent.name || agent.id}" is blocked on a permission dialog; a typed message cannot answer it. Resolve it in the Dorothy UI, or stop the agent and re-dispatch.`,
+      waitingReason: 'permission',
+    }, 409);
+    return;
+  }
+  if (livePty && (agent.status === 'running' || agent.status === 'waiting')) {
+    // Live claude session mid-task or at a prompt: type the message into it.
+    writeProgrammaticInput(livePty, opts.message, true);
+    agent.status = 'running';
+    agent.waitingReason = undefined;
+    // This message starts a new piece of work in the same session; the
+    // previous task's captured output must not be mistaken for its result.
+    agent.lastCleanOutput = undefined;
+    agent.lastActivity = new Date().toISOString();
+    saveAgents();
+    sendJson({ success: true, mode: 'message', previousStatus, agent: { id: agent.id, name: agent.name, status: agent.status } });
+    return;
+  }
+
+  // No usable session — spawn a fresh one with the message as the prompt.
+  if (!(await spawnAgentSession(agent, opts.message, { model: opts.model, permissionMode: opts.permissionMode }, ctx, sendJson))) {
+    return;
+  }
+  sendJson({ success: true, mode: 'start', previousStatus, agent: { id: agent.id, name: agent.name, status: agent.status } });
+}
+
 export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
   // GET /api/agents/:id/wait — long-poll until agent status changes
   app_.get(/^\/api\/agents\/([^/]+)\/wait$/, (req, sendJson) => {
@@ -622,41 +670,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       return;
     }
 
-    // BUG 4 guard: kill the PTY if its cwd no longer matches the agent's
-    // worktree so the spawn path below restarts it in the right directory.
-    killStalePty(agent);
-
-    const previousStatus = agent.status;
-    const livePty = agent.ptyId ? ptyProcesses.get(agent.ptyId) : undefined;
-    if (livePty && agent.status === 'waiting' && agent.waitingReason === 'permission') {
-      // A blocking permission dialog expects arrow keys/enter, not text — a
-      // typed message is useless and the delayed \r could ACCEPT the pending
-      // permission. Refuse and surface the reason instead.
-      sendJson({
-        error: `Agent "${agent.name || agent.id}" is blocked on a permission dialog; a typed message cannot answer it. Resolve it in the Dorothy UI, or stop the agent and re-dispatch.`,
-        waitingReason: 'permission',
-      }, 409);
-      return;
-    }
-    if (livePty && (agent.status === 'running' || agent.status === 'waiting')) {
-      // Live claude session mid-task or at a prompt: type the message into it.
-      writeProgrammaticInput(livePty, message, true);
-      agent.status = 'running';
-      agent.waitingReason = undefined;
-      // This message starts a new piece of work in the same session; the
-      // previous task's captured output must not be mistaken for its result.
-      agent.lastCleanOutput = undefined;
-      agent.lastActivity = new Date().toISOString();
-      saveAgents();
-      sendJson({ success: true, mode: 'message', previousStatus, agent: { id: agent.id, name: agent.name, status: agent.status } });
-      return;
-    }
-
-    // No usable session — spawn a fresh one with the message as the prompt.
-    if (!(await spawnAgentSession(agent, message, { model, permissionMode }, ctx, sendJson))) {
-      return;
-    }
-    sendJson({ success: true, mode: 'start', previousStatus, agent: { id: agent.id, name: agent.name, status: agent.status } });
+    await performDispatch(agent, { message, model, permissionMode }, ctx, sendJson);
   });
 
   // POST /api/agents/:id/stop

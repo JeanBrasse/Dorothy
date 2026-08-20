@@ -118,7 +118,8 @@ export function startApiServer(
     const authExempt = pathname === '/api/local-file'
       || pathname === '/api/health'
       || pathname.startsWith('/api/hooks/')
-      || pathname === '/api/kanban/complete';
+      || pathname === '/api/kanban/complete'
+      || pathname === '/api/memory/remember';
 
     if (!authExempt) {
       const authHeader = req.headers.authorization;
