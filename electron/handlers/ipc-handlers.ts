@@ -754,6 +754,13 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
     }
     if (params.name !== undefined) {
       agent.name = params.name;
+      // role tracks the name-based orchestrator semantics; a rename must
+      // recompute it or a former "orchestrator-*" agent keeps orchestrator
+      // restrictions (no Edit/Write) forever with nothing visible explaining it.
+      const lowerName = params.name.toLowerCase();
+      agent.role = (lowerName.includes('super agent') || lowerName.includes('orchestrator'))
+        ? 'orchestrator'
+        : 'worker';
     }
     if (params.character !== undefined) {
       agent.character = params.character;

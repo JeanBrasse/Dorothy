@@ -53,6 +53,10 @@ export interface AgentStatus {
    *  matching in loadAgents. */
   role?: 'orchestrator' | 'worker';
   currentSessionId?: string;
+  /** Session id of the most recently killed PTY's claude session. Its hooks
+   *  may still be in flight after the kill; any post carrying this id is
+   *  stale and must be ignored (tombstone). */
+  lastKilledSessionId?: string;
   /** Why the agent is 'waiting': 'permission' = blocking permission dialog
    *  (auto-continue must NOT type into it), 'idle' = waiting for next prompt. */
   waitingReason?: string;

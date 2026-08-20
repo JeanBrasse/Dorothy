@@ -300,14 +300,37 @@ describe('agent-routes', () => {
       expect(agent.currentSessionId).toBeUndefined();
       expect(agent.waitingReason).toBeUndefined();
       expect(agent.lastCleanOutput).toBeUndefined();
+      // The killed session is tombstoned so its in-flight hooks are rejected
+      // even while currentSessionId is still undefined.
+      expect(agent.lastKilledSessionId).toBe('old-sess');
+    });
+
+    it('removes a dead PTY from the live map immediately on exit', async () => {
+      const agent = makeAgent({ id: 'a1', status: 'idle' });
+      agents.set('a1', agent);
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = findHandler(app, 'POST', 'start');
+      await handler(makeReq({ params: { id: 'a1' }, body: { prompt: 'work' } }), vi.fn(), ctx);
+      expect(ptyProcesses.has('test-uuid')).toBe(true);
+
+      // PTY dies: it must leave the map RIGHT AWAY (node-pty write on a dead
+      // PTY is a silent no-op), not after the 1500ms status-delay — otherwise
+      // /dispatch happily "types" the next task into a corpse.
+      const exitHandler = mockPtyProcess.onExit.mock.calls.at(-1)![0] as (args: { exitCode: number }) => void;
+      exitHandler({ exitCode: 0 });
+      expect(ptyProcesses.has('test-uuid')).toBe(false);
+      // Status change is still deferred for hook output capture.
+      expect(agent.status).toBe('running');
     });
   });
 
   describe('POST /api/agents/:id/dispatch', () => {
-    it('types into the live PTY when the agent is running', async () => {
+    it('types into the live PTY when the agent is running and clears stale output', async () => {
       const mockPty = { write: vi.fn() };
       ptyProcesses.set('pty-1', mockPty as any);
-      const agent = makeAgent({ id: 'a1', name: 'Worker', status: 'running', ptyId: 'pty-1' });
+      const agent = makeAgent({ id: 'a1', name: 'Worker', status: 'running', ptyId: 'pty-1', lastCleanOutput: 'previous task result' });
       agents.set('a1', agent);
 
       const app = makeRouteApp();
@@ -318,12 +341,35 @@ describe('agent-routes', () => {
       await handler(makeReq({ params: { id: 'a1' }, body: { message: 'next step' } }), sendJson, ctx);
 
       expect(writeProgrammaticInput).toHaveBeenCalledWith(mockPty, 'next step', true);
+      // The previous task's output must not be mistaken for this task's result.
+      expect(agent.lastCleanOutput).toBeUndefined();
       expect(sendJson).toHaveBeenCalledWith({
         success: true,
         mode: 'message',
         previousStatus: 'running',
         agent: { id: 'a1', name: 'Worker', status: 'running' },
       });
+    });
+
+    it('refuses to type into a blocking permission dialog (409)', async () => {
+      const mockPty = { write: vi.fn() };
+      ptyProcesses.set('pty-1', mockPty as any);
+      const agent = makeAgent({ id: 'a1', status: 'waiting', waitingReason: 'permission', ptyId: 'pty-1' });
+      agents.set('a1', agent);
+
+      const app = makeRouteApp();
+      registerAgentRoutes(app, ctx);
+      const handler = findHandler(app, 'POST', 'dispatch');
+
+      const sendJson = vi.fn();
+      await handler(makeReq({ params: { id: 'a1' }, body: { message: 'yes go on' } }), sendJson, ctx);
+
+      // Typing would be useless and the delayed \r could ACCEPT the pending
+      // permission — the dispatch must be refused with the reason.
+      expect(writeProgrammaticInput).not.toHaveBeenCalled();
+      expect(sendJson.mock.calls[0][1]).toBe(409);
+      expect((sendJson.mock.calls[0][0] as { waitingReason: string }).waitingReason).toBe('permission');
+      expect(agent.status).toBe('waiting');
     });
 
     it('spawns a fresh session when the agent is idle', async () => {

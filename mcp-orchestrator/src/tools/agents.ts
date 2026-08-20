@@ -25,14 +25,21 @@ type DispatchResult = {
  * Atomically hand a task to an agent. The server decides message-vs-spawn
  * under its single-threaded event loop — the old GET-status-then-POST pattern
  * raced against status changes and could message a dead PTY.
+ *
+ * The agent's own configured permission mode is respected (most agents are
+ * 'auto'); if a permission dialog does block the agent, the server reports
+ * waitingReason 'permission' instead of hanging.
  */
-async function dispatchToAgent(id: string, message: string, model?: string): Promise<DispatchResult> {
+async function dispatchToAgent(
+  id: string,
+  message: string,
+  model?: string,
+  allowCrossProject?: boolean
+): Promise<DispatchResult> {
   return (await apiRequest(`/api/agents/${id}/dispatch`, "POST", {
     message,
     model,
-    // Delegated agents must run autonomously — a permission prompt inside a
-    // hidden PTY would hang the delegation.
-    permissionMode: "bypass",
+    allowCrossProject,
   })) as DispatchResult;
 }
 
@@ -305,15 +312,16 @@ export function registerAgentTools(server: McpServer): void {
   // Tool: Start agent
   server.tool(
     "start_agent",
-    "Start an agent with a specific task/prompt. If agent is already running/waiting, sends the prompt as a message instead. Agents are started with --dangerously-skip-permissions for autonomous operation.",
+    "Start an agent with a specific task/prompt. If agent is already running/waiting, sends the prompt as a message instead. The agent runs with its own configured permission mode.",
     {
       id: z.string().describe("The agent ID"),
       prompt: z.string().describe("The task or instruction for the agent to work on"),
       model: z.string().optional().describe("Optional model to use. Aliases: 'sonnet', 'opus', 'haiku', 'opusplan', 'sonnet[1m]' (1M context). Full IDs: 'claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001'. Omit to use the agent's configured default."),
+      allowCrossProject: z.boolean().optional().describe("Explicitly allow acting on an agent of ANOTHER project (normally rejected)"),
     },
-    async ({ id, prompt, model }) => {
+    async ({ id, prompt, model, allowCrossProject }) => {
       try {
-        const data = await dispatchToAgent(id, prompt, model);
+        const data = await dispatchToAgent(id, prompt, model, allowCrossProject);
         const agentName = data.agent.name || id;
 
         if (data.mode === "message") {
@@ -355,10 +363,11 @@ export function registerAgentTools(server: McpServer): void {
     "Stop a running agent. The agent will be terminated and return to 'idle' state.",
     {
       id: z.string().describe("The agent ID"),
+      allowCrossProject: z.boolean().optional().describe("Explicitly allow acting on an agent of ANOTHER project (normally rejected)"),
     },
-    async ({ id }) => {
+    async ({ id, allowCrossProject }) => {
       try {
-        await apiRequest(`/api/agents/${id}/stop`, "POST");
+        await apiRequest(`/api/agents/${id}/stop`, "POST", allowCrossProject ? { allowCrossProject } : undefined);
         return {
           content: [
             {
@@ -389,8 +398,9 @@ export function registerAgentTools(server: McpServer): void {
       id: z.string().describe("The agent ID"),
       message: z.string().optional().describe("The message to send to the agent"),
       prompt: z.string().optional().describe("Alias for 'message' — use either one"),
+      allowCrossProject: z.boolean().optional().describe("Explicitly allow acting on an agent of ANOTHER project (normally rejected)"),
     },
-    async ({ id, message, prompt }) => {
+    async ({ id, message, prompt, allowCrossProject }) => {
       // Accept either "message" or "prompt" so the LLM doesn't trip on naming
       const resolvedMessage = message || prompt;
       if (!resolvedMessage) {
@@ -400,7 +410,7 @@ export function registerAgentTools(server: McpServer): void {
         };
       }
       try {
-        const data = await dispatchToAgent(id, resolvedMessage);
+        const data = await dispatchToAgent(id, resolvedMessage, undefined, allowCrossProject);
         const agentName = data.agent.name || id;
         const previousStatus = data.previousStatus ?? "idle";
 
@@ -454,10 +464,11 @@ export function registerAgentTools(server: McpServer): void {
     "Permanently remove an agent. This will stop the agent if running and delete it from the system.",
     {
       id: z.string().describe("The agent ID"),
+      allowCrossProject: z.boolean().optional().describe("Explicitly allow acting on an agent of ANOTHER project (normally rejected)"),
     },
-    async ({ id }) => {
+    async ({ id, allowCrossProject }) => {
       try {
-        await apiRequest(`/api/agents/${id}`, "DELETE");
+        await apiRequest(`/api/agents/${id}${allowCrossProject ? "?allowCrossProject=true" : ""}`, "DELETE");
         return {
           content: [
             {
@@ -581,12 +592,13 @@ export function registerAgentTools(server: McpServer): void {
       prompt: z.string().describe("The task/instruction for the agent"),
       model: z.string().optional().describe("Optional model to use. Aliases: 'sonnet', 'opus', 'haiku', 'opusplan', 'sonnet[1m]' (1M context). Full IDs: 'claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001'. Omit to use the agent's configured default."),
       timeoutSeconds: z.number().optional().describe("Maximum time to wait in seconds (default: 300)"),
+      allowCrossProject: z.boolean().optional().describe("Explicitly allow delegating to an agent of ANOTHER project (normally rejected)"),
     },
-    async ({ id, prompt, model, timeoutSeconds = 300 }) => {
+    async ({ id, prompt, model, timeoutSeconds = 300, allowCrossProject }) => {
       try {
         // Atomic dispatch: the server decides message-vs-spawn under its own
         // lock, so a stale status can never route the prompt to a dead PTY.
-        const dispatched = await dispatchToAgent(id, prompt, model);
+        const dispatched = await dispatchToAgent(id, prompt, model, allowCrossProject);
         const agentName = dispatched.agent.name || id;
 
         // Wait for completion via long-poll
@@ -610,7 +622,9 @@ export function registerAgentTools(server: McpServer): void {
           try {
             await dispatchToAgent(
               id,
-              "Yes, continue. Do not ask for confirmation — complete the task and report your results."
+              "Yes, continue. Do not ask for confirmation — complete the task and report your results.",
+              undefined,
+              allowCrossProject
             );
             waitData = await waitForAgentStatus(id, Math.max(timeoutSeconds - 30, 60));
 

@@ -299,16 +299,24 @@ export function loadAgents() {
       agent.status = 'idle';
       agent.ptyId = undefined;
       agent.ptyCwd = undefined;
+      // Session ownership is runtime state: any persisted session died with
+      // the previous app run, and keeping it would make the stale-session
+      // guard reject the next real session's hooks (and /health lie).
+      agent.currentSessionId = undefined;
+      agent.lastKilledSessionId = undefined;
+      agent.waitingReason = undefined;
 
       // Migrate legacy skipPermissions boolean → permissionMode
       if (!agent.permissionMode) {
         agent.permissionMode = agent.skipPermissions ? 'auto' : 'normal';
       }
 
-      // Migrate name-substring orchestrator detection → persistent role field
+      // Migrate name-substring orchestrator detection → persistent role field.
+      // Name-only on purpose: orchestratorMode is a tool-restriction toggle
+      // and must not promote agents into the Telegram/Slack super-agent pool.
       if (!agent.role) {
         const name = agent.name?.toLowerCase() || '';
-        agent.role = (name.includes('super agent') || name.includes('orchestrator') || agent.orchestratorMode)
+        agent.role = (name.includes('super agent') || name.includes('orchestrator'))
           ? 'orchestrator'
           : 'worker';
       }

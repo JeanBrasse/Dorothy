@@ -747,10 +747,13 @@ ${outputInstructions.length > 0 ? outputInstructions.join("\n") : "- Output your
 
           agentId = createResponse.agent.id;
 
+          // Automations may target any project by configuration — bypass the
+          // caller-project guard explicitly.
           await apiRequest(`/api/agents/${agentId}/start`, "POST", {
             prompt,
             model: automation.agent.model,
             skipPermissions: true,
+            allowCrossProject: true,
           });
 
           // Wait for agent to complete (with timeout)
@@ -760,13 +763,15 @@ ${outputInstructions.length > 0 ? outputInstructions.join("\n") : "- Output your
 
           while (status === "running" || status === "waiting") {
             if (Date.now() - startTime > timeout) {
-              await apiRequest(`/api/agents/${agentId}/stop`, "POST");
+              await apiRequest(`/api/agents/${agentId}/stop`, "POST", { allowCrossProject: true });
               throw new Error("Agent timeout");
             }
             await new Promise((resolve) => setTimeout(resolve, 5000));
-            const agentResponse = await apiRequest(`/api/agents/${agentId}`) as { agent: { status: string; output: string[] } };
-            status = agentResponse.agent.status;
-            agentOutput = agentResponse.agent.output?.join("") || "";
+            // GET /:id no longer serializes the raw output buffer; the
+            // dedicated /output endpoint returns the joined text + status.
+            const agentResponse = await apiRequest(`/api/agents/${agentId}/output?lines=10000`) as { status: string; output: string };
+            status = agentResponse.status;
+            agentOutput = agentResponse.output || "";
           }
         } catch (error) {
           agentOutput = `Agent error: ${error}`;
@@ -786,7 +791,7 @@ ${outputInstructions.length > 0 ? outputInstructions.join("\n") : "- Output your
           // Always clean up the agent after processing
           if (agentId) {
             try {
-              await apiRequest(`/api/agents/${agentId}`, "DELETE");
+              await apiRequest(`/api/agents/${agentId}?allowCrossProject=true`, "DELETE");
             } catch {
               // Ignore delete errors
             }

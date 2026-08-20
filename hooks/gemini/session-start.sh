@@ -15,9 +15,13 @@ if ! curl -s --connect-timeout 1 "$API_URL/api/health" > /dev/null 2>&1; then
   exit 0
 fi
 
+# `source` marks this as a SessionStart registration: the server records the
+# session id WITHOUT touching status. Without it, the stale-session guard
+# would reject every later post from this session once a previous Gemini
+# session had registered.
 curl -s -X POST "$API_URL/api/hooks/status" \
   -H "Content-Type: application/json" \
-  -d "{\"agent_id\": \"$AGENT_ID\", \"session_id\": \"$SESSION_ID\", \"status\": \"running\"}" \
+  -d "{\"agent_id\": \"$AGENT_ID\", \"session_id\": \"$SESSION_ID\", \"status\": \"running\", \"source\": \"startup\"}" \
   > /dev/null 2>&1 &
 
 echo '{"continue":true,"suppressOutput":true}'

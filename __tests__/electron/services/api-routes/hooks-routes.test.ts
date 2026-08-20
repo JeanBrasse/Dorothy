@@ -252,6 +252,44 @@ describe('hooks-routes', () => {
       expect(agent.status).toBe('idle');
       expect(agent.currentSessionId).toBe('sess-x');
     });
+
+    it('never adopts a tombstoned (killed) session during the dispatch window', async () => {
+      // The dispatch-window race: /dispatch killed the previous PTY and
+      // cleared currentSessionId; the killed session's Stop hook is still in
+      // flight. Its posts must NOT be adopted — otherwise the previous task's
+      // "idle" resolves the new task's /wait with the OLD output.
+      const agent = makeAgent({
+        id: 'a1',
+        status: 'running',
+        currentSessionId: undefined,
+        lastKilledSessionId: 'dead-sess',
+      });
+      agents.set('a1', agent);
+
+      const app = makeRouteApp();
+      registerHooksRoutes(app, ctx);
+      const statusHandler = getHandler(app, '/api/hooks/status');
+      const outputHandler = getHandler(app, '/api/hooks/output');
+
+      const sendJson = vi.fn();
+      await statusHandler(makeReq({ agent_id: 'a1', session_id: 'dead-sess', status: 'idle' }), sendJson, ctx);
+      expect(agent.status).toBe('running');
+      expect(agent.currentSessionId).toBeUndefined();
+      expect(sendJson.mock.calls[0][0]).toMatchObject({ success: false, stale: true });
+
+      await outputHandler(makeReq({ agent_id: 'a1', session_id: 'dead-sess', output: 'old task output' }), vi.fn(), ctx);
+      expect(agent.lastCleanOutput).toBeUndefined();
+
+      // A SessionStart from the killed session must not register either.
+      await statusHandler(makeReq({ agent_id: 'a1', session_id: 'dead-sess', status: 'idle', source: 'startup' }), vi.fn(), ctx);
+      expect(agent.currentSessionId).toBeUndefined();
+
+      // The genuinely fresh session still registers and drives status.
+      await statusHandler(makeReq({ agent_id: 'a1', session_id: 'fresh-sess', status: 'idle', source: 'startup' }), vi.fn(), ctx);
+      expect(agent.currentSessionId).toBe('fresh-sess');
+      await statusHandler(makeReq({ agent_id: 'a1', session_id: 'fresh-sess', status: 'idle' }), vi.fn(), ctx);
+      expect(agent.status).toBe('idle');
+    });
   });
 
   describe('POST /api/hooks/notification', () => {

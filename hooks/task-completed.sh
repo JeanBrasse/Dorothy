@@ -11,10 +11,11 @@ echo "  last_assistant_message length: ${#LAST_MSG}" >> "$LOG"
 if [ -z "$LAST_MSG" ]; then
   TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // empty')
   if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
-    # Portable last-assistant-message extraction (macOS has no GNU `tac`):
-    # slurp the JSONL and take the last non-empty assistant text block.
-    LAST_MSG=$(jq -rs '
-      [ .[] | select(.type=="assistant")
+    # Portable last-assistant-message extraction (macOS has no GNU `tac`).
+    # Line-by-line with fromjson? so a truncated/partial final line (Claude
+    # Code may still be flushing records) doesn't void the whole extraction.
+    LAST_MSG=$(jq -rRn '
+      [ inputs | fromjson? | select(.type=="assistant")
             | (.message.content // [])
             | if type=="array" then map(select(type=="object" and .type=="text") | .text) | join("\n") else tostring end
             | select(length>0) ]
@@ -22,8 +23,8 @@ if [ -z "$LAST_MSG" ]; then
   fi
 fi
 if [ -n "$LAST_MSG" ]; then
-  TRIMMED=$(echo "$LAST_MSG" | head -c 4000)
-  curl -s --max-time 3 -X POST "$API_URL/api/hooks/output" -H "Content-Type: application/json" -d "{\"agent_id\": \"$AGENT_ID\", \"session_id\": \"$SESSION_ID\", \"output\": $(echo "$TRIMMED" | jq -Rs .)}" >> "$LOG" 2>&1
+  TRIMMED=$(printf '%s' "$LAST_MSG" | head -c 4000)
+  curl -s --max-time 3 -X POST "$API_URL/api/hooks/output" -H "Content-Type: application/json" -d "{\"agent_id\": \"$AGENT_ID\", \"session_id\": \"$SESSION_ID\", \"output\": $(printf '%s' "$TRIMMED" | jq -Rs .)}" >> "$LOG" 2>&1
 fi
 curl -s --max-time 3 -X POST "$API_URL/api/hooks/task-completed" -H "Content-Type: application/json" -d "{\"agent_id\": \"$AGENT_ID\", \"session_id\": \"$SESSION_ID\"}" > /dev/null 2>&1
 echo '{"continue":true,"suppressOutput":true}'

@@ -42,16 +42,25 @@ if [ -z "$RESULT" ]; then
 fi
 echo "[$(date)] SESSION_START curl result: $RESULT" >> /tmp/dorothy-hooks.log
 
+# The /api/agents and /api/memory endpoints require the API token (only
+# /api/hooks/* and /api/health are auth-exempt).
+API_TOKEN=""
+if [ -f "$HOME/.dorothy/api-token" ]; then
+  API_TOKEN=$(cat "$HOME/.dorothy/api-token" 2>/dev/null)
+fi
+
 # Identity + team roster bootstrap: injected into EVERY fresh session so the
 # agent knows who it is, which project it belongs to, and (for orchestrators)
 # which agents it may delegate to — no manual "say hello to the team" ritual.
 BOOTSTRAP=""
-if [ -n "$CLAUDE_AGENT_ID" ]; then
-  BOOTSTRAP=$(curl -s --connect-timeout 2 "$API_URL/api/agents/$CLAUDE_AGENT_ID/bootstrap" 2>/dev/null | jq -r '.context // empty' 2>/dev/null)
+if [ -n "$CLAUDE_AGENT_ID" ] && [ -n "$API_TOKEN" ]; then
+  BOOTSTRAP=$(curl -s --connect-timeout 2 --max-time 3 -H "Authorization: Bearer $API_TOKEN" \
+    "$API_URL/api/agents/$CLAUDE_AGENT_ID/bootstrap" 2>/dev/null | jq -r '.context // empty' 2>/dev/null)
 fi
 
 # Get memory context for this agent/project
-CONTEXT=$(curl -s --connect-timeout 2 "$API_URL/api/memory/context?agent_id=$AGENT_ID&project_path=$PROJECT_PATH" 2>/dev/null)
+CONTEXT=$(curl -s --connect-timeout 2 --max-time 3 -H "Authorization: Bearer $API_TOKEN" \
+  "$API_URL/api/memory/context?agent_id=$AGENT_ID&project_path=$PROJECT_PATH" 2>/dev/null)
 MEMORY_CONTENT=""
 if [ -n "$CONTEXT" ] && [ "$CONTEXT" != "null" ] && [ "$CONTEXT" != "{}" ]; then
   MEMORY_CONTENT=$(echo "$CONTEXT" | jq -r '.context // empty' 2>/dev/null)

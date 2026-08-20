@@ -124,6 +124,13 @@ function spawnAgentSession(
       ptyProcesses.delete(agent.ptyId);
     }
   }
+  // Tombstone the killed session: its hook scripts (separate processes that
+  // survive the PTY kill) may still POST status/output for several seconds.
+  // Without this, the session-adoption fallback in hooks-routes would adopt
+  // the dead session during the window before the new SessionStart registers.
+  if (agent.currentSessionId) {
+    agent.lastKilledSessionId = agent.currentSessionId;
+  }
 
   // BUG 6: pre-accept Claude Code's workspace trust dialog for this cwd.
   ensureProjectTrusted(rawWorkingDir);
@@ -177,13 +184,16 @@ function spawnAgentSession(
   });
 
   ptyProcess.onExit(({ exitCode }) => {
+    // Remove from the live map IMMEDIATELY: node-pty write() on a dead PTY is
+    // a silent no-op, so leaving it registered lets /dispatch and /message
+    // "successfully" type a task into a corpse during the status-delay below.
+    ptyProcesses.delete(ptyId);
     // Delay status change to let hooks (on-stop.sh, task-completed.sh) finish
     // capturing output before wait_for_agent resolves.
     setTimeout(() => {
       // Guard: only mutate if this PTY is still the active one — a newer
       // dispatch may have replaced it during the delay.
       if (agent.ptyId !== ptyId) {
-        ptyProcesses.delete(ptyId);
         return;
       }
       if (agent.status === 'running') {
@@ -199,7 +209,6 @@ function spawnAgentSession(
         agent.error = `Process exited with code ${exitCode}`;
       }
       agent.lastActivity = new Date().toISOString();
-      ptyProcesses.delete(ptyId);
       saveAgents();
       ctx.agentStatusEmitter.emit(`status:${agent.id}`);
     }, 1500);
@@ -234,6 +243,8 @@ function assertSameProject(req: RouteRequest, agent: AgentStatus, sendJson: Send
   const caller = callerProject(req);
   if (!caller || agent.projectPath === caller) return true;
   if ((req.body as { allowCrossProject?: boolean } | undefined)?.allowCrossProject === true) return true;
+  // DELETE requests have no parsed body — accept the override as a query param.
+  if (req.url.searchParams.get('allowCrossProject') === 'true') return true;
   sendJson({
     error: `Cross-project access denied: agent "${agent.name || agent.id}" belongs to project ${agent.projectPath}, but you are the orchestrator of ${caller}. Use list_agents to see YOUR project's agents, or pass allowCrossProject: true if this is intentional.`,
   }, 403);
@@ -267,9 +278,15 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     const agentId = req.params.id;
     let resolved = false;
 
+    const cleanup = () => {
+      clearTimeout(timeout);
+      ctx.agentStatusEmitter.off(`status:${agentId}`, onStatusChange);
+    };
+
     const respond = () => {
       if (resolved) return;
       resolved = true;
+      cleanup();
       const a = agents.get(agentId);
       sendJson({
         status: a?.status || 'idle',
@@ -283,9 +300,9 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     ctx.agentStatusEmitter.on(`status:${agentId}`, onStatusChange);
 
     const timeout = setTimeout(() => {
-      ctx.agentStatusEmitter.off(`status:${agentId}`, onStatusChange);
       if (!resolved) {
         resolved = true;
+        ctx.agentStatusEmitter.off(`status:${agentId}`, onStatusChange);
         const a = agents.get(agentId);
         sendJson({
           status: a?.status || 'running',
@@ -299,8 +316,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     req.raw.on('close', () => {
       if (!resolved) {
         resolved = true;
-        clearTimeout(timeout);
-        ctx.agentStatusEmitter.off(`status:${agentId}`, onStatusChange);
+        cleanup();
       }
     });
   });
@@ -460,7 +476,10 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
       name: resolvedName,
       permissionMode: permissionMode || 'auto',
       orchestratorMode: orchestratorMode || false,
-      role: (orchestratorMode || lowerName.includes('super agent') || lowerName.includes('orchestrator'))
+      // role mirrors the historical name-based isSuperAgent semantics.
+      // orchestratorMode stays an independent tool-restriction toggle — it
+      // must NOT promote an agent into the Telegram/Slack super-agent pool.
+      role: (lowerName.includes('super agent') || lowerName.includes('orchestrator'))
         ? 'orchestrator'
         : 'worker',
     };
@@ -521,11 +540,24 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
 
     const previousStatus = agent.status;
     const livePty = agent.ptyId ? ptyProcesses.get(agent.ptyId) : undefined;
+    if (livePty && agent.status === 'waiting' && agent.waitingReason === 'permission') {
+      // A blocking permission dialog expects arrow keys/enter, not text — a
+      // typed message is useless and the delayed \r could ACCEPT the pending
+      // permission. Refuse and surface the reason instead.
+      sendJson({
+        error: `Agent "${agent.name || agent.id}" is blocked on a permission dialog; a typed message cannot answer it. Resolve it in the Dorothy UI, or stop the agent and re-dispatch.`,
+        waitingReason: 'permission',
+      }, 409);
+      return;
+    }
     if (livePty && (agent.status === 'running' || agent.status === 'waiting')) {
       // Live claude session mid-task or at a prompt: type the message into it.
       writeProgrammaticInput(livePty, message, true);
       agent.status = 'running';
       agent.waitingReason = undefined;
+      // This message starts a new piece of work in the same session; the
+      // previous task's captured output must not be mistaken for its result.
+      agent.lastCleanOutput = undefined;
       agent.lastActivity = new Date().toISOString();
       saveAgents();
       sendJson({ success: true, mode: 'message', previousStatus, agent: { id: agent.id, name: agent.name, status: agent.status } });
@@ -559,6 +591,11 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     agent.status = 'idle';
     agent.currentTask = undefined;
     agent.waitingReason = undefined;
+    // Tombstone the stopped session so its in-flight hooks can't resurrect
+    // status/output after the stop.
+    if (agent.currentSessionId) {
+      agent.lastKilledSessionId = agent.currentSessionId;
+    }
     agent.currentSessionId = undefined;
     agent.lastActivity = new Date().toISOString();
     saveAgents();
@@ -586,6 +623,16 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     // spawned, the existing PTY is stuck in the wrong cwd. Kill it so the
     // reconnect path below spawns fresh with the correct working directory.
     killStalePty(agent);
+
+    if (agent.ptyId && ptyProcesses.has(agent.ptyId) &&
+        agent.status === 'waiting' && agent.waitingReason === 'permission') {
+      // Same guard as /dispatch: never type into a blocking permission dialog.
+      sendJson({
+        error: `Agent "${agent.name || agent.id}" is blocked on a permission dialog; a typed message cannot answer it. Resolve it in the Dorothy UI, or stop the agent and re-dispatch.`,
+        waitingReason: 'permission',
+      }, 409);
+      return;
+    }
 
     if (!agent.ptyId || !ptyProcesses.has(agent.ptyId)) {
       // No live PTY — the claude process exited (e.g. crashed while 'waiting').

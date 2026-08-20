@@ -25,18 +25,22 @@ if ! curl -s --connect-timeout 1 "$API_URL/api/health" > /dev/null 2>&1; then
   exit 0
 fi
 
-# Capture final clean output from transcript before marking idle
+# Capture final clean output from transcript before marking completed.
+# Same line-tolerant extraction as on-stop.sh: the old tail|grep|jq chain
+# missed the last text block whenever the session ended right after a tool
+# call (final assistant record contains only tool_use blocks).
 if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
-  LAST_ASSISTANT_MSG=$(tail -100 "$TRANSCRIPT_PATH" 2>/dev/null | \
-    grep '"type":"assistant"' | \
-    tail -1 | \
-    jq -r '.message.content[] | select(.type=="text") | .text // empty' 2>/dev/null | \
-    head -c 4000)
+  LAST_ASSISTANT_MSG=$(jq -rRn '
+    [ inputs | fromjson? | select(.type=="assistant")
+          | (.message.content // [])
+          | if type=="array" then map(select(type=="object" and .type=="text") | .text) | join("\n") else tostring end
+          | select(length>0) ]
+    | last // empty' "$TRANSCRIPT_PATH" 2>/dev/null | head -c 4000)
 
   if [ -n "$LAST_ASSISTANT_MSG" ]; then
     curl -s --max-time 3 -X POST "$API_URL/api/hooks/output" \
       -H "Content-Type: application/json" \
-      -d "{\"agent_id\": \"$AGENT_ID\", \"session_id\": \"$SESSION_ID\", \"output\": $(echo "$LAST_ASSISTANT_MSG" | jq -Rs .)}" \
+      -d "{\"agent_id\": \"$AGENT_ID\", \"session_id\": \"$SESSION_ID\", \"output\": $(printf '%s' "$LAST_ASSISTANT_MSG" | jq -Rs .)}" \
       > /dev/null 2>&1
   fi
 fi

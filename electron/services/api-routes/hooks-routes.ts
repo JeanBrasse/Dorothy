@@ -33,10 +33,13 @@ export function registerHooksRoutes(app: RouteApp, ctx: RouteContext): void {
 
     const agent = findAgentByIdOrSession(agent_id, session_id);
     if (agent) {
-      if (agent.currentSessionId && session_id && session_id !== agent.currentSessionId) {
+      const staleOutput =
+        (agent.currentSessionId && session_id && session_id !== agent.currentSessionId) ||
+        (session_id && session_id === agent.lastKilledSessionId);
+      if (staleOutput) {
         // Stale session — don't let a killed PTY's Stop hook overwrite the
         // live task's output.
-        console.log(`[hooks] Ignored stale output post for ${agent.id} (session ${session_id} ≠ ${agent.currentSessionId})`);
+        console.log(`[hooks] Ignored stale output post for ${agent.id} (session ${session_id}, current ${agent.currentSessionId ?? 'none'})`);
         sendJson({ success: false, stale: true });
         return;
       }
@@ -72,9 +75,18 @@ export function registerHooksRoutes(app: RouteApp, ctx: RouteContext): void {
       return;
     }
 
-    // SessionStart registration (source is only ever sent by session-start.sh):
-    // record which session now owns this agent, but never touch status — the
-    // agent was just dispatched a task and is about to work on it.
+    // Tombstone guard: hooks of a killed PTY's session (separate processes
+    // that survive the kill) may arrive during the window where the new
+    // session hasn't registered yet — never let them register or flip status.
+    if (session_id && session_id === agent.lastKilledSessionId) {
+      console.log(`[hooks] Ignored post from killed session ${session_id} for ${agent.id} (status=${status})`);
+      sendJson({ success: false, stale: true, agent: { id: agent.id, status: agent.status } });
+      return;
+    }
+
+    // SessionStart registration (source is only ever sent by session-start
+    // hooks): record which session now owns this agent, but never touch
+    // status — the agent was just dispatched a task and is about to work.
     if (source) {
       agent.currentSessionId = session_id;
       agent.lastActivity = new Date().toISOString();
@@ -90,7 +102,7 @@ export function registerHooksRoutes(app: RouteApp, ctx: RouteContext): void {
       return;
     }
     // Registration fallback: if SessionStart never reached us (API briefly
-    // down at boot), adopt the first session that reports in.
+    // down at boot), adopt the first non-tombstoned session that reports in.
     if (!agent.currentSessionId && session_id) {
       agent.currentSessionId = session_id;
     }
@@ -148,8 +160,11 @@ export function registerHooksRoutes(app: RouteApp, ctx: RouteContext): void {
       return;
     }
 
-    // Same stale-session guard as /api/hooks/status.
-    if (agent.currentSessionId && session_id && session_id !== agent.currentSessionId) {
+    // Same stale-session + tombstone guards as /api/hooks/status.
+    const staleCompleted =
+      (agent.currentSessionId && session_id && session_id !== agent.currentSessionId) ||
+      (session_id && session_id === agent.lastKilledSessionId);
+    if (staleCompleted) {
       console.log(`[hooks] Ignored stale task-completed for ${agent.id} from session ${session_id}`);
       sendJson({ success: false, stale: true, agent: { id: agent.id, status: agent.status } });
       return;
