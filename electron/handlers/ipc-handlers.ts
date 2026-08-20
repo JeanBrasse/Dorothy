@@ -1514,6 +1514,13 @@ function registerAppSettingsHandlers(deps: IpcHandlerDependencies): void {
         initSlackBot();
       }
 
+      // Re-sync shared memory backend MCP registrations when their settings change
+      const memoryBackendsChanged = Object.keys(newSettings).some(k => k.startsWith('memoryGbrain') || k.startsWith('memoryHoncho'));
+      if (memoryBackendsChanged) {
+        const { setupMemoryBackends } = await import('../services/mcp-orchestrator');
+        setupMemoryBackends(updatedSettings);
+      }
+
       // Toggle Claude Code statusline
       if (newSettings.statusLineEnabled !== undefined) {
         const { enableStatusLine, disableStatusLine } = await import('../utils/statusline');

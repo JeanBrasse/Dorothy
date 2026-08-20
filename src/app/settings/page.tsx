@@ -23,6 +23,7 @@ import {
   PermissionsSection,
   SkillsSection,
   McpSection,
+  MemorySection,
   CLIPathsSection,
   SystemSection,
   SECTIONS,
@@ -146,6 +147,14 @@ function SettingsPageInner() {
         return <PermissionsSection settings={settings} />;
       case 'skills':
         return <SkillsSection skills={skills} />;
+      case 'memory':
+        return (
+          <MemorySection
+            appSettings={appSettings}
+            onSaveAppSettings={handleSaveAppSettings}
+            onUpdateLocalSettings={updateLocalAppSettings}
+          />
+        );
       case 'mcp':
         return <McpSection />;
       case 'cli':

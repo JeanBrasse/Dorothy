@@ -109,6 +109,14 @@ export interface AppSettings {
   terminalFontSize?: number;
   terminalTheme?: 'dark' | 'light';
   statusLineEnabled?: boolean;
+  /** Shared memory backends — remote MCP servers auto-registered so every
+   *  claude-binary agent shares the same brain as Hermes/Cowork. */
+  memoryGbrainEnabled?: boolean;
+  memoryGbrainMcpUrl?: string;
+  memoryGbrainAuthToken?: string;
+  memoryHonchoEnabled?: boolean;
+  memoryHonchoMcpUrl?: string;
+  memoryHonchoApiKey?: string;
   anthropicApiKey?: string;
   defaultClaudeModel?: string;
   favoriteProjects?: string[];
@@ -116,4 +124,4 @@ export interface AppSettings {
   defaultProjectPath?: string;
 }
 
-export type SettingsSection = 'general' | 'terminal' | 'git' | 'notifications' | 'telegram' | 'slack' | 'jira' | 'socialdata' | 'tasmania' | 'google-workspace' | 'obsidian' | 'ai-providers' | 'permissions' | 'skills' | 'mcp' | 'cli' | 'system';
+export type SettingsSection = 'general' | 'terminal' | 'git' | 'notifications' | 'telegram' | 'slack' | 'jira' | 'socialdata' | 'tasmania' | 'google-workspace' | 'obsidian' | 'ai-providers' | 'permissions' | 'skills' | 'memory' | 'mcp' | 'cli' | 'system';

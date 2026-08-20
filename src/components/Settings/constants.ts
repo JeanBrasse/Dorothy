@@ -1,4 +1,5 @@
 import {
+  Brain,
   Settings,
   GitCommit,
   Bell,
@@ -35,6 +36,7 @@ export const SECTIONS: { id: SettingsSection; label: string; icon: React.Compone
   { id: 'google-workspace', label: 'Google Workspace', icon: Cloud },
   { id: 'permissions', label: 'Permissions', icon: Shield },
   { id: 'skills', label: 'Skills & Plugins', icon: Sparkles },
+  { id: 'memory', label: 'Memory Backends', icon: Brain },
   { id: 'mcp', label: 'Custom MCP', icon: Plug },
   { id: 'system', label: 'System', icon: Monitor },
 ];
@@ -99,6 +101,12 @@ export const DEFAULT_APP_SETTINGS = {
   terminalFontSize: 11,
   terminalTheme: 'dark' as const,
   statusLineEnabled: false,
+  memoryGbrainEnabled: false,
+  memoryGbrainMcpUrl: '',
+  memoryGbrainAuthToken: '',
+  memoryHonchoEnabled: false,
+  memoryHonchoMcpUrl: 'https://mcp.honcho.dev',
+  memoryHonchoApiKey: '',
   favoriteProjects: [] as string[],
   hiddenProjects: [] as string[],
   cliPaths: {

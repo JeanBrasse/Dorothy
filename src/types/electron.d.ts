@@ -474,6 +474,12 @@ export interface ElectronAPI {
       terminalFontSize?: number;
       terminalTheme?: 'dark' | 'light';
       statusLineEnabled?: boolean;
+      memoryGbrainEnabled?: boolean;
+      memoryGbrainMcpUrl?: string;
+      memoryGbrainAuthToken?: string;
+      memoryHonchoEnabled?: boolean;
+      memoryHonchoMcpUrl?: string;
+      memoryHonchoApiKey?: string;
       favoriteProjects?: string[];
       hiddenProjects?: string[];
       defaultProjectPath?: string;
@@ -527,6 +533,12 @@ export interface ElectronAPI {
       terminalFontSize?: number;
       terminalTheme?: 'dark' | 'light';
       statusLineEnabled?: boolean;
+      memoryGbrainEnabled?: boolean;
+      memoryGbrainMcpUrl?: string;
+      memoryGbrainAuthToken?: string;
+      memoryHonchoEnabled?: boolean;
+      memoryHonchoMcpUrl?: string;
+      memoryHonchoApiKey?: string;
       favoriteProjects?: string[];
       hiddenProjects?: string[];
       defaultProjectPath?: string;

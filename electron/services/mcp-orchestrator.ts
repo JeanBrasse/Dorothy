@@ -2,7 +2,7 @@ import { app, ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import type { AppSettings } from '../types';
 import { getAllProviders } from '../providers';
 
@@ -183,6 +183,80 @@ async function installBundledSkills(): Promise<void> {
       }
     } catch (err) {
       console.error(`Failed to install skill ${skillName}:`, err);
+    }
+  }
+}
+
+// ============== Shared memory backends (remote MCP) ==============
+
+/** MCP servers registered in the claude CLI's user scope (~/.claude.json). */
+function readUserScopeMcpServers(): Record<string, { type?: string; url?: string; headers?: Record<string, string> }> {
+  try {
+    const p = path.join(os.homedir(), '.claude.json');
+    if (!fs.existsSync(p)) return {};
+    const cfg = JSON.parse(fs.readFileSync(p, 'utf-8'));
+    return cfg?.mcpServers ?? {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Register/unregister the user's shared memory backends (gbrain, Honcho) as
+ * remote HTTP MCP servers in the claude CLI's user scope, driven by settings.
+ * Every claude-binary agent then gets the same memory tools that the user's
+ * Hermes instance and claude.ai connectors use — one brain everywhere.
+ *
+ * Claude-binary providers only: native CLIs (codex, gemini, grok, opencode,
+ * pi) manage their own MCP configs and are out of scope here.
+ */
+export function setupMemoryBackends(appSettings?: AppSettings): void {
+  const backends = [
+    {
+      name: 'gbrain',
+      enabled: !!(appSettings?.memoryGbrainEnabled && appSettings?.memoryGbrainMcpUrl?.trim()),
+      url: appSettings?.memoryGbrainMcpUrl?.trim() || '',
+      bearerToken: appSettings?.memoryGbrainAuthToken?.trim() || undefined,
+    },
+    {
+      name: 'honcho',
+      enabled: !!(appSettings?.memoryHonchoEnabled && appSettings?.memoryHonchoMcpUrl?.trim()),
+      url: appSettings?.memoryHonchoMcpUrl?.trim() || '',
+      bearerToken: appSettings?.memoryHonchoApiKey?.trim() || undefined,
+    },
+  ];
+
+  const claudeBin = appSettings?.cliPaths?.claude?.trim() || 'claude';
+  const current = readUserScopeMcpServers();
+
+  for (const b of backends) {
+    try {
+      const cur = current[b.name];
+      const desiredAuth = b.bearerToken ? `Bearer ${b.bearerToken}` : undefined;
+
+      if (b.enabled) {
+        const matches = cur
+          && cur.type === 'http'
+          && cur.url === b.url
+          && (cur.headers?.['Authorization'] ?? undefined) === desiredAuth;
+        if (matches) continue;
+
+        try {
+          execFileSync(claudeBin, ['mcp', 'remove', '-s', 'user', b.name], { stdio: 'pipe', timeout: 10000 });
+        } catch { /* not registered yet */ }
+
+        const args = ['mcp', 'add', '-s', 'user', '-t', 'http', b.name, b.url];
+        if (desiredAuth) args.push('-H', `Authorization: ${desiredAuth}`);
+        execFileSync(claudeBin, args, { stdio: 'pipe', timeout: 10000 });
+        console.log(`[memory] registered ${b.name} MCP backend (${b.url})`);
+      } else if (cur) {
+        try {
+          execFileSync(claudeBin, ['mcp', 'remove', '-s', 'user', b.name], { stdio: 'pipe', timeout: 10000 });
+          console.log(`[memory] removed ${b.name} MCP backend`);
+        } catch { /* already gone */ }
+      }
+    } catch (err) {
+      console.error(`[memory] failed to configure ${b.name} MCP backend:`, err);
     }
   }
 }

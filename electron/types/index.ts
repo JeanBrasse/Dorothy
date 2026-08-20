@@ -162,6 +162,14 @@ export interface AppSettings {
   nvidiaApiKey?: string;
   nousPortalEnabled?: boolean;
   nousPortalApiKey?: string;
+  /** Shared memory backends — remote MCP servers auto-registered so every
+   *  claude-binary agent shares the same brain as Hermes/Cowork. */
+  memoryGbrainEnabled?: boolean;
+  memoryGbrainMcpUrl?: string;
+  memoryGbrainAuthToken?: string;
+  memoryHonchoEnabled?: boolean;
+  memoryHonchoMcpUrl?: string;
+  memoryHonchoApiKey?: string;
   defaultProvider?: AgentProvider;
   obsidianVaultPaths?: string[];
   notificationSounds?: {

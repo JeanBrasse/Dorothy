@@ -30,5 +30,6 @@ export { AIProvidersSection } from './AIProvidersSection';
 export { PermissionsSection } from './PermissionsSection';
 export { SkillsSection } from './SkillsSection';
 export { McpSection } from './McpSection';
+export { MemorySection } from './MemorySection';
 export { CLIPathsSection } from './CLIPathsSection';
 export { SystemSection } from './SystemSection';

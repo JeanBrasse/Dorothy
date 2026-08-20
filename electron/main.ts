@@ -79,6 +79,7 @@ import {
 import { configureStatusHooks } from './services/hooks-manager';
 import {
   setupMcpOrchestrator,
+  setupMemoryBackends,
   registerMcpOrchestratorHandlers,
   getMcpOrchestratorPath,
 } from './services/mcp-orchestrator';
@@ -586,6 +587,7 @@ app.whenReady().then(async () => {
 
   // Setup MCP orchestrator and hooks
   await setupMcpOrchestrator(appSettings);
+  setupMemoryBackends(appSettings);
   await configureStatusHooks();
 
   // Initialize electron-updater (wires up IPC events for progress, downloaded, error)
