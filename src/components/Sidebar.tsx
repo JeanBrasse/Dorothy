@@ -10,8 +10,6 @@ import {
   ChevronRight,
   Bot,
   BarChart2,
-  CalendarClock,
-  Zap,
   Columns,
   Moon,
   Sun,
@@ -34,10 +32,8 @@ const navItems = [
   { href: '/vault', icon: Archive, label: 'Vault', shortcut: '4' },
   { href: '/projects', icon: FolderKanban, label: 'Projects', shortcut: '5' },
   { href: '/skills', icon: Sparkles, label: 'Extensions', shortcut: '6' },
-  { href: '/recurring-tasks', icon: CalendarClock, label: 'Scheduled Tasks', shortcut: '7' },
-  { href: '/automations', icon: Zap, label: 'Automations', shortcut: '8' },
-  { href: '/usage', icon: BarChart2, label: 'Usage', shortcut: '9' },
-  { href: '/memory', icon: Brain, label: 'Memory', shortcut: 'M' },
+  { href: '/usage', icon: BarChart2, label: 'Usage', shortcut: '7' },
+  { href: '/memory', icon: Brain, label: 'Memory', shortcut: '8' },
 ];
 
 interface SidebarProps {

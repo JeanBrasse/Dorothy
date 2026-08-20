@@ -186,7 +186,7 @@ export const JiraSection = ({ appSettings, onSaveAppSettings, onUpdateLocalSetti
           <li>Enter your JIRA hostname (e.g. mycompany.atlassian.net or your self-hosted domain)</li>
           <li>Enter the email associated with your Atlassian account</li>
           <li>Paste your API token and click &quot;Test Connection&quot;</li>
-          <li>Create an automation with JIRA as the source</li>
+          <li>Agents can then read and update JIRA issues via the orchestrator tools</li>
         </ol>
       </div>
     </div>

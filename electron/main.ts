@@ -7,7 +7,6 @@
  * - IPC handlers for renderer communication
  * - External services (Telegram, Slack, HTTP API)
  * - MCP orchestrator integration
- * - Scheduler for automated tasks
  */
 
 import { app, BrowserWindow } from 'electron';
@@ -86,8 +85,6 @@ import {
 
 // Handlers
 import { registerIpcHandlers, IpcHandlerDependencies } from './handlers/ipc-handlers';
-import { registerSchedulerHandlers } from './handlers/scheduler-handlers';
-import { registerAutomationHandlers } from './handlers/automation-handlers';
 import { registerCLIPathsHandlers } from './handlers/cli-paths-handlers';
 import { registerKanbanHandlers } from './handlers/kanban-handlers';
 import { registerVaultHandlers } from './handlers/vault-handlers';
@@ -352,11 +349,6 @@ app.whenReady().then(async () => {
   // Register all IPC handlers
   const deps = createIpcDependencies();
   registerIpcHandlers(deps);
-  registerSchedulerHandlers({
-    agents,
-    getAppSettings: () => appSettings,
-  });
-  registerAutomationHandlers();
   registerMcpOrchestratorHandlers();
   registerCLIPathsHandlers({
     getAppSettings: () => appSettings,
