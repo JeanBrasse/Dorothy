@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain,
@@ -20,7 +20,11 @@ import {
   Clock,
   HardDrive,
   Share2,
+  Server,
+  ExternalLink,
+  Settings as SettingsIcon,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useMemory, formatBytes, timeAgo } from '@/hooks/useMemory';
 import type { ProjectMemory, MemoryFile } from '@/types/electron';
 import AgentKnowledgeGraph from '@/components/Memory/AgentKnowledgeGraph';
@@ -275,6 +279,101 @@ function NewFileModal({
 
 // ─── Main page ───────────────────────────────────────────────────────────────
 
+// ─── Shared memory backends (gbrain / Honcho) status ───────────────────────
+
+interface BackendStatus {
+  key: string;
+  title: string;
+  description: string;
+  enabled: boolean;
+  url: string;
+  hasAuth: boolean;
+  docUrl: string;
+}
+
+function BackendsTab() {
+  const [backends, setBackends] = useState<BackendStatus[] | null>(null);
+
+  useEffect(() => {
+    window.electronAPI?.appSettings?.get().then(s => {
+      setBackends([
+        {
+          key: 'native',
+          title: 'Native project memory',
+          description: 'Claude Code auto-memory (~/.claude/projects/*/memory/). Always on — injected into every agent at session start, browsable in the Projects tab.',
+          enabled: true,
+          url: '~/.claude/projects/*/memory/',
+          hasAuth: false,
+          docUrl: 'https://code.claude.com/docs/en/memory',
+        },
+        {
+          key: 'gbrain',
+          title: 'gbrain',
+          description: 'Shared semantic memory (vector search + knowledge graph). Registered as an MCP server for every claude-binary agent — the same brain your Hermes instance uses.',
+          enabled: !!(s?.memoryGbrainEnabled && s?.memoryGbrainMcpUrl),
+          url: s?.memoryGbrainMcpUrl || '',
+          hasAuth: !!s?.memoryGbrainAuthToken,
+          docUrl: 'https://github.com/garrytan/gbrain',
+        },
+        {
+          key: 'honcho',
+          title: 'Honcho',
+          description: 'Plastic Labs\' memory layer (peers, sessions, working representations), served over MCP.',
+          enabled: !!(s?.memoryHonchoEnabled && s?.memoryHonchoMcpUrl),
+          url: s?.memoryHonchoMcpUrl || 'https://mcp.honcho.dev',
+          hasAuth: !!s?.memoryHonchoApiKey,
+          docUrl: 'https://honcho.dev/docs/v3/guides/integrations/mcp',
+        },
+      ]);
+    });
+  }, []);
+
+  if (!backends) {
+    return (
+      <div className="flex items-center justify-center py-16 text-muted-foreground">
+        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+        Loading backends…
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto space-y-3 max-w-3xl">
+      {backends.map(b => (
+        <div key={b.key} className="bg-card border border-border p-4">
+          <div className="flex items-center justify-between gap-3 mb-1.5">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              {b.title}
+              <a href={b.docUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground" title="Documentation">
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </h3>
+            <span className={`text-[10px] font-medium px-1.5 py-0.5 ${
+              b.enabled ? 'bg-green-500/15 text-green-600' : 'bg-secondary text-muted-foreground'
+            }`}>
+              {b.enabled ? 'Connected' : 'Not configured'}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mb-2">{b.description}</p>
+          {b.enabled && (
+            <p className="text-[11px] text-muted-foreground font-mono truncate">
+              {b.url}{b.key !== 'native' && (b.hasAuth ? ' · auth ✓' : ' · no auth header')}
+            </p>
+          )}
+        </div>
+      ))}
+
+      <Link
+        href="/settings"
+        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+      >
+        <SettingsIcon className="w-3.5 h-3.5" />
+        Configure backends in Settings → Memory Backends
+      </Link>
+    </div>
+  );
+}
+
 export default function MemoryPage() {
   const {
     filteredProjects,
@@ -298,7 +397,7 @@ export default function MemoryPage() {
     refresh,
   } = useMemory();
 
-  const [activeTab, setActiveTab] = useState<'projects' | 'agents'>('agents');
+  const [activeTab, setActiveTab] = useState<'projects' | 'agents' | 'backends'>('agents');
   const [editingFile, setEditingFile] = useState<MemoryFile | null>(null);
   const [showNewFileModal, setShowNewFileModal] = useState(false);
   const [deletingFile, setDeletingFile] = useState<string | null>(null);
@@ -350,10 +449,10 @@ export default function MemoryPage() {
         <div>
           <h1 className="text-xl lg:text-2xl font-bold tracking-tight flex items-center gap-2">
             <Brain className="w-6 h-6 text-primary" />
-            Memory
+            Brain
           </h1>
           <p className="text-muted-foreground text-xs lg:text-sm mt-1 hidden sm:block">
-            Native Claude Code memory — per-project context that persists across sessions
+            What your agents know — native project memory plus shared backends (gbrain, Honcho)
           </p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
@@ -375,6 +474,7 @@ export default function MemoryPage() {
         {([
           { id: 'agents', label: 'Agents', icon: Share2 },
           { id: 'projects', label: 'Projects', icon: FolderOpen },
+          { id: 'backends', label: 'Backends', icon: Server },
         ] as const).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -396,6 +496,9 @@ export default function MemoryPage() {
           <AgentKnowledgeGraph />
         </div>
       )}
+
+      {/* ── Shared backends tab ── */}
+      {activeTab === 'backends' && <BackendsTab />}
 
       {/* ── Projects tab content ── */}
       {activeTab === 'projects' && <>

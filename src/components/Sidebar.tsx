@@ -33,7 +33,7 @@ const navItems = [
   { href: '/projects', icon: FolderKanban, label: 'Projects', shortcut: '5' },
   { href: '/skills', icon: Sparkles, label: 'Extensions', shortcut: '6' },
   { href: '/usage', icon: BarChart2, label: 'Usage', shortcut: '7' },
-  { href: '/memory', icon: Brain, label: 'Memory', shortcut: '8' },
+  { href: '/memory', icon: Brain, label: 'Brain', shortcut: '8' },
 ];
 
 interface SidebarProps {
