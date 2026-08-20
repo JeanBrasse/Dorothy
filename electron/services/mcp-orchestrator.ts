@@ -89,7 +89,6 @@ export async function setupMcpOrchestrator(appSettings?: AppSettings): Promise<v
       { name: 'claude-mgr-vault', serverPath: getMcpVaultPath() },
       { name: 'dorothy-socialdata', serverPath: getMcpSocialDataPath() },
       { name: 'dorothy-x', serverPath: getMcpXPath() },
-      { name: 'dorothy-world', serverPath: getMcpWorldPath() },
     ];
 
     // Add Tasmania if enabled
