@@ -31,14 +31,25 @@ curl -s --connect-timeout 1 --max-time 3 -X POST "$BASE_URL/api/hooks/status" \
   -d "{\"agent_id\": \"$AGENT_ID\", \"session_id\": \"$SESSION_ID\", \"status\": \"running\"}" \
   > /dev/null 2>&1
 
-# Function to store observation
+# Function to store observation. The payload MUST be built with jq: tool
+# input routinely contains quotes/newlines/backslashes, and naive string
+# interpolation would produce invalid JSON (observation silently dropped)
+# or let agent-controlled text inject extra JSON fields.
 store_observation() {
   local content="$1"
   local type="$2"
 
+  local payload
+  payload=$(jq -n \
+    --arg agent_id "$AGENT_ID" \
+    --arg project_path "$PROJECT_PATH" \
+    --arg content "$content" \
+    --arg type "$type" \
+    '{agent_id: $agent_id, project_path: $project_path, content: $content, type: $type}')
+
   curl -s --max-time 3 -X POST "$API_URL" \
     -H "Content-Type: application/json" \
-    -d "{\"agent_id\": \"$AGENT_ID\", \"project_path\": \"$PROJECT_PATH\", \"content\": \"$content\", \"type\": \"$type\"}" \
+    -d "$payload" \
     > /dev/null 2>&1
 }
 

@@ -17,13 +17,23 @@ API_URL="http://127.0.0.1:31415/api/memory/remember"
 AGENT_ID="${DOROTHY_AGENT_ID:-$SESSION_ID}"
 PROJECT_PATH="${DOROTHY_PROJECT_PATH:-$CWD}"
 
+# jq-built payload: tool input contains quotes/newlines that would break
+# naive JSON interpolation (observation dropped) or inject extra fields.
 store_observation() {
   local content="$1"
   local type="$2"
 
+  local payload
+  payload=$(jq -n \
+    --arg agent_id "$AGENT_ID" \
+    --arg project_path "$PROJECT_PATH" \
+    --arg content "$content" \
+    --arg type "$type" \
+    '{agent_id: $agent_id, project_path: $project_path, content: $content, type: $type}')
+
   curl -s -X POST "$API_URL" \
     -H "Content-Type: application/json" \
-    -d "{\"agent_id\": \"$AGENT_ID\", \"project_path\": \"$PROJECT_PATH\", \"content\": \"$content\", \"type\": \"$type\"}" \
+    -d "$payload" \
     > /dev/null 2>&1 &
 }
 

@@ -2,7 +2,7 @@ import { app, ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import { execSync, execFileSync } from 'child_process';
+import { execSync } from 'child_process';
 import type { AppSettings } from '../types';
 import { getAllProviders } from '../providers';
 
@@ -189,23 +189,17 @@ async function installBundledSkills(): Promise<void> {
 
 // ============== Shared memory backends (remote MCP) ==============
 
-/** MCP servers registered in the claude CLI's user scope (~/.claude.json). */
-function readUserScopeMcpServers(): Record<string, { type?: string; url?: string; headers?: Record<string, string> }> {
-  try {
-    const p = path.join(os.homedir(), '.claude.json');
-    if (!fs.existsSync(p)) return {};
-    const cfg = JSON.parse(fs.readFileSync(p, 'utf-8'));
-    return cfg?.mcpServers ?? {};
-  } catch {
-    return {};
-  }
-}
-
 /**
  * Register/unregister the user's shared memory backends (gbrain, Honcho) as
  * remote HTTP MCP servers in the claude CLI's user scope, driven by settings.
  * Every claude-binary agent then gets the same memory tools that the user's
  * Hermes instance and claude.ai connectors use — one brain everywhere.
+ *
+ * Writes ~/.claude.json (the file `claude mcp add -s user` maintains)
+ * directly: no dependency on the claude binary being on the packaged app's
+ * PATH, and no CLI boot blocking the main process. Removal only touches
+ * entries whose URL matches Dorothy's own settings — a gbrain/honcho the
+ * user registered independently is never deleted.
  *
  * Claude-binary providers only: native CLIs (codex, gemini, grok, opencode,
  * pi) manage their own MCP configs and are out of scope here.
@@ -226,37 +220,43 @@ export function setupMemoryBackends(appSettings?: AppSettings): void {
     },
   ];
 
-  const claudeBin = appSettings?.cliPaths?.claude?.trim() || 'claude';
-  const current = readUserScopeMcpServers();
+  const configPath = path.join(os.homedir(), '.claude.json');
+  let cfg: { mcpServers?: Record<string, { type?: string; url?: string; headers?: Record<string, string> }> };
+  try {
+    cfg = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, 'utf-8')) : {};
+  } catch (err) {
+    // Never clobber a config we couldn't parse.
+    console.error('[memory] cannot read ~/.claude.json, leaving MCP backends untouched:', err);
+    return;
+  }
+  if (!cfg.mcpServers || typeof cfg.mcpServers !== 'object') cfg.mcpServers = {};
 
+  let changed = false;
   for (const b of backends) {
+    const cur = cfg.mcpServers[b.name];
+    const desiredHeaders = b.bearerToken ? { Authorization: `Bearer ${b.bearerToken}` } : undefined;
+
+    if (b.enabled) {
+      const matches = cur
+        && cur.type === 'http'
+        && cur.url === b.url
+        && JSON.stringify(cur.headers ?? null) === JSON.stringify(desiredHeaders ?? null);
+      if (matches) continue;
+      cfg.mcpServers[b.name] = { type: 'http', url: b.url, ...(desiredHeaders ? { headers: desiredHeaders } : {}) };
+      changed = true;
+      console.log(`[memory] registered ${b.name} MCP backend (${b.url})`);
+    } else if (cur && b.url && cur.url === b.url) {
+      delete cfg.mcpServers[b.name];
+      changed = true;
+      console.log(`[memory] removed ${b.name} MCP backend`);
+    }
+  }
+
+  if (changed) {
     try {
-      const cur = current[b.name];
-      const desiredAuth = b.bearerToken ? `Bearer ${b.bearerToken}` : undefined;
-
-      if (b.enabled) {
-        const matches = cur
-          && cur.type === 'http'
-          && cur.url === b.url
-          && (cur.headers?.['Authorization'] ?? undefined) === desiredAuth;
-        if (matches) continue;
-
-        try {
-          execFileSync(claudeBin, ['mcp', 'remove', '-s', 'user', b.name], { stdio: 'pipe', timeout: 10000 });
-        } catch { /* not registered yet */ }
-
-        const args = ['mcp', 'add', '-s', 'user', '-t', 'http', b.name, b.url];
-        if (desiredAuth) args.push('-H', `Authorization: ${desiredAuth}`);
-        execFileSync(claudeBin, args, { stdio: 'pipe', timeout: 10000 });
-        console.log(`[memory] registered ${b.name} MCP backend (${b.url})`);
-      } else if (cur) {
-        try {
-          execFileSync(claudeBin, ['mcp', 'remove', '-s', 'user', b.name], { stdio: 'pipe', timeout: 10000 });
-          console.log(`[memory] removed ${b.name} MCP backend`);
-        } catch { /* already gone */ }
-      }
+      fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2));
     } catch (err) {
-      console.error(`[memory] failed to configure ${b.name} MCP backend:`, err);
+      console.error('[memory] failed to write ~/.claude.json:', err);
     }
   }
 }

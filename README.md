@@ -10,9 +10,9 @@ A beautiful desktop app to orchestrate your [Claude Code](https://claude.ai/code
 
 - [Why Dorothy](#why-dorothy)
 - [Core Features](#core-features)
-- [Automations](#automations)
+- [External Scheduling (Hermes webhook)](#external-scheduling-hermes-webhook)
+- [Memory & Brain](#memory--brain)
 - [Kanban Task Management](#kanban-task-management)
-- [Scheduled Tasks](#scheduled-tasks)
 - [Remote Control](#remote-control)
 - [Vault](#vault)
 - [SocialData (Twitter/X)](#socialdata-twitterx)
@@ -97,100 +97,45 @@ Configure Claude Code settings directly — permissions, environment variables, 
 
 ---
 
-## Automations
+## External Scheduling (Hermes webhook)
 
-Automations poll external sources, detect new or updated items, and spawn Claude agents to process each item autonomously. This enables fully automated CI/CD-like workflows powered by AI.
+Dorothy deliberately has no built-in scheduler. Recurring jobs live in an
+external agent (e.g. a self-hosted [Hermes Agent](https://hermes-agent.nousresearch.com/)
+instance) whose cron jobs call Dorothy's webhook to drive agents:
 
-### Supported Sources
-
-| Source | Status | Polling Method |
-|--------|--------|---------------|
-| **GitHub** | Active | `gh` CLI — pull requests, issues, releases |
-| **JIRA** | Active | REST API v3 — issues, bugs, stories, tasks |
-| **Pipedrive** | Planned | — |
-| **Twitter** | Planned | — |
-| **RSS** | Planned | — |
-| **Custom** | Planned | Webhook support |
-
-### Execution Pipeline
-
-1. **Scheduler** triggers the automation on its cron schedule or interval
-2. **Poller** fetches items from the source (e.g., GitHub PRs via `gh` CLI)
-3. **Filter** applies trigger conditions (event type, new vs. updated)
-4. **Deduplication** skips already-processed items using content hashing
-5. **Agent spawning** — a temporary agent is created for each item
-6. **Prompt injection** — item data injected via template variables
-7. **Autonomous execution** — agent runs with full MCP tool access
-8. **Output delivery** — agent posts results to Telegram, Slack, or GitHub comments
-9. **Cleanup** — temporary agent is deleted after completion
-
-### Template Variables
-
-Use these in your `agentPrompt` and `outputTemplate`:
-
-#### GitHub Variables
-
-| Variable | Description |
-|----------|-------------|
-| `{{title}}` | Item title (PR title, issue title, etc.) |
-| `{{url}}` | Item URL |
-| `{{author}}` | Item author |
-| `{{body}}` | Item body/description |
-| `{{labels}}` | Item labels |
-| `{{repo}}` | Repository name |
-| `{{number}}` | Item number (PR #, issue #) |
-| `{{type}}` | Item type (pull_request, issue, etc.) |
-
-#### JIRA Variables
-
-| Variable | Description |
-|----------|-------------|
-| `{{key}}` | Issue key (e.g., `PROJ-123`) |
-| `{{summary}}` | Issue summary |
-| `{{status}}` | Current issue status |
-| `{{issueType}}` | Issue type (Task, Bug, Story, etc.) |
-| `{{priority}}` | Issue priority |
-| `{{assignee}}` | Assigned user |
-| `{{reporter}}` | Reporter name |
-| `{{url}}` | Issue URL |
-| `{{body}}` | Issue description |
-
-### Example: Automated PR Review Bot
-
-```javascript
-create_automation({
-  name: "PR Code Reviewer",
-  sourceType: "github",
-  sourceConfig: '{"repos": ["myorg/myrepo"], "pollFor": ["pull_requests"]}',
-  scheduleMinutes: 15,
-  agentEnabled: true,
-  agentPrompt: "Review this PR for code quality, security issues, and performance. PR: {{title}} ({{url}}). Description: {{body}}",
-  agentProjectPath: "/path/to/myrepo",
-  outputGitHubComment: true,
-  outputSlack: true
-})
+```
+POST http://<dorothy-host>:31415/api/webhooks/hermes
+Authorization: Bearer <contents of ~/.dorothy/api-token>
+{
+  "agent_name": "QA — myproject",   // or "agent_id"
+  "project_path": "/path/to/project", // narrows agent_name when ambiguous
+  "message": "Run the full test suite and report failures",
+  "model": "claude-sonnet-5",         // optional
+  "permission_mode": "auto"           // optional
+}
 ```
 
-### Example: JIRA Issue Processor
+The webhook shares the atomic dispatch used internally: it messages a live
+session or spawns a fresh one, and refuses (409) when the agent is blocked
+on a permission dialog. Poll `GET /api/agents/:id` for status/output.
 
-```javascript
-create_automation({
-  name: "JIRA Task Agent",
-  sourceType: "jira",
-  sourceConfig: '{"projectKeys": ["PROJ"], "jql": "status = Open"}',
-  scheduleMinutes: 5,
-  agentEnabled: true,
-  agentPrompt: "Work on JIRA issue {{key}}: {{summary}}. Description: {{body}}. Priority: {{priority}}.",
-  agentProjectPath: "/path/to/project",
-  outputJiraComment: true,
-  outputJiraTransition: true,
-  outputTelegram: true
-})
-```
+If the scheduler runs on another machine (a VPS), expose the localhost-bound
+API with a tunnel, e.g. `tailscale serve 31415` on the Dorothy machine.
 
-JIRA automations also create Kanban tasks automatically in the backlog, allowing agents to pick them up via the auto-assignment system.
+## Memory & Brain
 
----
+Agents draw from three memory layers, surfaced on the **Brain** page:
+
+- **Native project memory** — Claude Code auto-memory
+  (`~/.claude/projects/*/memory/`). Injected into every fresh session via
+  `GET /api/memory/context` (MEMORY.md + recent cross-session activity);
+  significant tool uses are captured to a per-project ledger via
+  `POST /api/memory/remember` (`~/.dorothy/observations/`).
+- **gbrain** — shared semantic memory (vector + knowledge graph), registered
+  as a remote HTTP MCP server for every claude-binary agent
+  (Settings → Memory Backends).
+- **Honcho** — Plastic Labs' memory layer over MCP (`mcp.honcho.dev`).
+
 
 ## Kanban Task Management
 
@@ -221,43 +166,6 @@ The `kanban-automation` service continuously watches for new tasks and:
 5. Marks the task `done` when the agent completes
 
 This enables a **self-managing task pipeline** — add tasks to the backlog and agents automatically pick them up.
-
----
-
-## Scheduled Tasks
-
-Run Claude Code autonomously on a cron schedule. Useful for recurring maintenance, reporting, monitoring, or any periodic task.
-
-### Cron Format
-
-```
-┌───────────── minute (0-59)
-│ ┌───────────── hour (0-23)
-│ │ ┌───────────── day of month (1-31)
-│ │ │ ┌───────────── month (1-12)
-│ │ │ │ ┌───────────── day of week (0-7, 0 and 7 = Sunday)
-│ │ │ │ │
-* * * * *
-```
-
-| Expression | Schedule |
-|-----------|----------|
-| `0 9 * * *` | Daily at 9:00 AM |
-| `0 9 * * 1-5` | Weekdays at 9:00 AM |
-| `*/15 * * * *` | Every 15 minutes |
-| `0 */2 * * *` | Every 2 hours |
-| `30 14 * * 1` | Mondays at 2:30 PM |
-
-### Platform Support
-
-- **macOS**: Uses `launchd` (launchctl) for reliable background execution
-- **Linux**: Uses `cron` (crontab)
-
-### Storage
-
-- Task definitions: `~/.claude/schedules.json`
-- Generated scripts: `~/.dorothy/scripts/`
-- Execution logs: `~/.claude/logs/`
 
 ---
 
@@ -412,7 +320,7 @@ Dorothy exposes **five MCP (Model Context Protocol) servers** with **40+ tools**
 
 ### mcp-orchestrator
 
-The main orchestration server — agent management, messaging, scheduling, and automations.
+The main orchestration server — agent management and messaging.
 
 #### Agent Management Tools
 
@@ -434,56 +342,6 @@ The main orchestration server — agent management, messaging, scheduling, and a
 |------|-----------|-------------|
 | `send_telegram` | `message` | Send a text message to Telegram (truncates at 4096 chars) |
 | `send_slack` | `message` | Send a text message to Slack (truncates at 4000 chars) |
-
-#### Scheduler Tools
-
-| Tool | Parameters | Description |
-|------|-----------|-------------|
-| `list_scheduled_tasks` | — | List all recurring tasks with schedule and next run time |
-| `create_scheduled_task` | `prompt`, `schedule` (cron), `projectPath`, `autonomous?` (true) | Create a recurring task |
-| `delete_scheduled_task` | `taskId` | Remove a scheduled task |
-| `run_scheduled_task` | `taskId` | Execute a task immediately |
-| `get_scheduled_task_logs` | `taskId`, `lines?` (50) | Get execution logs |
-
-#### Automation Tools
-
-| Tool | Parameters | Description |
-|------|-----------|-------------|
-| `list_automations` | — | List all automations with status, source, schedule |
-| `get_automation` | `id` | Get details including recent runs |
-| `create_automation` | `name`, `sourceType`, `sourceConfig`, + [options](#automation-create-options) | Create a new automation |
-| `update_automation` | `id`, + optional fields | Update configuration |
-| `delete_automation` | `id` | Remove an automation |
-| `run_automation` | `id` | Trigger immediately |
-| `pause_automation` | `id` | Pause scheduled execution |
-| `resume_automation` | `id` | Resume a paused automation |
-| `run_due_automations` | — | Check and run all due automations |
-| `get_automation_logs` | `id`, `limit?` (10) | Get execution history |
-| `update_jira_issue` | `issueKey`, `transitionName?`, `comment?` | Update JIRA issue status and/or add a comment |
-
-##### Automation Create Options
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `sourceType` | enum | `github`, `jira`, `pipedrive`, `twitter`, `rss`, `custom` |
-| `sourceConfig` | JSON string | Source config (e.g., `{"repos": ["owner/repo"], "pollFor": ["pull_requests"]}`) |
-| `scheduleMinutes` | number | Poll interval in minutes (default: 30) |
-| `scheduleCron` | string | Cron expression (alternative to interval) |
-| `eventTypes` | string[] | Filter by event type (e.g., `["pr", "issue"]`) |
-| `onNewItem` | boolean | Trigger on new items (default: true) |
-| `onUpdatedItem` | boolean | Trigger on updated items |
-| `agentEnabled` | boolean | Enable agent processing (default: true) |
-| `agentPrompt` | string | Prompt template with `{{variables}}` |
-| `agentProjectPath` | string | Project path for the agent |
-| `agentModel` | enum | `sonnet`, `opus`, or `haiku` |
-| `outputTelegram` | boolean | Post output to Telegram |
-| `outputSlack` | boolean | Post output to Slack |
-| `outputGitHubComment` | boolean | Post output as GitHub comment |
-| `outputJiraComment` | boolean | Post a comment on the JIRA issue |
-| `outputJiraTransition` | boolean | Transition the JIRA issue status |
-| `outputTemplate` | string | Custom output message template |
-
----
 
 ### mcp-telegram
 
@@ -538,7 +396,7 @@ MCP server for Twitter/X data via the SocialData API. See [SocialData (Twitter/X
 - **Node.js** 18+
 - **npm** or yarn
 - **Claude Code CLI**: `npm install -g @anthropic-ai/claude-code`
-- **GitHub CLI** (`gh`) — required for GitHub automations
+- **GitHub CLI** (`gh`) — used by agents for GitHub operations
 
 ### Download
 
@@ -586,8 +444,8 @@ Open [http://localhost:3000](http://localhost:3000). Agent management and termin
 │  │                    │  │  ┌──────────────────────────┐ │ │
 │  │  - Agent Dashboard │  │  │  Agent Manager           │ │ │
 │  │  - Kanban Board    │  │  │  (node-pty, N parallel)  │ │ │
-│  │  - Automations     │  │  ├──────────────────────────┤ │ │
-│  │  - Scheduled Tasks │  │  │  PTY Manager             │ │ │
+│  │  - Brain (memory)  │  │  ├──────────────────────────┤ │ │
+│  │  - Extensions      │  │  │  PTY Manager             │ │ │
 │  │  - Usage Stats     │  │  │  (terminal multiplexing) │ │ │
 │  │  - Skills/Plugins  │  │  ├──────────────────────────┤ │ │
 │  │  - Settings        │  │  │  Services:               │ │ │
@@ -620,18 +478,6 @@ Open [http://localhost:3000](http://localhost:3000). Agent management and termin
 6. Services notified (Telegram, Slack, Kanban) on status changes
 7. Agent state persisted to `~/.dorothy/agents.json`
 
-### Data Flow: Automation Pipeline
-
-1. Scheduler triggers automation on cron schedule
-2. Poller fetches items from source (GitHub via `gh` CLI, JIRA via REST API)
-3. Filter applies trigger conditions, deduplicates via content hashing
-4. Temporary agent spawned for each new/updated item
-5. Prompt injected with item data via template variables
-6. Agent executes autonomously with full MCP tool access
-7. Agent delivers output via MCP tools (Telegram, Slack, GitHub comments, JIRA comments/transitions)
-8. For JIRA automations, Kanban tasks are auto-created in the backlog
-9. Temporary agent deleted, item marked as processed
-
 ### MCP Communication
 
 All MCP servers communicate via **stdio** (standard input/output):
@@ -650,15 +496,12 @@ Claude Code ←→ stdio ←→ MCP Server
 dorothy/
 ├── src/                           # Next.js frontend (React)
 │   ├── app/                       # Page routes
-│   │   ├── agents/                # Agent management UI
+│   │   ├── agents/                # Agent management UI (+ templates, teams)
 │   │   ├── kanban/                # Kanban board UI
-│   │   ├── automations/           # Automation management UI
-│   │   ├── recurring-tasks/       # Scheduled tasks UI
 │   │   ├── settings/              # Settings page
-│   │   ├── skills/                # Skills management
+│   │   ├── skills/                # Extensions (skills + plugins)
 │   │   ├── usage/                 # Usage statistics
 │   │   ├── projects/              # Projects overview
-│   │   ├── plugins/               # Plugin marketplace
 │   │   └── api/                   # Backend API routes
 │   ├── components/                # React components
 │   ├── hooks/                     # Custom React hooks
@@ -687,8 +530,7 @@ dorothy/
 │   └── src/tools/
 │       ├── agents.ts              # Agent management tools (9)
 │       ├── messaging.ts           # Telegram/Slack tools (2)
-│       ├── scheduler.ts           # Scheduled task tools (5)
-│       └── automations.ts         # Automation tools (10+)
+│       └── messaging.ts           # Telegram/Slack tools
 ├── mcp-telegram/                  # MCP server (Telegram media)
 │   └── src/index.ts               # Text, photo, video, document (4)
 ├── mcp-kanban/                    # MCP server (task management)
@@ -729,7 +571,7 @@ dorothy/
 | File | Description |
 |------|-------------|
 | `~/.dorothy/app-settings.json` | App settings (Telegram token, Slack tokens, preferences) |
-| `~/.dorothy/cli-paths.json` | CLI tool paths for automations |
+| `~/.dorothy/cli-paths.json` | CLI tool paths for agents |
 | `~/.claude/settings.json` | Claude Code user settings |
 
 ### Data Files
@@ -738,10 +580,9 @@ dorothy/
 |------|-------------|
 | `~/.dorothy/agents.json` | Persisted agent state (all agents, all sessions) |
 | `~/.dorothy/kanban-tasks.json` | Kanban board tasks |
-| `~/.dorothy/automations.json` | Automation definitions and state |
-| `~/.dorothy/processed-items.json` | Automation deduplication tracking |
+| `~/.dorothy/team-templates.json` | Team templates (one-click project teams) |
+| `~/.dorothy/observations/` | Per-project activity ledgers (memory capture) |
 | `~/.dorothy/vault.db` | Vault documents, folders, and FTS index (SQLite) |
-| `~/.claude/schedules.json` | Scheduled task definitions |
 
 ### Generated Files
 

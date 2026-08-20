@@ -19,9 +19,22 @@ const MAX_OBSERVATIONS = 15;       // recent observations included in the contex
 const LEDGER_MAX_LINES = 1000;     // trim threshold for the observations ledger
 const LEDGER_TRIM_TO = 500;
 
-/** Claude Code encodes project paths by replacing both `/` and `.` with `-`. */
+/** Claude Code currently encodes project dir names by collapsing every
+ *  non-alphanumeric character to `-` ([^a-zA-Z0-9] in the CLI bundle) —
+ *  `/Users/noah/my_app` → `-Users-noah-my-app`. */
 function encodeProjectDir(projectPath: string): string {
-  return projectPath.replace(/[/.]/g, '-');
+  return projectPath.replace(/[^a-zA-Z0-9]/g, '-');
+}
+
+/** Older CLI versions used laxer encodings (dots preserved, or only `/` and
+ *  `.` replaced) and those project dirs still exist on disk — probe every
+ *  variant so long-lived projects keep their memory. */
+function candidateProjectDirs(projectPath: string): string[] {
+  return [...new Set([
+    projectPath.replace(/[^a-zA-Z0-9]/g, '-'),
+    projectPath.replace(/[/.]/g, '-'),
+    projectPath.replace(/\//g, '-'),
+  ])];
 }
 
 /** Ledger filenames derive from the encoded project dir — no user-controlled
@@ -62,8 +75,10 @@ export function registerMemoryRoutes(app: RouteApp, _ctx: RouteContext): void {
     const sections: string[] = [];
 
     try {
-      const memoryFile = path.join(CLAUDE_PROJECTS_DIR, encodeProjectDir(projectPath), 'memory', 'MEMORY.md');
-      if (fs.existsSync(memoryFile)) {
+      const memoryFile = candidateProjectDirs(projectPath)
+        .map(dir => path.join(CLAUDE_PROJECTS_DIR, dir, 'memory', 'MEMORY.md'))
+        .find(p => fs.existsSync(p));
+      if (memoryFile) {
         let content = fs.readFileSync(memoryFile, 'utf-8').trim();
         if (content.length > MAX_MEMORY_CHARS) {
           content = content.slice(0, MAX_MEMORY_CHARS) + '\n…(truncated — read the full memory/MEMORY.md)';
