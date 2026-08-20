@@ -12,6 +12,7 @@ import NewChatModal from '@/components/NewChatModal';
 import type { EditAgentData } from '@/components/NewChatModal/types';
 import AgentTerminalDialog from '@/components/AgentWorld/AgentTerminalDialog';
 import { TemplatesManagerDialog } from '@/components/Templates/TemplatesManagerDialog';
+import { DeployTeamDialog } from '@/components/Templates/DeployTeamDialog';
 import {
   DesktopRequiredMessage,
   AgentListHeader,
@@ -42,6 +43,7 @@ export default function AgentsPage() {
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [showSuperAgentModal, setShowSuperAgentModal] = useState(false);
   const [showTemplatesDialog, setShowTemplatesDialog] = useState(false);
+  const [showDeployTeamDialog, setShowDeployTeamDialog] = useState(false);
   const [viewAgentId, setViewAgentId] = useState<string | null>(null);  // terminal dialog
   const [editAgentId, setEditAgentId] = useState<string | null>(null);  // edit dialog
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
@@ -222,6 +224,7 @@ export default function AgentsPage() {
         onSuperAgentClick={handleSuperAgentClick}
         onNewAgentClick={() => setShowNewChatModal(true)}
         onTemplatesClick={() => setShowTemplatesDialog(true)}
+        onDeployTeamClick={() => setShowDeployTeamDialog(true)}
       />
 
       <ProjectFilterTabs
@@ -384,6 +387,12 @@ export default function AgentsPage() {
       <TemplatesManagerDialog
         open={showTemplatesDialog}
         onClose={() => setShowTemplatesDialog(false)}
+      />
+
+      {/* Team deployment — create a whole agent team on a project in one click */}
+      <DeployTeamDialog
+        open={showDeployTeamDialog}
+        onClose={() => setShowDeployTeamDialog(false)}
       />
 
       {/* Terminal Dialog — click card body to view */}

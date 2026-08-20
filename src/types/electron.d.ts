@@ -224,6 +224,39 @@ export interface TemplateExport {
   templates: AgentTemplateInput[];
 }
 
+/** One agent slot in a team. Deploying a team creates one agent per member. */
+export interface TeamTemplateMember {
+  name: string;
+  character: AgentCharacter;
+  provider: AgentProvider;
+  model?: string;
+  localModel?: string;
+  permissionMode: 'normal' | 'auto' | 'bypass';
+  effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+  skills: string[];
+  savedPrompt?: string;
+  worktreeBranch?: string;
+  orchestratorMode?: boolean;
+}
+
+export interface TeamTemplate {
+  id: string;
+  builtin: boolean;
+  name: string;
+  description: string;
+  icon: string;
+  members: TeamTemplateMember[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeamTemplateInput {
+  name: string;
+  description?: string;
+  icon?: string;
+  members: Partial<TeamTemplateMember>[];
+}
+
 export interface PtyDataEvent {
   id: string;
   data: string;
@@ -918,6 +951,13 @@ export interface ElectronAPI {
     duplicate: (id: string) => Promise<{ success: boolean; template?: AgentTemplate; error?: string }>;
     export: (ids: string[]) => Promise<{ success: boolean; payload?: TemplateExport; error?: string }>;
     import: (payload: unknown) => Promise<{ success: boolean; imported?: number; skipped?: number; errors?: string[]; templates?: AgentTemplate[]; error?: string }>;
+  };
+
+  // Team templates (sets of agents deployed onto a project in one click)
+  teamTemplate?: {
+    list: () => Promise<{ teams: TeamTemplate[]; error?: string }>;
+    create: (input: TeamTemplateInput) => Promise<{ success: boolean; team?: TeamTemplate; error?: string }>;
+    delete: (id: string) => Promise<{ success: boolean; error?: string }>;
   };
 
   // World (generative zones)

@@ -507,6 +507,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('template:import', payload),
   },
 
+  // Team templates (sets of agents deployed onto a project in one click)
+  teamTemplate: {
+    list: () =>
+      ipcRenderer.invoke('teamTemplate:list'),
+    create: (input: Record<string, unknown>) =>
+      ipcRenderer.invoke('teamTemplate:create', input),
+    delete: (id: string) =>
+      ipcRenderer.invoke('teamTemplate:delete', id),
+  },
+
   // Vault
   vault: {
     listDocuments: (params?: { folder_id?: string; tags?: string[] }) =>
