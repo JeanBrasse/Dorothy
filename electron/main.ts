@@ -109,6 +109,14 @@ import {
 
 // ============== App Settings Management ==============
 
+// A closed stdout/stderr pipe (e.g. the launching shell exited) must never
+// crash the app: console.log would otherwise throw an uncaught EPIPE.
+for (const stream of [process.stdout, process.stderr]) {
+  stream.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code !== 'EPIPE') throw err;
+  });
+}
+
 let appSettings: AppSettings = loadAppSettings();
 
 function loadAppSettings(): AppSettings {

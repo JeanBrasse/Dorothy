@@ -152,7 +152,6 @@ export function setupProtocolHandler() {
       const relativePath = urlPath.startsWith('/') ? urlPath.substring(1) : urlPath;
       const filePath = path.join(basePath, relativePath);
 
-      console.log(`app:// request: ${request.url} -> ${filePath}`);
 
       // Check if file exists
       if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {

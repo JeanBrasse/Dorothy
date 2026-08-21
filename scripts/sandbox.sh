@@ -33,5 +33,7 @@ echo "Sandbox HOME : $SANDBOX"
 echo "API port     : 31499 (prod intacte sur 31415)"
 echo "App          : $APP"
 
-HOME="$SANDBOX" DOROTHY_API_PORT=31499 "$BIN" "$@" &
-echo "PID $! — les deux Dorothy tournent en parallèle."
+LOG="$SANDBOX/dorothy.log"
+HOME="$SANDBOX" DOROTHY_API_PORT=31499 nohup "$BIN" "$@" > "$LOG" 2>&1 &
+disown
+echo "PID $! — les deux Dorothy tournent en parallèle. Logs: $LOG"
