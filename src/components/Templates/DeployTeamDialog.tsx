@@ -54,6 +54,25 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
     [teams, selectedTeamId]
   );
 
+  // Editable working copy of the selected team's members: every deploy
+  // parameter (model, effort, prompt, branch, name) can be tuned per member
+  // before deploying, and optionally saved back as a custom team.
+  const [editedMembers, setEditedMembers] = useState<TeamTemplateMember[]>([]);
+  const [expandedMember, setExpandedMember] = useState<number | null>(null);
+  useEffect(() => {
+    setEditedMembers(selectedTeam ? selectedTeam.members.map(m => ({ ...m })) : []);
+    setExpandedMember(null);
+  }, [selectedTeam]);
+
+  const membersDirty = useMemo(
+    () => !!selectedTeam && JSON.stringify(editedMembers) !== JSON.stringify(selectedTeam.members),
+    [selectedTeam, editedMembers]
+  );
+
+  function patchMember(i: number, patch: Partial<TeamTemplateMember>) {
+    setEditedMembers(prev => prev.map((m, idx) => idx === i ? { ...m, ...patch } : m));
+  }
+
   const filteredProjects = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return projects;
@@ -85,7 +104,8 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
     const createdIds: string[] = [];
     const issues: string[] = [];
 
-    for (const member of selectedTeam.members) {
+    const membersToDeploy = editedMembers.length > 0 ? editedMembers : selectedTeam.members;
+    for (const member of membersToDeploy) {
       const agentName = `${member.name} — ${projectName}`;
       // Re-deploying the same team must not double up agents: two agents with
       // the same name would share one worktree/branch and fight over files.
@@ -144,7 +164,25 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
 
   async function handleConfirmSaveTeam() {
     const name = pendingTeamName?.trim();
-    if (!projectPath || projectAgents.length === 0 || !name) return;
+    if (!name) return;
+
+    if (membersDirty && editedMembers.length > 0) {
+      try {
+        const result = await createTeam({ name, members: editedMembers });
+        if (result.success && result.team) {
+          setSelectedTeamId(result.team.id);
+          setSaveMessage(`Saved "${result.team.name}" (${editedMembers.length} members).`);
+          setPendingTeamName(null);
+        } else {
+          setErrors([result.error ?? 'Failed to save team']);
+        }
+      } catch (err) {
+        setErrors([err instanceof Error ? err.message : 'Failed to save team']);
+      }
+      return;
+    }
+
+    if (!projectPath || projectAgents.length === 0) return;
     const projectName = projectPath.split('/').pop() || 'project';
     // Deployed agents are named "<role> — <project>"; strip the suffix so
     // save→redeploy cycles don't accrete " — projA — projB" onto member names.
@@ -189,7 +227,7 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
 
   return (
     <div
-      className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
       onMouseDown={e => { if (e.target === e.currentTarget && !deploying) onClose(); }}
     >
       <div ref={dialogRef} className="bg-card border border-border w-full max-w-2xl max-h-[90vh] flex flex-col">
@@ -243,21 +281,116 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
                         )}
                       </div>
                       <p className="text-[11px] text-muted-foreground truncate">{team.description}</p>
-                      {selectedTeamId === team.id && (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {team.members.map((m, i) => (
-                            <span key={`${m.name}-${i}`} className="text-[10px] px-1.5 py-0.5 bg-secondary border border-border text-foreground">
-                              {m.name}{m.worktreeBranch ? ` · ${m.worktreeBranch}` : ''}{m.orchestratorMode ? ' · orchestrator' : ''}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </button>
                 </div>
               ))}
             </div>
           </div>
+
+          {/* Member editor — every deploy parameter is tunable per member */}
+          {selectedTeam && editedMembers.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-foreground">
+                  Members <span className="text-muted-foreground font-normal">— click a member to edit its model, effort, branch and instructions</span>
+                </label>
+                {membersDirty && <span className="text-[10px] text-primary">edited</span>}
+              </div>
+              <div className="space-y-1">
+                {editedMembers.map((m, i) => (
+                  <div key={i} className="border border-border bg-secondary/30">
+                    <button
+                      onClick={() => setExpandedMember(expandedMember === i ? null : i)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-left"
+                    >
+                      <span className="text-xs font-medium text-foreground">{m.name}</span>
+                      {m.orchestratorMode && <span className="text-[10px] px-1 py-px bg-primary/10 text-primary">orchestrator</span>}
+                      {m.worktreeBranch && <span className="text-[10px] font-mono text-muted-foreground">⎇ {m.worktreeBranch}</span>}
+                      <span className="ml-auto text-[10px] font-mono text-muted-foreground">
+                        {m.model || 'default'} · {m.effort || 'default'}
+                      </span>
+                    </button>
+                    {expandedMember === i && (
+                      <div className="px-3 pb-3 pt-1 space-y-2 border-t border-border">
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <label className="block text-[10px] text-muted-foreground mb-0.5">Name</label>
+                            <input
+                              value={m.name}
+                              onChange={e => patchMember(i, { name: e.target.value })}
+                              className="w-full px-2 py-1 bg-card border border-border text-xs text-foreground outline-none focus:border-primary/40"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-[10px] text-muted-foreground mb-0.5">Worktree branch</label>
+                            <input
+                              value={m.worktreeBranch || ''}
+                              onChange={e => patchMember(i, { worktreeBranch: e.target.value || undefined })}
+                              placeholder="(project root)"
+                              className="w-full px-2 py-1 bg-card border border-border text-xs font-mono text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/40"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <label className="block text-[10px] text-muted-foreground mb-0.5">Model</label>
+                            <select
+                              value={m.model || ''}
+                              onChange={e => patchMember(i, { model: e.target.value || undefined })}
+                              className="w-full px-2 py-1 bg-card border border-border text-xs text-foreground outline-none focus:border-primary/40"
+                            >
+                              <option value="">Default</option>
+                              <option value="fable">Fable</option>
+                              <option value="opus">Opus</option>
+                              <option value="sonnet">Sonnet</option>
+                              <option value="haiku">Haiku</option>
+                            </select>
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-[10px] text-muted-foreground mb-0.5">Effort</label>
+                            <select
+                              value={m.effort || ''}
+                              onChange={e => patchMember(i, { effort: (e.target.value || undefined) as TeamTemplateMember['effort'] })}
+                              className="w-full px-2 py-1 bg-card border border-border text-xs text-foreground outline-none focus:border-primary/40"
+                            >
+                              <option value="">Default</option>
+                              <option value="low">Low</option>
+                              <option value="medium">Medium</option>
+                              <option value="high">High</option>
+                              <option value="xhigh">X-High</option>
+                              <option value="max">Max</option>
+                            </select>
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-[10px] text-muted-foreground mb-0.5">Permissions</label>
+                            <select
+                              value={m.permissionMode}
+                              onChange={e => patchMember(i, { permissionMode: e.target.value as TeamTemplateMember['permissionMode'] })}
+                              className="w-full px-2 py-1 bg-card border border-border text-xs text-foreground outline-none focus:border-primary/40"
+                            >
+                              <option value="normal">Normal</option>
+                              <option value="auto">Auto-accept</option>
+                              <option value="bypass">Bypass</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-muted-foreground mb-0.5">Instructions (saved prompt — the agent&apos;s role)</label>
+                          <textarea
+                            value={m.savedPrompt || ''}
+                            onChange={e => patchMember(i, { savedPrompt: e.target.value || undefined })}
+                            rows={3}
+                            className="w-full px-2 py-1.5 bg-card border border-border text-xs text-foreground outline-none focus:border-primary/40 resize-y"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Project picker */}
           <div>
@@ -345,15 +478,19 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
           ) : (
             <button
               onClick={() => {
-                const projectName = projectPath?.split('/').pop() || 'project';
-                setPendingTeamName(`${projectName} team`);
+                const base = membersDirty && selectedTeam
+                  ? `${selectedTeam.name} (custom)`
+                  : `${projectPath?.split('/').pop() || 'project'} team`;
+                setPendingTeamName(base);
               }}
-              disabled={!projectPath || projectAgents.length === 0 || deploying}
-              title={projectPath ? `Save the ${projectAgents.length} agent(s) of this project as a reusable team` : 'Pick a project first'}
+              disabled={deploying || (membersDirty ? false : (!projectPath || projectAgents.length === 0))}
+              title={membersDirty
+                ? 'Save your edited members as a reusable custom team'
+                : (projectPath ? `Save the ${projectAgents.length} agent(s) of this project as a reusable team` : 'Pick a project first — or edit a team\'s members to save a custom team')}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border bg-card text-foreground hover:bg-accent/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Save className="w-3 h-3" />
-              Save project as team{projectAgents.length > 0 ? ` (${projectAgents.length})` : ''}
+              {membersDirty ? 'Save edited team' : `Save project as team${projectAgents.length > 0 ? ` (${projectAgents.length})` : ''}`}
             </button>
           )}
           <div className="flex items-center gap-2">

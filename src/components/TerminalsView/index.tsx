@@ -76,6 +76,20 @@ export default function TerminalsView() {
 
   // Tab manager — core state for two-tier tab system
   const allAgentIds = useMemo(() => agents.map(a => a.id), [agents]);
+
+  // Project folders with agents — offered as one-click boards in the tab bar
+  const projectGroups = useMemo(() => {
+    const byPath = new Map<string, string[]>();
+    for (const a of agents) {
+      if (!byPath.has(a.projectPath)) byPath.set(a.projectPath, []);
+      byPath.get(a.projectPath)!.push(a.id);
+    }
+    return Array.from(byPath.entries()).map(([path, agentIds]) => ({
+      name: path.split('/').pop() || path,
+      path,
+      agentIds,
+    }));
+  }, [agents]);
   const tabManager = useTabManager({ existingAgentIds: allAgentIds, isLoading });
 
   // Derive agents for current active tab
@@ -423,6 +437,8 @@ export default function TerminalsView() {
           activeTab={tabManager.activeTab}
           onSelectTab={(tabId) => tabManager.setActiveTab({ type: 'custom', tabId })}
           onCreateTab={tabManager.createTab}
+          projectGroups={projectGroups}
+          onCreateFromProject={tabManager.createTabFromProject}
           onDeleteTab={tabManager.deleteTab}
           onRenameTab={tabManager.renameTab}
           onReorderTabs={tabManager.reorderTabs}

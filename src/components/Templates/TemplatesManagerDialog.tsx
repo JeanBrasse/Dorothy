@@ -111,7 +111,7 @@ export function TemplatesManagerDialog({ open, onClose }: TemplatesManagerDialog
 
   return (
     <div
-      className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
       onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-card border border-border w-full max-w-5xl max-h-[90vh] flex flex-col">
@@ -255,7 +255,7 @@ export function TemplatesManagerDialog({ open, onClose }: TemplatesManagerDialog
       />
 
       {installError && (
-        <div className="fixed bottom-4 right-4 z-50 max-w-sm bg-card border border-amber-500/40 px-4 py-3 shadow-lg flex flex-col gap-2">
+        <div className="fixed bottom-4 right-4 z-[80] max-w-sm bg-card border border-amber-500/40 px-4 py-3 shadow-lg flex flex-col gap-2">
           <p className="text-xs text-foreground">{installError}</p>
           <div className="flex items-center justify-end gap-2">
             <button

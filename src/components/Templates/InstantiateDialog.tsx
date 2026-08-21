@@ -95,7 +95,7 @@ export function InstantiateDialog({ template, onClose, onCreated }: InstantiateD
   }
 
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
       <div ref={dialogRef} className="bg-card border border-border w-full max-w-lg max-h-[90vh] flex flex-col">
         <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">

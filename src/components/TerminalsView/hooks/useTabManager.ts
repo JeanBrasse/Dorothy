@@ -99,6 +99,25 @@ export function useTabManager({ existingAgentIds, isLoading }: UseTabManagerOpti
     });
   }, []);
 
+  /** One-click board from a project folder: named after it, pre-filled with
+   *  its agents (clamped to the largest layout), and activated. */
+  const createTabFromProject = useCallback((name: string, agentIds: string[]) => {
+    setState(prev => {
+      const maxPanels = Math.max(...Object.values(LAYOUT_PRESETS).map(p => p.maxPanels));
+      const ids = agentIds.slice(0, maxPanels);
+      const newTab: CustomTab = {
+        id: crypto.randomUUID(),
+        name: name || `Tab ${prev.customTabs.length + 1}`,
+        agentIds: ids,
+        layout: getAutoLayout(ids.length || 1),
+      };
+      return {
+        customTabs: [...prev.customTabs, newTab],
+        activeTab: { type: 'custom', tabId: newTab.id },
+      };
+    });
+  }, []);
+
   const deleteTab = useCallback((tabId: string) => {
     deleteTabLayouts(tabId);
     setState(prev => {
@@ -239,6 +258,7 @@ export function useTabManager({ existingAgentIds, isLoading }: UseTabManagerOpti
     customTabs: state.customTabs,
     activeTab: state.activeTab,
     createTab,
+    createTabFromProject,
     deleteTab,
     renameTab,
     reorderTabs,

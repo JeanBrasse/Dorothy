@@ -33,7 +33,7 @@ test.beforeAll(async () => {
       HOME: sandboxHome,
       NODE_ENV: 'development',
       DOROTHY_DEV_URL: DEV_URL,
-      DOROTHY_API_PORT: '31499',
+      DOROTHY_API_PORT: '31498',
       DOROTHY_E2E: '1',
     },
   });
@@ -77,7 +77,7 @@ for (const surface of ALL as Array<{ name: string; route: string; clickText?: st
     expect(fatal, `uncaught page errors on ${surface.name}`).toEqual([]);
 
     await expect(page).toHaveScreenshot(`${surface.name}.png`, {
-      maxDiffPixelRatio: 0.02,
+      maxDiffPixelRatio: 0.005,
       animations: 'disabled',
     });
   });

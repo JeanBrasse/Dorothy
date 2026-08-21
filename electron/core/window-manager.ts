@@ -32,7 +32,7 @@ export function createWindow() {
     minHeight: 800,
     title: 'Dorothy',
     titleBarStyle: 'hiddenInset',
-    backgroundColor: '#F0E8D5',
+    backgroundColor: '#121212',
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload.js'),
       contextIsolation: true,

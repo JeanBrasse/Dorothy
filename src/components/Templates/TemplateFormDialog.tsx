@@ -83,7 +83,7 @@ export function TemplateFormDialog({ initialTemplate, installedSkills, onClose, 
   const allSkills = Array.from(new Set([...installedSkills, ...skills])).sort();
 
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
       <div ref={dialogRef} className="bg-card border border-border w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
           <h2 className="font-semibold text-foreground">

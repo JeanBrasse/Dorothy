@@ -4,6 +4,7 @@ import { useState } from 'react';
 import VaultView from '@/components/VaultView';
 import ObsidianVaultView from '@/components/ObsidianVaultView';
 import { ObsidianIcon } from '@/components/Settings/ObsidianIcon';
+import { Archive } from 'lucide-react';
 
 export default function VaultPage() {
   const [activeTab, setActiveTab] = useState<'dorothy' | 'obsidian'>('dorothy');
@@ -15,7 +16,7 @@ export default function VaultPage() {
         <div>
           <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-foreground">Vault</h1>
           <p className="text-muted-foreground text-xs lg:text-sm mt-1 hidden sm:block">
-            Agent reports, knowledge base & notes
+            Agent reports and working documents. Long-term memory lives in Brain (native + gbrain + Honcho).
           </p>
         </div>
       </div>
@@ -32,8 +33,8 @@ export default function VaultPage() {
             }
           `}
         >
-          <img src="/dorothy-without-text.png" alt="Dorothy" className="w-4 h-4 object-contain" />
-          Dorothy Vault
+          <Archive className="w-4 h-4" />
+          Documents
         </button>
         <button
           onClick={() => setActiveTab('obsidian')}
@@ -46,7 +47,7 @@ export default function VaultPage() {
           `}
         >
           <ObsidianIcon className={`w-4 h-4 ${activeTab === 'obsidian' ? 'text-background' : 'text-[#A88BFA]'}`} />
-          Obsidian Vault
+          Obsidian
         </button>
       </div>
 

@@ -9,6 +9,9 @@ interface CustomTabBarProps {
   activeTab: ActiveTab;
   onSelectTab: (tabId: string) => void;
   onCreateTab: (name: string) => void;
+  /** Project folders that have agents — offered as one-click boards. */
+  projectGroups?: { name: string; path: string; agentIds: string[] }[];
+  onCreateFromProject?: (name: string, agentIds: string[]) => void;
   onDeleteTab: (tabId: string) => void;
   onRenameTab: (tabId: string, name: string) => void;
   onReorderTabs: (fromIndex: number, toIndex: number) => void;
@@ -19,6 +22,8 @@ export default function CustomTabBar({
   activeTab,
   onSelectTab,
   onCreateTab,
+  projectGroups,
+  onCreateFromProject,
   onDeleteTab,
   onRenameTab,
   onReorderTabs,
@@ -191,9 +196,27 @@ export default function CustomTabBar({
         {showCreateDialog && (
           <div
             ref={createDialogRef}
-            className="absolute top-full left-0 mt-1 bg-card border border-border shadow-xl z-50 p-3 min-w-[220px]"
+            className="absolute top-full left-0 mt-1 bg-card border border-border shadow-xl z-50 p-3 min-w-[260px]"
           >
-            <p className="text-xs text-muted-foreground mb-2">Board name</p>
+            {projectGroups && projectGroups.length > 0 && onCreateFromProject && (
+              <div className="mb-3">
+                <p className="text-xs text-muted-foreground mb-1.5">From a project — board named after it, agents included</p>
+                <div className="max-h-40 overflow-y-auto space-y-0.5">
+                  {projectGroups.map(g => (
+                    <button
+                      key={g.path}
+                      onClick={() => { onCreateFromProject(g.name, g.agentIds); setShowCreateDialog(false); setCreateName(''); }}
+                      className="w-full flex items-center justify-between px-2 py-1.5 text-xs text-foreground hover:bg-primary/5 transition-colors"
+                    >
+                      <span className="truncate">{g.name}</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0 ml-2">{g.agentIds.length} agent{g.agentIds.length > 1 ? 's' : ''}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="border-t border-border mt-2 pt-2" />
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground mb-2">Empty board</p>
             <input
               ref={createInputRef}
               value={createName}
