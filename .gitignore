@@ -66,3 +66,4 @@ electron/dist
 .claude/worktrees/
 e2e/report/
 test-results/
+design/exports/
