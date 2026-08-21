@@ -187,5 +187,8 @@
     "typescript": "^5",
     "vitest": "^4.0.18",
     "wait-on": "^8.0.1"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

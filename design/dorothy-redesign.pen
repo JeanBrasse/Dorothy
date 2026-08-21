@@ -2115,7 +2115,7 @@
       {
        "type": "text",
        "id": "t166",
-       "name": "#6EE787",
+       "name": "#FF9E42",
        "content": "#FF9E42",
        "fontSize": 11,
        "fill": "$text-muted",
@@ -2230,7 +2230,7 @@
     {
      "type": "text",
      "id": "t179",
-     "name": "Geist — Interface",
+     "name": "Roboto Condensed — Interface",
      "content": "Roboto Condensed — Interface",
      "fontSize": 15,
      "fill": "$text-primary",
@@ -2241,7 +2241,7 @@
     {
      "type": "text",
      "id": "t180",
-     "name": "Geist Mono — data, ids, ",
+     "name": "Roboto Mono — data",
      "content": "Roboto Mono — data · PP Eiko/serif — display",
      "fontSize": 12,
      "fill": "$text-secondary",
