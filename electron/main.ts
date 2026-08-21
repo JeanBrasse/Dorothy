@@ -89,7 +89,6 @@ import { registerIpcHandlers, IpcHandlerDependencies } from './handlers/ipc-hand
 import { registerCLIPathsHandlers } from './handlers/cli-paths-handlers';
 import { registerKanbanHandlers } from './handlers/kanban-handlers';
 import { registerVaultHandlers } from './handlers/vault-handlers';
-import { registerWorldHandlers } from './handlers/world-handlers';
 import { registerTemplateHandlers } from './handlers/template-handlers';
 import { registerTeamTemplateHandlers } from './handlers/team-template-handlers';
 import { registerHermesHandlers } from './handlers/hermes-handlers';
@@ -419,8 +418,6 @@ app.whenReady().then(async () => {
   // Register vault handlers
   registerVaultHandlers({ getMainWindow });
 
-  // Register world (generative zone) handlers
-  registerWorldHandlers({ getMainWindow });
 
   // Initialize kanban automation service
   initKanbanAutomation({
@@ -438,8 +435,7 @@ app.whenReady().then(async () => {
         cwd = os.homedir();
       }
 
-      // Always include world-builder skill
-      const allSkills = [...new Set([...config.skills, 'world-builder'])];
+      const allSkills = [...new Set(config.skills)];
 
       const ptyProcess = pty.spawn(shell, ['-l'], {
         name: 'xterm-256color',

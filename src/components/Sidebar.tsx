@@ -20,7 +20,6 @@ import {
 import { useEffect, useState } from 'react';
 import { LATEST_RELEASE, WHATS_NEW_STORAGE_KEY } from '@/data/changelog';
 
-// Custom icon component for Pallet Town using the pokemon logo
 import { useStore } from '@/store';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';

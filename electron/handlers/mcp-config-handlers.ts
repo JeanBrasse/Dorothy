@@ -11,7 +11,6 @@ const DOROTHY_MANAGED_MCPS = new Set([
   'claude-mgr-vault',
   'dorothy-socialdata',
   'dorothy-x',
-  'dorothy-world',
   'google-workspace',
   'tasmania',
 ]);

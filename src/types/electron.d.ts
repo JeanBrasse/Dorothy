@@ -873,18 +873,6 @@ export interface ElectronAPI {
     delete: (id: string) => Promise<{ success: boolean; error?: string }>;
   };
 
-  // World (generative zones)
-  world?: {
-    listZones: () => Promise<{ zones: unknown[]; error?: string }>;
-    getZone: (zoneId: string) => Promise<{ zone: unknown | null; error?: string }>;
-    exportZone: (params: { zoneId: string; screenshot: string }) => Promise<{ success: boolean; filePath?: string; error?: string }>;
-    importZone: () => Promise<{ success: boolean; preview?: ImportPreview; zone?: unknown; error?: string }>;
-    confirmImport: (zone: unknown) => Promise<{ success: boolean; zoneId?: string; error?: string }>;
-    deleteZone: (zoneId: string) => Promise<{ success: boolean; error?: string }>;
-    onZoneUpdated: (callback: (zone: unknown) => void) => () => void;
-    onZoneDeleted: (callback: (event: { id: string }) => void) => () => void;
-  };
-
   // Updates
   updates?: {
     check: () => Promise<{ devMode?: boolean; error?: boolean; fallback?: boolean; currentVersion?: string } | null>;

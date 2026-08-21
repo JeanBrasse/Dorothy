@@ -67,14 +67,6 @@ export function getMcpXPath(): string {
 }
 
 /**
- * Get the path to the bundled MCP world server (generative zones)
- * Always uses the packaged app path - MCP servers are bundled in extraResources
- */
-export function getMcpWorldPath(): string {
-  return path.join(process.resourcesPath, 'mcp-world', 'dist', 'bundle.js');
-}
-
-/**
  * Auto-setup MCP servers on app start for ALL providers.
  * Registers bundled MCP servers (orchestrator, telegram, kanban, etc.)
  * with each provider's configuration system.
@@ -143,6 +135,24 @@ async function installBundledSkills(): Promise<void> {
   // its tools no longer exist, so it must not ship to agents anymore.
   const bundledSkills: string[] = [];
   const providers = getAllProviders();
+
+  // Older Dorothy versions copied world-builder into every provider's skill
+  // dir; agents still list it although its MCP tools are gone. Remove those
+  // copies — but only when the content is recognizably ours.
+  for (const provider of providers) {
+    for (const dir of provider.getSkillDirectories()) {
+      const staleFile = path.join(dir, 'world-builder', 'SKILL.md');
+      try {
+        if (fs.existsSync(staleFile)) {
+          const content = fs.readFileSync(staleFile, 'utf-8');
+          if (/dorothy-world|create_zone|PokAImon/i.test(content)) {
+            fs.rmSync(path.join(dir, 'world-builder'), { recursive: true, force: true });
+            console.log(`[${provider.id}] removed stale world-builder skill from ${dir}`);
+          }
+        }
+      } catch { /* non-fatal */ }
+    }
+  }
 
   for (const skillName of bundledSkills) {
     try {

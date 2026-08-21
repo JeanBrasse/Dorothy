@@ -47,8 +47,7 @@ async function spawnAgentSession(
   const cliProvider = getProvider(agent.provider);
   const binaryPath = agent.cliPath || cliProvider.resolveBinaryPath(appSettings);
 
-  const isAutomationAgent = agent.name?.toLowerCase().includes('automation:');
-  const usePrintMode = opts.printMode || isAutomationAgent;
+  const usePrintMode = opts.printMode;
 
   const isSuperAgentApi = agent.role === 'orchestrator' ||
                           agent.name?.toLowerCase().includes('super agent') ||
@@ -145,7 +144,7 @@ async function spawnAgentSession(
     return false;
   }
 
-  // Print mode for automation agents: inject -p right after the binary token.
+  // Print mode: inject -p right after the binary token.
   if (usePrintMode) {
     const binToken = `'${binaryPath.replace(/'/g, "'\\''")}'`;
     if (cliCommand.startsWith(binToken)) {

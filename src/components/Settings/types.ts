@@ -57,10 +57,6 @@ export interface AppSettings {
   slackAppToken: string;
   slackSigningSecret: string;
   slackChannelId: string;
-  jiraEnabled: boolean;
-  jiraDomain: string;
-  jiraEmail: string;
-  jiraApiToken: string;
   socialDataEnabled: boolean;
   socialDataApiKey: string;
   xPostingEnabled: boolean;

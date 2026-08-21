@@ -726,7 +726,7 @@ export function initTelegramBot() {
           secondaryProjectPath: agent.secondaryProjectPath,
           obsidianVaultPaths: agent.obsidianVaultPaths,
           mcpConfigPath,
-          skills: [...new Set([...(agent.skills || []), 'world-builder'])],
+          skills: [...new Set(agent.skills || [])],
           isSuperAgent: isSuperAgent(agent),
           orchestratorMode: isSuperAgent(agent) || agent.orchestratorMode,
         });
@@ -1263,7 +1263,7 @@ export async function sendToSuperAgent(chatId: string, message: string, attached
         obsidianVaultPaths: superAgent.obsidianVaultPaths,
         mcpConfigPath,
         systemPromptFile,
-        skills: [...new Set([...(superAgent.skills || []), 'world-builder'])],
+        skills: [...new Set(superAgent.skills || [])],
         isSuperAgent: true,
         orchestratorMode: true,
       });
