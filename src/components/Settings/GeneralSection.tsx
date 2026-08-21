@@ -310,7 +310,7 @@ export const GeneralSection = ({ info, appSettings, onSaveAppSettings }: General
       <div className="border border-border bg-card p-6">
         <h3 className="font-medium mb-4">Default Provider</h3>
         <p className="text-xs text-muted-foreground mb-4">
-          CLI provider used for scheduled tasks, automations, and Telegram-spawned agents when no specific agent is selected.
+          CLI provider used for Telegram-spawned agents and webhook dispatches when no specific agent is selected.
         </p>
         <select
           value={appSettings.defaultProvider || 'claude'}

@@ -32,7 +32,7 @@ export const PAGES = [
 // Les 18 sections de Settings, chacune un clic dans la sidebar de la page.
 export const SETTINGS_SECTIONS = [
   'Terminal', 'AI Providers', 'CLI Paths', 'Obsidian', 'Git', 'Notifications',
-  'Telegram', 'Slack', 'JIRA', 'X (Twitter)', 'Tasmania', 'Google Workspace',
+  'Telegram', 'Slack', 'X (Twitter)', 'Tasmania', 'Google Workspace',
   'Permissions', 'Skills & Plugins', 'Hermes', 'Memory Backends', 'Custom MCP', 'System',
 ].map(label => ({
   name: 'settings-' + label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),

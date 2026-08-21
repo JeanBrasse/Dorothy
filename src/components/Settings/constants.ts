@@ -15,7 +15,6 @@ import {
   Zap,
 } from 'lucide-react';
 import { SlackIcon } from './SlackIcon';
-import { JiraIcon } from './JiraIcon';
 import { TasmaniaIcon } from './TasmaniaIcon';
 import { ObsidianIcon } from './ObsidianIcon';
 import type { SettingsSection } from './types';
@@ -30,7 +29,6 @@ export const SECTIONS: { id: SettingsSection; label: string; icon: React.Compone
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'telegram', label: 'Telegram', icon: Send },
   { id: 'slack', label: 'Slack', icon: SlackIcon },
-  { id: 'jira', label: 'JIRA', icon: JiraIcon },
   { id: 'socialdata', label: 'X (Twitter)', icon: Twitter },
   { id: 'tasmania', label: 'Tasmania', icon: TasmaniaIcon },
   { id: 'google-workspace', label: 'Google Workspace', icon: Cloud },

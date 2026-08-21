@@ -54,8 +54,8 @@ zéro gradient, radius unique (0–2 px), mono pour toute donnée.
 
 ## Couche 1 — Tokens
 
-- [ ] `src/app/globals.css` : re-mapper les 160 variables sur la palette cooperlabs (dark + light)
-- [ ] `tailwind.config` : radius, retirer les ombres du design system
+- [x] `src/app/globals.css` : re-mappé sur cooperlabs (dark + light), dark par défaut, fonts Roboto Condensed/Mono + Instrument Serif, échelle cyan→tangerine, scrollbars, politique coins durs (2px)
+- [x] radius tokens 2/2/4/6px via @theme (Tailwind v4, pas de config file) ; ombres purgées aux couches 2-3 via lint
 - [ ] Wordmark/logo : un seul composant `Brand` (débrandable)
 
 ## Couche 2 — Primitives (`src/components/ui/`)
@@ -77,8 +77,9 @@ zéro gradient, radius unique (0–2 px), mono pour toute donnée.
 - [ ] `/usage`
 - [ ] `/memory` (Brain, 3 onglets)
 - [ ] `/settings` — General, Terminal, AI Providers, CLI Paths, Obsidian, Git,
-      Notifications, Telegram, Slack, JIRA, X, Tasmania, Google Workspace,
+      Notifications, Telegram, Slack, X, Tasmania, Google Workspace,
       Permissions, Skills & Plugins, Hermes, Memory Backends, Custom MCP, System
+      (JIRA supprimé — vestige des automations)
 - [ ] `/whats-new`
 - [ ] `/tray-panel`
 - [ ] Sidebar + ClientLayout (chrome global, thème, scrollbars)

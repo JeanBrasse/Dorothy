@@ -138,7 +138,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
       <div>
         <h2 className="text-lg font-semibold mb-1">CLI Paths</h2>
         <p className="text-sm text-muted-foreground">
-          Configure paths to CLI tools used by automations and agents
+          Configure paths to the CLI tools your agents run on
         </p>
       </div>
 
@@ -393,7 +393,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
 
         {renderPathInput(
           'GitHub CLI (gh)',
-          'Path to the GitHub CLI executable for automations',
+          'Path to the GitHub CLI executable used by agents',
           'gh',
           '/opt/homebrew/bin/gh or /usr/local/bin/gh'
         )}
@@ -417,7 +417,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
       <div className="border border-border bg-card p-6">
         <h3 className="text-md font-medium mb-2">Additional PATH Directories</h3>
         <p className="text-xs text-muted-foreground mb-4">
-          Add directories to include in PATH when running automations and agents
+          Add directories to include in PATH when running agents
         </p>
 
         <div className="space-y-2 mb-4">

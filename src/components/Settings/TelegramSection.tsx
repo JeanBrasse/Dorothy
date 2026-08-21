@@ -322,7 +322,7 @@ export const TelegramSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
             )}
             {appSettings.telegramAuthorizedChatIds?.length > 0 && (
               <p className="text-xs text-muted-foreground mt-2">
-                The default chat receives messages from automations and notifications. Click &quot;Set default&quot; to change it.
+                The default chat receives agent notifications. Click &quot;Set default&quot; to change it.
               </p>
             )}
           </div>

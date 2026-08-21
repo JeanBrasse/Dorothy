@@ -277,7 +277,7 @@ export const useStore = create<AppState>((set, get) => ({
   selectedChat: null,
   sidebarCollapsed: false,
   mobileMenuOpen: false,
-  darkMode: false,
+  darkMode: true,
   vaultUnreadCount: 0,
 
   // Agent Actions

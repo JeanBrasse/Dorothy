@@ -127,4 +127,4 @@ export interface AppSettings {
   defaultProjectPath?: string;
 }
 
-export type SettingsSection = 'general' | 'terminal' | 'git' | 'notifications' | 'telegram' | 'slack' | 'jira' | 'socialdata' | 'tasmania' | 'google-workspace' | 'obsidian' | 'ai-providers' | 'permissions' | 'skills' | 'hermes' | 'memory' | 'mcp' | 'cli' | 'system';
+export type SettingsSection = 'general' | 'terminal' | 'git' | 'notifications' | 'telegram' | 'slack' | 'socialdata' | 'tasmania' | 'google-workspace' | 'obsidian' | 'ai-providers' | 'permissions' | 'skills' | 'hermes' | 'memory' | 'mcp' | 'cli' | 'system';
