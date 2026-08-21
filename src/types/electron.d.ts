@@ -474,6 +474,8 @@ export interface ElectronAPI {
       terminalFontSize?: number;
       terminalTheme?: 'dark' | 'light';
       statusLineEnabled?: boolean;
+      hermesGatewayUrl?: string;
+      hermesGatewayToken?: string;
       memoryGbrainEnabled?: boolean;
       memoryGbrainMcpUrl?: string;
       memoryGbrainAuthToken?: string;
@@ -533,6 +535,8 @@ export interface ElectronAPI {
       terminalFontSize?: number;
       terminalTheme?: 'dark' | 'light';
       statusLineEnabled?: boolean;
+      hermesGatewayUrl?: string;
+      hermesGatewayToken?: string;
       memoryGbrainEnabled?: boolean;
       memoryGbrainMcpUrl?: string;
       memoryGbrainAuthToken?: string;
@@ -845,6 +849,21 @@ export interface ElectronAPI {
     duplicate: (id: string) => Promise<{ success: boolean; template?: AgentTemplate; error?: string }>;
     export: (ids: string[]) => Promise<{ success: boolean; payload?: TemplateExport; error?: string }>;
     import: (payload: unknown) => Promise<{ success: boolean; imported?: number; skipped?: number; errors?: string[]; templates?: AgentTemplate[]; error?: string }>;
+  };
+
+  // Hermes integration (remote scheduler wiring)
+  hermes?: {
+    getConnectionInfo: () => Promise<{
+      apiPort: number;
+      webhookPath: string;
+      webhookLocalUrl: string;
+      webhookTailnetUrl?: string;
+      apiToken: string;
+      tailscale: { installed: boolean; running: boolean; dnsName?: string; ip?: string; serveConfigured: boolean };
+      serveCommand: string;
+    }>;
+    testWebhook: (params: { agentName?: string; agentId?: string; projectPath?: string }) => Promise<{ success: boolean; status?: number; response?: unknown; error?: string }>;
+    testGateway: (url: string) => Promise<{ success: boolean; status?: number; error?: string }>;
   };
 
   // Team templates (sets of agents deployed onto a project in one click)

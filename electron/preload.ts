@@ -427,6 +427,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('template:import', payload),
   },
 
+  // Hermes integration (remote scheduler wiring)
+  hermes: {
+    getConnectionInfo: () =>
+      ipcRenderer.invoke('hermes:getConnectionInfo'),
+    testWebhook: (params: { agentName?: string; agentId?: string; projectPath?: string }) =>
+      ipcRenderer.invoke('hermes:testWebhook', params),
+    testGateway: (url: string) =>
+      ipcRenderer.invoke('hermes:testGateway', url),
+  },
+
   // Team templates (sets of agents deployed onto a project in one click)
   teamTemplate: {
     list: () =>

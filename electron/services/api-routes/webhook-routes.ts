@@ -19,6 +19,7 @@ import { RouteApp, RouteContext } from './types';
  *   message: string;          // the task
  *   model?: string;
  *   permission_mode?: 'normal' | 'auto' | 'bypass';
+ *   dry_run?: boolean;        // validate auth + agent resolution without dispatching
  * }
  * Responds like /api/agents/:id/dispatch ({ success, mode, agent }); poll
  * GET /api/agents/:id for status/output afterwards.
@@ -32,6 +33,7 @@ export function registerWebhookRoutes(app: RouteApp, ctx: RouteContext): void {
       message?: string;
       model?: string;
       permission_mode?: 'normal' | 'auto' | 'bypass';
+      dry_run?: boolean;
     };
 
     const message = typeof body.message === 'string' ? body.message.trim() : '';
@@ -63,6 +65,17 @@ export function registerWebhookRoutes(app: RouteApp, ctx: RouteContext): void {
         error: 'Agent not found. Pass agent_id, or agent_name (+ project_path when ambiguous).',
         agents: Array.from(agents.values()).map(a => ({ id: a.id, name: a.name, projectPath: a.projectPath, status: a.status })),
       }, 404);
+      return;
+    }
+
+    if (body.dry_run) {
+      // Config check for the Hermes side: auth passed, agent resolved — stop
+      // before dispatching anything.
+      sendJson({
+        success: true,
+        dry_run: true,
+        agent: { id: agent.id, name: agent.name, projectPath: agent.projectPath, status: agent.status },
+      });
       return;
     }
 

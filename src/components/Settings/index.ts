@@ -31,5 +31,6 @@ export { PermissionsSection } from './PermissionsSection';
 export { SkillsSection } from './SkillsSection';
 export { McpSection } from './McpSection';
 export { MemorySection } from './MemorySection';
+export { HermesSection } from './HermesSection';
 export { CLIPathsSection } from './CLIPathsSection';
 export { SystemSection } from './SystemSection';

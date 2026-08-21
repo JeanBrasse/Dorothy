@@ -24,6 +24,7 @@ import {
   SkillsSection,
   McpSection,
   MemorySection,
+  HermesSection,
   CLIPathsSection,
   SystemSection,
   SECTIONS,
@@ -147,6 +148,14 @@ function SettingsPageInner() {
         return <PermissionsSection settings={settings} />;
       case 'skills':
         return <SkillsSection skills={skills} />;
+      case 'hermes':
+        return (
+          <HermesSection
+            appSettings={appSettings}
+            onSaveAppSettings={handleSaveAppSettings}
+            onUpdateLocalSettings={updateLocalAppSettings}
+          />
+        );
       case 'memory':
         return (
           <MemorySection
