@@ -18,7 +18,8 @@
     "electron:pack": "tsc -p electron/tsconfig.json && cd mcp-orchestrator && npm install && npm run build && cd .. && cd mcp-telegram && npm install && npm run build && cd .. && cd mcp-kanban && npm install && npm run build && cd .. && cd mcp-vault && npm install && npm run build && cd .. && cd mcp-socialdata && npm install && npm run build && cd .. && cd mcp-x && npm install && npm run build && cd .. && electron-builder --dir --mac",
     "e2e": "playwright test",
     "e2e:update": "playwright test --update-snapshots",
-    "e2e:guard": "node e2e/check-coverage.mjs"
+    "e2e:guard": "node e2e/check-coverage.mjs",
+    "sandbox": "bash scripts/sandbox.sh"
   },
   "build": {
     "appId": "io.dorothy.app",
