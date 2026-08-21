@@ -11,13 +11,13 @@
    "type": "color",
    "value": [
     {
-     "value": "#0C0E0D",
+     "value": "#121212",
      "theme": {
       "mode": "dark"
      }
     },
     {
-     "value": "#FAFAF8",
+     "value": "#FAF9F7",
      "theme": {
       "mode": "light"
      }
@@ -28,7 +28,7 @@
    "type": "color",
    "value": [
     {
-     "value": "#111413",
+     "value": "#1A1A1A",
      "theme": {
       "mode": "dark"
      }
@@ -45,13 +45,13 @@
    "type": "color",
    "value": [
     {
-     "value": "#161A18",
+     "value": "#222222",
      "theme": {
       "mode": "dark"
      }
     },
     {
-     "value": "#F4F4F1",
+     "value": "#F3F1EE",
      "theme": {
       "mode": "light"
      }
@@ -62,13 +62,13 @@
    "type": "color",
    "value": [
     {
-     "value": "#0A0C0A",
+     "value": "#0F0F0F",
      "theme": {
       "mode": "dark"
      }
     },
     {
-     "value": "#FCFCFA",
+     "value": "#FCFBFA",
      "theme": {
       "mode": "light"
      }
@@ -79,13 +79,13 @@
    "type": "color",
    "value": [
     {
-     "value": "#232826",
+     "value": "#2A2A2A",
      "theme": {
       "mode": "dark"
      }
     },
     {
-     "value": "#E4E4DF",
+     "value": "#E6E3DE",
      "theme": {
       "mode": "light"
      }
@@ -96,13 +96,13 @@
    "type": "color",
    "value": [
     {
-     "value": "#333936",
+     "value": "#3A3A3A",
      "theme": {
       "mode": "dark"
      }
     },
     {
-     "value": "#C9C9C2",
+     "value": "#CFCBC4",
      "theme": {
       "mode": "light"
      }
@@ -113,13 +113,13 @@
    "type": "color",
    "value": [
     {
-     "value": "#E8EAE8",
+     "value": "#F5F4F2",
      "theme": {
       "mode": "dark"
      }
     },
     {
-     "value": "#161817",
+     "value": "#1E1E1E",
      "theme": {
       "mode": "light"
      }
@@ -130,13 +130,13 @@
    "type": "color",
    "value": [
     {
-     "value": "#9BA39F",
+     "value": "#9B9B9B",
      "theme": {
       "mode": "dark"
      }
     },
     {
-     "value": "#5B615E",
+     "value": "#5E5E5E",
      "theme": {
       "mode": "light"
      }
@@ -147,13 +147,13 @@
    "type": "color",
    "value": [
     {
-     "value": "#5F6763",
+     "value": "#727272",
      "theme": {
       "mode": "dark"
      }
     },
     {
-     "value": "#8B918D",
+     "value": "#9B9B9B",
      "theme": {
       "mode": "light"
      }
@@ -164,13 +164,13 @@
    "type": "color",
    "value": [
     {
-     "value": "#6EE787",
+     "value": "#FF9E42",
      "theme": {
       "mode": "dark"
      }
     },
     {
-     "value": "#1A7F37",
+     "value": "#C77012",
      "theme": {
       "mode": "light"
      }
@@ -181,13 +181,13 @@
    "type": "color",
    "value": [
     {
-     "value": "#6EE78714",
+     "value": "#FF9E4216",
      "theme": {
       "mode": "dark"
      }
     },
     {
-     "value": "#1A7F3712",
+     "value": "#C7701214",
      "theme": {
       "mode": "light"
      }
@@ -198,7 +198,7 @@
    "type": "color",
    "value": [
     {
-     "value": "#6EE787",
+     "value": "#4CC38A",
      "theme": {
       "mode": "dark"
      }
@@ -215,7 +215,7 @@
    "type": "color",
    "value": [
     {
-     "value": "#E3B341",
+     "value": "#E8C547",
      "theme": {
       "mode": "dark"
      }
@@ -232,7 +232,7 @@
    "type": "color",
    "value": [
     {
-     "value": "#F85149",
+     "value": "#E5534B",
      "theme": {
       "mode": "dark"
      }
@@ -249,13 +249,13 @@
    "type": "color",
    "value": [
     {
-     "value": "#5F6763",
+     "value": "#727272",
      "theme": {
       "mode": "dark"
      }
     },
     {
-     "value": "#8B918D",
+     "value": "#9B9B9B",
      "theme": {
       "mode": "light"
      }
@@ -264,11 +264,15 @@
   },
   "font-ui": {
    "type": "string",
-   "value": "Geist"
+   "value": "Roboto Condensed"
   },
   "font-mono": {
    "type": "string",
-   "value": "Geist Mono"
+   "value": "Roboto Mono"
+  },
+  "font-display": {
+   "type": "string",
+   "value": "Instrument Serif"
   }
  },
  "children": [
@@ -325,9 +329,9 @@
          "id": "t002",
          "name": "Dorothy",
          "content": "Dorothy",
-         "fontSize": 15,
+         "fontSize": 17,
          "fill": "$text-primary",
-         "fontFamily": "$font-ui",
+         "fontFamily": "$font-display",
          "lineHeight": 1.4,
          "fontWeight": "600"
         }
@@ -917,7 +921,7 @@
            "name": "+ Add agent",
            "content": "+ Add agent",
            "fontSize": 12,
-           "fill": "#0C0E0D",
+           "fill": "#1E1E1E",
            "fontFamily": "$font-ui",
            "lineHeight": 1.4,
            "fontWeight": "500"
@@ -1826,7 +1830,7 @@
      "type": "text",
      "id": "t137",
      "name": "TOKENS — DARK",
-     "content": "TOKENS — DARK",
+     "content": "TOKENS — DARK · COOPERLABS",
      "fontSize": 11,
      "fill": "$text-muted",
      "fontFamily": "$font-mono",
@@ -1872,7 +1876,7 @@
        "type": "text",
        "id": "t141",
        "name": "#0C0E0D",
-       "content": "#0C0E0D",
+       "content": "#121212",
        "fontSize": 11,
        "fill": "$text-muted",
        "fontFamily": "$font-mono",
@@ -1920,7 +1924,7 @@
        "type": "text",
        "id": "t146",
        "name": "#111413",
-       "content": "#111413",
+       "content": "#1A1A1A",
        "fontSize": 11,
        "fill": "$text-muted",
        "fontFamily": "$font-mono",
@@ -1968,7 +1972,7 @@
        "type": "text",
        "id": "t151",
        "name": "#232826",
-       "content": "#232826",
+       "content": "#2A2A2A",
        "fontSize": 11,
        "fill": "$text-muted",
        "fontFamily": "$font-mono",
@@ -2016,7 +2020,7 @@
        "type": "text",
        "id": "t156",
        "name": "#E8EAE8",
-       "content": "#E8EAE8",
+       "content": "#F5F4F2",
        "fontSize": 11,
        "fill": "$text-muted",
        "fontFamily": "$font-mono",
@@ -2064,7 +2068,7 @@
        "type": "text",
        "id": "t161",
        "name": "#9BA39F",
-       "content": "#9BA39F",
+       "content": "#9B9B9B",
        "fontSize": 11,
        "fill": "$text-muted",
        "fontFamily": "$font-mono",
@@ -2112,7 +2116,7 @@
        "type": "text",
        "id": "t166",
        "name": "#6EE787",
-       "content": "#6EE787",
+       "content": "#FF9E42",
        "fontSize": 11,
        "fill": "$text-muted",
        "fontFamily": "$font-mono",
@@ -2160,7 +2164,7 @@
        "type": "text",
        "id": "t171",
        "name": "#E3B341",
-       "content": "#E3B341",
+       "content": "#E8C547",
        "fontSize": 11,
        "fill": "$text-muted",
        "fontFamily": "$font-mono",
@@ -2208,7 +2212,7 @@
        "type": "text",
        "id": "t176",
        "name": "#F85149",
-       "content": "#F85149",
+       "content": "#E5534B",
        "fontSize": 11,
        "fill": "$text-muted",
        "fontFamily": "$font-mono",
@@ -2227,7 +2231,7 @@
      "type": "text",
      "id": "t179",
      "name": "Geist — Interface",
-     "content": "Geist — Interface",
+     "content": "Roboto Condensed — Interface",
      "fontSize": 15,
      "fill": "$text-primary",
      "fontFamily": "$font-ui",
@@ -2238,7 +2242,7 @@
      "type": "text",
      "id": "t180",
      "name": "Geist Mono — data, ids, ",
-     "content": "Geist Mono — data, ids, branches",
+     "content": "Roboto Mono — data · PP Eiko/serif — display",
      "fontSize": 12,
      "fill": "$text-secondary",
      "fontFamily": "$font-mono",
