@@ -1,7 +1,8 @@
 import * as path from 'path';
 import * as os from 'os';
 
-export const API_PORT = 31415;
+// Overridable so an E2E-sandboxed instance can run beside the real app
+export const API_PORT = Number(process.env.DOROTHY_API_PORT) || 31415;
 
 export const OLD_DATA_DIR = path.join(os.homedir(), '.claude-manager');
 export const DATA_DIR = path.join(os.homedir(), '.dorothy');

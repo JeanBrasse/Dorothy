@@ -64,3 +64,5 @@ electron/dist
 # Dorothy runtime worktrees (embedded checkouts, never commit)
 .worktrees/
 .claude/worktrees/
+e2e/report/
+test-results/
