@@ -2,7 +2,6 @@ import { test, expect, _electron as electron, ElectronApplication, Page } from '
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-// @ts-expect-error plain-JS manifest shared with check-coverage.mjs
 import { ALL } from './surfaces.mjs';
 
 /**
