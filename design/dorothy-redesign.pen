@@ -75561,6 +75561,191 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "JVRJ8",
+      "x": 4640,
+      "y": 0,
+      "name": "App icon · 1024",
+      "width": 1024,
+      "height": 1024,
+      "fill": "#121212",
+      "cornerRadius": 230,
+      "layout": "vertical",
+      "justifyContent": "center",
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "FnDgk",
+          "name": "grid",
+          "layout": "vertical",
+          "gap": 36,
+          "children": [
+            {
+              "type": "frame",
+              "id": "U9ndOw",
+              "name": "r0",
+              "gap": 36,
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "UsZPl",
+                  "name": "c0",
+                  "fill": "#FF9E42",
+                  "width": 131,
+                  "height": 131
+                },
+                {
+                  "type": "rectangle",
+                  "id": "fSpiV",
+                  "name": "c1",
+                  "fill": "#FF9E42",
+                  "width": 131,
+                  "height": 131
+                },
+                {
+                  "type": "rectangle",
+                  "id": "AJ9aZ",
+                  "name": "c2",
+                  "fill": "#FF9E42",
+                  "width": 131,
+                  "height": 131
+                },
+                {
+                  "type": "rectangle",
+                  "id": "BVKfB",
+                  "name": "c3",
+                  "fill": "#FF9E42",
+                  "width": 131,
+                  "height": 131
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Z1RNlN",
+              "name": "r1",
+              "gap": 36,
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "jzSGA",
+                  "name": "c4",
+                  "fill": "#FF9E42",
+                  "width": 131,
+                  "height": 131
+                },
+                {
+                  "type": "rectangle",
+                  "id": "U7063",
+                  "name": "c5",
+                  "fill": "#FF9E42",
+                  "width": 131,
+                  "height": 131
+                },
+                {
+                  "type": "rectangle",
+                  "id": "M7Ndef",
+                  "name": "c6",
+                  "fill": "#FF9E42",
+                  "width": 131,
+                  "height": 131
+                },
+                {
+                  "type": "rectangle",
+                  "id": "UJ5Ol",
+                  "name": "c7",
+                  "fill": "#FF9E42",
+                  "width": 131,
+                  "height": 131
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "UhqBV",
+              "name": "r2",
+              "gap": 36,
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "KcR0v",
+                  "name": "c8",
+                  "fill": "#FF9E42",
+                  "width": 131,
+                  "height": 131
+                },
+                {
+                  "type": "rectangle",
+                  "id": "yadjc",
+                  "name": "c9",
+                  "fill": "#FF9E42",
+                  "width": 131,
+                  "height": 131
+                },
+                {
+                  "type": "rectangle",
+                  "id": "KQyAx",
+                  "name": "c10",
+                  "fill": "#FF9E42",
+                  "width": 131,
+                  "height": 131
+                },
+                {
+                  "type": "rectangle",
+                  "id": "g6zCn",
+                  "name": "c11",
+                  "fill": "#FF9E42",
+                  "width": 131,
+                  "height": 131
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "m0Cr8z",
+              "name": "r3",
+              "gap": 36,
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "iVGJb",
+                  "name": "c12",
+                  "fill": "#FF9E42",
+                  "width": 131,
+                  "height": 131
+                },
+                {
+                  "type": "rectangle",
+                  "id": "BA7dD",
+                  "name": "c13",
+                  "fill": "#2E2015",
+                  "width": 131,
+                  "height": 131
+                },
+                {
+                  "type": "rectangle",
+                  "id": "ksDCn",
+                  "name": "c14",
+                  "fill": "#2E2015",
+                  "width": 131,
+                  "height": 131
+                },
+                {
+                  "type": "rectangle",
+                  "id": "n20YqE",
+                  "name": "c15",
+                  "fill": "#2E2015",
+                  "width": 131,
+                  "height": 131
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {
