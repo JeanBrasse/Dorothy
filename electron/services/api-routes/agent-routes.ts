@@ -10,6 +10,8 @@ import { buildFullPath } from '../../utils/path-builder';
 import { AgentStatus, AgentCharacter } from '../../types';
 import { RouteApp, RouteContext, RouteRequest, SendJson } from './types';
 import { getSuperAgentInstructionsPath } from '../../utils';
+import { assembleDigest, needsPromptInjection, wrapDigestForPrompt } from '../memory-hub';
+import { usableHermesConnection } from '../hermes-config';
 
 /**
  * The orchestrator instructions, or nothing for a regular agent. The UI start
@@ -133,13 +135,31 @@ async function spawnAgentSession(
   const effectiveMode = opts.permissionMode ?? agent.permissionMode ?? (agent.skipPermissions ? 'auto' : 'normal');
 
 
+  // CLIs without Claude's SessionStart hook get the project's memory in the
+  // prompt instead - otherwise those agents start knowing nothing.
+  let memoryBlock = '';
+  if (needsPromptInjection(cliProvider.configDir)) {
+    try {
+      const digest = await assembleDigest({
+        projectPath: agent.projectPath,
+        settings: appSettings as never,
+        hermes: usableHermesConnection(),
+        budgetMs: 3000,
+      });
+      const wrapped = wrapDigestForPrompt(digest);
+      if (wrapped) memoryBlock = `\n\n${wrapped}`;
+    } catch {
+      // Memory is context, not a precondition: never block a start on it.
+    }
+  }
+
   // Build the CLI command through the provider so non-claude CLIs (codex,
   // gemini, grok, opencode, pi) get their own syntax instead of claude flags.
   let cliCommand: string;
   try {
     cliCommand = cliProvider.buildInteractiveCommand({
       binaryPath,
-      prompt: `${identityHeader}\n\n${prompt}`,
+      prompt: `${identityHeader}${memoryBlock}\n\n${prompt}`,
       model: resolvedModel && resolvedModel !== 'default' ? resolvedModel : undefined,
       permissionMode: effectiveMode,
       effort: agent.effort,

@@ -92,7 +92,8 @@ beforeEach(() => {
   fs.mkdirSync(h.home, { recursive: true });
   (agents as Map<string, AgentStatus>).clear();
   app = makeRouteApp();
-  registerMemoryRoutes(app, {} as RouteContext);
+  // The routes read app settings to know which memory backends to consult.
+  registerMemoryRoutes(app, { getAppSettings: () => ({}) } as unknown as RouteContext);
   registerWebhookRoutes(app, {} as RouteContext);
 });
 

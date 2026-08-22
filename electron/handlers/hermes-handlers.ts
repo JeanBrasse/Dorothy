@@ -8,6 +8,7 @@ import * as os from 'os';
 import * as http from 'http';
 import * as https from 'https';
 import { DATA_DIR } from '../constants';
+import { readHermesConnection, writeHermesConnection } from '../services/hermes-config';
 import {
   fetchHermesCrons,
   hermesCronAction,
@@ -28,27 +29,13 @@ import {
 
 const execFileAsync = promisify(execFile);
 
-const HERMES_CONNECTION_FILE = path.join(DATA_DIR, 'hermes-connection.json');
 /** Where Hermes Desktop keeps its own connection config on macOS. */
 const HERMES_DESKTOP_CONFIG = path.join(
   os.homedir(), 'Library', 'Application Support', 'Hermes', 'connection.json',
 );
 
-function readConnection(): HermesConnection {
-  try {
-    if (fs.existsSync(HERMES_CONNECTION_FILE)) {
-      return { ...defaultHermesConnection(), ...JSON.parse(fs.readFileSync(HERMES_CONNECTION_FILE, 'utf-8')) };
-    }
-  } catch (err) {
-    console.error('[hermes] cannot read connection config:', err);
-  }
-  return defaultHermesConnection();
-}
-
-function writeConnection(conn: HermesConnection): void {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(HERMES_CONNECTION_FILE, JSON.stringify(conn, null, 2));
-}
+const readConnection = readHermesConnection;
+const writeConnection = writeHermesConnection;
 
 /** Hermes Desktop's config shape -> ours (same vocabulary, nested differently). */
 function importDesktopConfig(): HermesConnection | null {

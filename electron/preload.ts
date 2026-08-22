@@ -232,6 +232,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
   },
 
+  memoryHub: {
+    sources: (projectPath?: string) =>
+      ipcRenderer.invoke('memory:sources', { projectPath }),
+    search: (query: string, opts?: { projectPath?: string; sources?: string[]; limit?: number }) =>
+      ipcRenderer.invoke('memory:search', { query, ...opts }),
+  },
+
   models: {
     list: (provider: string) =>
       ipcRenderer.invoke('models:list', { provider }),

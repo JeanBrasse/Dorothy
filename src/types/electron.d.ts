@@ -1,3 +1,19 @@
+export interface MemorySourceStatus {
+  id: string;
+  label: string;
+  configured: boolean;
+  reachable: boolean;
+  detail: string;
+  tools?: string[];
+}
+
+export interface MemoryHit {
+  source: string;
+  title: string;
+  content: string;
+  ref?: string;
+}
+
 export interface ModelCost {
   /** USD per million tokens */
   input?: number;
@@ -466,6 +482,15 @@ export interface ElectronAPI {
   // App settings (notifications, etc.)
   app?: {
     getVersion: () => Promise<{ version: string }>;
+  };
+
+  /** Federated memory: every source probed for real, searchable from one place. */
+  memoryHub?: {
+    sources: (projectPath?: string) => Promise<{ sources: MemorySourceStatus[] }>;
+    search: (
+      query: string,
+      opts?: { projectPath?: string; sources?: string[]; limit?: number },
+    ) => Promise<{ hits: MemoryHit[]; errors: { source: string; error: string }[] }>;
   };
 
   /** Live model + price catalogue, refreshed from models.dev. */

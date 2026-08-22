@@ -24,6 +24,8 @@ import { killStalePty, ensureProjectTrusted } from '../core/agent-manager';
 import { extractStatusLine } from '../utils/ansi';
 import { scheduleTick } from '../utils/agents-tick';
 import { loadCatalog, modelsForProvider, priceFor, catalogStatus } from '../services/model-catalog';
+import { assembleDigest, needsPromptInjection, wrapDigestForPrompt, searchMemory, memoryStatus } from '../services/memory-hub';
+import { usableHermesConnection } from '../services/hermes-config';
 
 /**
  * Normalize a JIRA domain value to a full hostname.
@@ -660,9 +662,27 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
 
     const resolvedModel = (provider !== 'local') ? (options?.model || agent.model) : undefined;
 
+    // CLIs without Claude's SessionStart hook get the project's memory in the
+    // prompt instead - otherwise those agents start knowing nothing.
+    let promptWithMemory = prompt;
+    if (needsPromptInjection(cliProvider.configDir)) {
+      try {
+        const digest = await assembleDigest({
+          projectPath: agent.projectPath,
+          settings: appSettingsForCommand as never,
+          hermes: usableHermesConnection(),
+          budgetMs: 3000,
+        });
+        const wrapped = wrapDigestForPrompt(digest);
+        if (wrapped) promptWithMemory = `${wrapped}\n\n${prompt}`;
+      } catch {
+        // Memory is context, not a precondition.
+      }
+    }
+
     const command = cliProvider.buildInteractiveCommand({
       binaryPath,
-      prompt,
+      prompt: promptWithMemory,
       model: resolvedModel,
       verbose: appSettingsForCommand.verboseModeEnabled,
       permissionMode: isSuperAgentCheck ? 'bypass' : (agent.permissionMode ?? (agent.skipPermissions ? 'auto' : 'normal')),
@@ -1532,6 +1552,29 @@ function registerAppSettingsHandlers(deps: IpcHandlerDependencies): void {
   });
 
   ipcMain.handle('models:catalog-status', async () => catalogStatus());
+
+  // Memory: real status (each backend is probed, not inferred from settings)
+  // and federated search across every configured source.
+  ipcMain.handle('memory:sources', async (_event, { projectPath }: { projectPath?: string } = {}) => {
+    const settings = getAppSettings() as never;
+    return { sources: await memoryStatus({ settings, hermes: usableHermesConnection(), projectPath }) };
+  });
+
+  ipcMain.handle('memory:search', async (
+    _event,
+    { query, projectPath, sources, limit }: { query: string; projectPath?: string; sources?: string[]; limit?: number },
+  ) => {
+    if (!query?.trim()) return { hits: [], errors: [] };
+    const settings = getAppSettings() as never;
+    return searchMemory({
+      query,
+      projectPath,
+      settings,
+      hermes: usableHermesConnection(),
+      sources: sources as never,
+      limit,
+    });
+  });
 
   ipcMain.handle('models:refresh', async () => {
     await loadCatalog(true);

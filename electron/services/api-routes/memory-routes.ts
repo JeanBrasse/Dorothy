@@ -1,46 +1,32 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
+import { DATA_DIR } from '../../constants';
 import { RouteApp, RouteContext } from './types';
+import {
+  assembleDigest,
+  searchMemory,
+  writeProjectMemory,
+  memoryStatus,
+  type MemorySettings,
+  type MemorySourceId,
+} from '../memory-hub';
+import { usableHermesConnection } from '../hermes-config';
 
 /**
- * Memory routes — consumed by the session hooks:
- * - session-start.sh GETs /api/memory/context and injects the result into the
- *   fresh session (additionalContext), so agents wake up knowing the project.
- * - post-tool-use.sh POSTs /api/memory/remember after significant tool uses;
- *   observations land in a capped per-project ledger.
+ * Memory over HTTP, for agents rather than for the renderer.
+ *
+ * - session-start hooks GET /api/memory/context for the digest to inject.
+ * - the memory MCP server (which every CLI gets, not just Claude) calls
+ *   /search, /write and /context on behalf of whatever agent invoked it.
+ * - post-tool-use hooks POST /remember into the observation ledger.
  */
 
-const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
-const OBSERVATIONS_DIR = path.join(os.homedir(), '.dorothy', 'observations');
-
-const MAX_MEMORY_CHARS = 6000;     // MEMORY.md excerpt cap in the injected context
-const MAX_OBSERVATIONS = 15;       // recent observations included in the context
-const LEDGER_MAX_LINES = 1000;     // trim threshold for the observations ledger
+const OBSERVATIONS_DIR = path.join(DATA_DIR, 'observations');
+const LEDGER_MAX_LINES = 1000;
 const LEDGER_TRIM_TO = 500;
 
-/** Claude Code currently encodes project dir names by collapsing every
- *  non-alphanumeric character to `-` ([^a-zA-Z0-9] in the CLI bundle) —
- *  `/Users/noah/my_app` → `-Users-noah-my-app`. */
-function encodeProjectDir(projectPath: string): string {
-  return projectPath.replace(/[^a-zA-Z0-9]/g, '-');
-}
-
-/** Older CLI versions used laxer encodings (dots preserved, or only `/` and
- *  `.` replaced) and those project dirs still exist on disk — probe every
- *  variant so long-lived projects keep their memory. */
-function candidateProjectDirs(projectPath: string): string[] {
-  return [...new Set([
-    projectPath.replace(/[^a-zA-Z0-9]/g, '-'),
-    projectPath.replace(/[/.]/g, '-'),
-    projectPath.replace(/\//g, '-'),
-  ])];
-}
-
-/** Ledger filenames derive from the encoded project dir — no user-controlled
- *  path segments survive the encoding (slashes and dots become dashes). */
 function ledgerPathFor(projectPath: string): string {
-  return path.join(OBSERVATIONS_DIR, `${encodeProjectDir(projectPath)}.jsonl`);
+  return path.join(OBSERVATIONS_DIR, `${projectPath.replace(/[^a-zA-Z0-9]/g, '-')}.jsonl`);
 }
 
 interface Observation {
@@ -50,57 +36,101 @@ interface Observation {
   content: string;
 }
 
-function readRecentObservations(projectPath: string, limit: number): Observation[] {
-  try {
-    const p = ledgerPathFor(projectPath);
-    if (!fs.existsSync(p)) return [];
-    const lines = fs.readFileSync(p, 'utf-8').trim().split('\n');
-    return lines.slice(-limit).flatMap(line => {
-      try { return [JSON.parse(line) as Observation]; } catch { return []; }
-    });
-  } catch {
-    return [];
-  }
+function memorySettings(ctx: RouteContext): MemorySettings {
+  const s = ctx.getAppSettings() as unknown as MemorySettings;
+  return {
+    memoryGbrainEnabled: s.memoryGbrainEnabled,
+    memoryGbrainMcpUrl: s.memoryGbrainMcpUrl,
+    memoryGbrainAuthToken: s.memoryGbrainAuthToken,
+    memoryHonchoEnabled: s.memoryHonchoEnabled,
+    memoryHonchoMcpUrl: s.memoryHonchoMcpUrl,
+    memoryHonchoApiKey: s.memoryHonchoApiKey,
+  };
 }
 
-export function registerMemoryRoutes(app: RouteApp, _ctx: RouteContext): void {
-  // Memory context injected at session start (native MEMORY.md + recent activity)
-  app.get('/api/memory/context', (req, sendJson) => {
+const VALID_SOURCES: MemorySourceId[] = ['project', 'observations', 'hermes', 'gbrain', 'honcho'];
+
+function parseSources(raw: string | null): MemorySourceId[] | undefined {
+  if (!raw) return undefined;
+  const wanted = raw.split(',').map(s => s.trim()).filter(s => VALID_SOURCES.includes(s as MemorySourceId));
+  return wanted.length > 0 ? (wanted as MemorySourceId[]) : undefined;
+}
+
+export function registerMemoryRoutes(app: RouteApp, ctx: RouteContext): void {
+  // The block injected at session start: project memory, recent activity,
+  // Hermes' own memory files, and a pointer to the connected backends.
+  app.get('/api/memory/context', async (req, sendJson) => {
     const projectPath = req.url.searchParams.get('project_path') || '';
     if (!projectPath) {
       sendJson({ context: '' });
       return;
     }
-
-    const sections: string[] = [];
-
     try {
-      const memoryFile = candidateProjectDirs(projectPath)
-        .map(dir => path.join(CLAUDE_PROJECTS_DIR, dir, 'memory', 'MEMORY.md'))
-        .find(p => fs.existsSync(p));
-      if (memoryFile) {
-        let content = fs.readFileSync(memoryFile, 'utf-8').trim();
-        if (content.length > MAX_MEMORY_CHARS) {
-          content = content.slice(0, MAX_MEMORY_CHARS) + '\n…(truncated — read the full memory/MEMORY.md)';
-        }
-        if (content) {
-          sections.push(`## Project memory (auto-memory MEMORY.md)\n${content}`);
-        }
-      }
+      const context = await assembleDigest({
+        projectPath,
+        settings: memorySettings(ctx),
+        hermes: usableHermesConnection(),
+      });
+      sendJson({ context });
     } catch (err) {
-      console.error('memory/context: failed to read MEMORY.md:', err);
+      console.error('memory/context failed:', err);
+      sendJson({ context: '' });
     }
-
-    const observations = readRecentObservations(projectPath, MAX_OBSERVATIONS);
-    if (observations.length > 0) {
-      const lines = observations.map(o => `- [${o.ts.slice(0, 16)}] ${o.content}`);
-      sections.push(`## Recent activity on this project (other sessions)\n${lines.join('\n')}`);
-    }
-
-    sendJson({ context: sections.join('\n\n') });
   });
 
-  // Observation capture from post-tool-use hooks (auth-exempt, localhost-only)
+  // Federated search across every configured source.
+  app.get('/api/memory/search', async (req, sendJson) => {
+    const query = req.url.searchParams.get('q') || '';
+    if (!query.trim()) {
+      sendJson({ error: 'q is required' }, 400);
+      return;
+    }
+    const limitParam = Number(req.url.searchParams.get('limit'));
+    try {
+      const result = await searchMemory({
+        query,
+        projectPath: req.url.searchParams.get('project_path') || undefined,
+        settings: memorySettings(ctx),
+        hermes: usableHermesConnection(),
+        sources: parseSources(req.url.searchParams.get('sources')),
+        limit: Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 50) : 10,
+      });
+      sendJson(result);
+    } catch (err) {
+      console.error('memory/search failed:', err);
+      sendJson({ hits: [], errors: [{ source: 'project', error: String(err) }] });
+    }
+  });
+
+  // Which sources are actually reachable — probed, not inferred from settings.
+  app.get('/api/memory/status', async (req, sendJson) => {
+    try {
+      sendJson({
+        sources: await memoryStatus({
+          settings: memorySettings(ctx),
+          hermes: usableHermesConnection(),
+          projectPath: req.url.searchParams.get('project_path') || undefined,
+        }),
+      });
+    } catch (err) {
+      sendJson({ sources: [], error: String(err) }, 500);
+    }
+  });
+
+  // An agent recording something worth keeping past this session.
+  app.post('/api/memory/write', (req, sendJson) => {
+    const projectPath = typeof req.body.project_path === 'string' ? req.body.project_path : '';
+    const content = typeof req.body.content === 'string' ? req.body.content : '';
+    const file = typeof req.body.file === 'string' ? req.body.file : 'MEMORY.md';
+
+    if (!projectPath || !content.trim()) {
+      sendJson({ success: false, error: 'project_path and content are required' }, 400);
+      return;
+    }
+    sendJson(writeProjectMemory(projectPath, content.slice(0, 20_000), file));
+  });
+
+  // Observation capture from post-tool-use hooks.
   app.post('/api/memory/remember', (req, sendJson) => {
     const agentId = typeof req.body.agent_id === 'string' ? req.body.agent_id : '';
     const projectPath = typeof req.body.project_path === 'string' ? req.body.project_path : '';

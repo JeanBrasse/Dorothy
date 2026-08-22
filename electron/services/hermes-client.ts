@@ -231,3 +231,105 @@ export async function deleteHermesCron(conn: HermesConnection, jobId: string, pr
   const { status } = await hermesRequest(baseUrl, `/api/cron/jobs/${encodeURIComponent(jobId)}${q}`, { method: 'DELETE', token: conn.token });
   return status < 300 ? { success: true as const } : { success: false as const, error: `HTTP ${status}` };
 }
+
+/* ── Memory ────────────────────────────────────────────────
+ * Hermes exposes no HTTP API for memory *content*: /api/memory only
+ * administers which provider is active. The content lives in two markdown
+ * files the gateway will hand over through /api/files/read, and past sessions
+ * are searchable through the FTS index behind /api/sessions/search.
+ */
+
+export interface HermesMemoryFile {
+  name: string;
+  content: string;
+}
+
+function decodeDataUrl(dataUrl: unknown): string {
+  if (typeof dataUrl !== 'string') return '';
+  const comma = dataUrl.indexOf(',');
+  if (comma === -1) return '';
+  try {
+    return Buffer.from(dataUrl.slice(comma + 1), 'base64').toString('utf-8');
+  } catch {
+    return '';
+  }
+}
+
+/** MEMORY.md (agent notes) and USER.md (user profile) from the gateway. */
+export async function fetchHermesMemoryFiles(conn: HermesConnection): Promise<
+  { success: true; files: HermesMemoryFile[] } | { success: false; error: string; needsSignIn?: boolean }
+> {
+  const baseUrl = resolveHermesBaseUrl(conn);
+  const files: HermesMemoryFile[] = [];
+
+  for (const name of ['memories/MEMORY.md', 'memories/USER.md']) {
+    const { status, body } = await hermesRequest(
+      baseUrl, `/api/files/read?path=${encodeURIComponent(name)}`, { token: conn.token },
+    );
+    if (status === 401 || status === 403) {
+      return { success: false, error: 'Sign in to Hermes to read its memory', needsSignIn: true };
+    }
+    if (status === 404) continue; // the gateway simply has not written it yet
+    if (status >= 300) return { success: false, error: `HTTP ${status}` };
+
+    const content = decodeDataUrl((body as Record<string, unknown> | null)?.data_url);
+    if (content.trim()) files.push({ name: name.replace('memories/', ''), content });
+  }
+
+  return { success: true, files };
+}
+
+export interface HermesSessionHit {
+  sessionId?: string;
+  title?: string;
+  snippet?: string;
+  timestamp?: string;
+  source?: string;
+}
+
+/** Full-text search over every past Hermes session. */
+export async function searchHermesSessions(
+  conn: HermesConnection,
+  query: string,
+  limit = 10,
+): Promise<{ success: true; hits: HermesSessionHit[] } | { success: false; error: string; needsSignIn?: boolean }> {
+  const baseUrl = resolveHermesBaseUrl(conn);
+  const q = `?q=${encodeURIComponent(query)}&limit=${Math.min(Math.max(limit, 1), 50)}`;
+  const { status, body } = await hermesRequest(baseUrl, `/api/sessions/search${q}`, { token: conn.token });
+
+  if (status === 401 || status === 403) {
+    return { success: false, error: 'Sign in to Hermes to search its history', needsSignIn: true };
+  }
+  if (status >= 300) return { success: false, error: `HTTP ${status}` };
+
+  const payload = body as Record<string, unknown> | null;
+  const raw = Array.isArray(payload)
+    ? payload
+    : (payload?.results as unknown[] | undefined) ?? (payload?.sessions as unknown[] | undefined) ?? [];
+
+  const hits = raw.slice(0, limit).map(item => {
+    const r = (item ?? {}) as Record<string, unknown>;
+    return {
+      sessionId: typeof r.session_id === 'string' ? r.session_id : typeof r.id === 'string' ? r.id : undefined,
+      title: typeof r.title === 'string' ? r.title : undefined,
+      snippet: typeof r.snippet === 'string' ? r.snippet
+        : typeof r.content === 'string' ? r.content.slice(0, 400) : undefined,
+      timestamp: typeof r.timestamp === 'string' ? r.timestamp
+        : typeof r.created_at === 'string' ? r.created_at : undefined,
+      source: typeof r.source === 'string' ? r.source : undefined,
+    };
+  });
+
+  return { success: true, hits };
+}
+
+/** Which memory provider the gateway has active, and how big its files are. */
+export async function fetchHermesMemoryState(conn: HermesConnection) {
+  const baseUrl = resolveHermesBaseUrl(conn);
+  const { status, body } = await hermesRequest(baseUrl, '/api/memory', { token: conn.token });
+  if (status === 401 || status === 403) {
+    return { success: false as const, error: 'Sign in to Hermes', needsSignIn: true };
+  }
+  if (status >= 300) return { success: false as const, error: `HTTP ${status}` };
+  return { success: true as const, state: body as Record<string, unknown> };
+}

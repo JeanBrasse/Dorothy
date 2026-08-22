@@ -67,6 +67,14 @@ export function getMcpXPath(): string {
 }
 
 /**
+ * Get the path to the bundled memory MCP server.
+ * This is the one that makes memory provider-agnostic: every CLI gets it.
+ */
+export function getMcpMemoryPath(): string {
+  return path.join(process.resourcesPath, 'mcp-memory', 'dist', 'bundle.js');
+}
+
+/**
  * Auto-setup MCP servers on app start for ALL providers.
  * Registers bundled MCP servers (orchestrator, telegram, kanban, etc.)
  * with each provider's configuration system.
@@ -76,6 +84,7 @@ export async function setupMcpOrchestrator(appSettings?: AppSettings): Promise<v
     // Build the list of MCP servers to register
     const mcpServers: Array<{ name: string; serverPath: string }> = [
       { name: 'claude-mgr-orchestrator', serverPath: getMcpOrchestratorPath() },
+      { name: 'tars-memory', serverPath: getMcpMemoryPath() },
       { name: 'claude-mgr-telegram', serverPath: getMcpTelegramPath() },
       { name: 'claude-mgr-kanban', serverPath: getMcpKanbanPath() },
       { name: 'claude-mgr-vault', serverPath: getMcpVaultPath() },

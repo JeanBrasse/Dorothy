@@ -281,94 +281,120 @@ function NewFileModal({
 
 // ─── Shared memory backends (gbrain / Honcho) status ───────────────────────
 
-interface BackendStatus {
-  key: string;
-  title: string;
-  description: string;
-  enabled: boolean;
-  url: string;
-  hasAuth: boolean;
-  docUrl: string;
+interface SourceStatus {
+  id: string;
+  label: string;
+  configured: boolean;
+  reachable: boolean;
+  detail: string;
+  tools?: string[];
 }
 
-function BackendsTab() {
-  const [backends, setBackends] = useState<BackendStatus[] | null>(null);
+const SOURCE_DOCS: Record<string, { description: string; docUrl: string }> = {
+  project: {
+    description: 'The project\'s own memory files. Injected into every agent at session start and browsable in the Projects tab.',
+    docUrl: 'https://code.claude.com/docs/en/memory',
+  },
+  observations: {
+    description: 'What other sessions did on this project, captured after each significant tool use.',
+    docUrl: 'https://code.claude.com/docs/en/hooks',
+  },
+  hermes: {
+    description: 'Your gateway\'s own MEMORY.md and USER.md, plus full-text search over every past Hermes session.',
+    docUrl: 'https://hermes.computer',
+  },
+  gbrain: {
+    description: 'Shared semantic memory, reached over MCP. Available to agents on every CLI through the memory tools.',
+    docUrl: 'https://github.com/garrytan/gbrain',
+  },
+  honcho: {
+    description: 'Plastic Labs\' memory layer (peers, sessions, working representations), served over MCP.',
+    docUrl: 'https://honcho.dev/docs/v3/guides/integrations/mcp',
+  },
+};
 
-  useEffect(() => {
-    window.electronAPI?.appSettings?.get().then(s => {
-      setBackends([
-        {
-          key: 'native',
-          title: 'Native project memory',
-          description: 'Claude Code auto-memory (~/.claude/projects/*/memory/). Always on - injected into every agent at session start, browsable in the Projects tab.',
-          enabled: true,
-          url: '~/.claude/projects/*/memory/',
-          hasAuth: false,
-          docUrl: 'https://code.claude.com/docs/en/memory',
-        },
-        {
-          key: 'gbrain',
-          title: 'gbrain',
-          description: 'Shared semantic memory (vector search + knowledge graph). Registered as an MCP server for every claude-binary agent - the same brain your Hermes instance uses.',
-          enabled: !!(s?.memoryGbrainEnabled && s?.memoryGbrainMcpUrl),
-          url: s?.memoryGbrainMcpUrl || '',
-          hasAuth: !!s?.memoryGbrainAuthToken,
-          docUrl: 'https://github.com/garrytan/gbrain',
-        },
-        {
-          key: 'honcho',
-          title: 'Honcho',
-          description: 'Plastic Labs\' memory layer (peers, sessions, working representations), served over MCP.',
-          enabled: !!(s?.memoryHonchoEnabled && s?.memoryHonchoMcpUrl),
-          url: s?.memoryHonchoMcpUrl || 'https://mcp.honcho.dev',
-          hasAuth: !!s?.memoryHonchoApiKey,
-          docUrl: 'https://honcho.dev/docs/v3/guides/integrations/mcp',
-        },
-      ]);
-    });
-  }, []);
+function BackendsTab({ projectPath }: { projectPath?: string }) {
+  const [sources, setSources] = useState<SourceStatus[] | null>(null);
+  const [checking, setChecking] = useState(false);
 
-  if (!backends) {
+  const probe = useCallback(async () => {
+    setChecking(true);
+    try {
+      const res = await window.electronAPI?.memoryHub?.sources(projectPath);
+      setSources(res?.sources ?? []);
+    } catch {
+      setSources([]);
+    } finally {
+      setChecking(false);
+    }
+  }, [projectPath]);
+
+  useEffect(() => { void probe(); }, [probe]);
+
+  if (!sources) {
     return (
       <div className="flex items-center justify-center py-16 text-muted-foreground">
         <Loader2 className="w-5 h-5 animate-spin mr-2" />
-        Loading backends…
+        Probing memory sources…
       </div>
     );
   }
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto space-y-3 max-w-3xl">
-      {backends.map(b => (
-        <div key={b.key} className="bg-card border border-border p-4">
-          <div className="flex items-center justify-between gap-3 mb-1.5">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              {b.title}
-              <a href={b.docUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground" title="Documentation">
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </h3>
-            <span className={`text-[10px] font-medium px-1.5 py-0.5 ${
-              b.enabled ? 'bg-success/15 text-success' : 'bg-secondary text-muted-foreground'
-            }`}>
-              {b.enabled ? 'Connected' : 'Not configured'}
-            </span>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          Each source below was contacted just now. Every agent reaches them through the
+          memory tools, whatever CLI it runs.
+        </p>
+        <button
+          onClick={probe}
+          disabled={checking}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-border bg-card text-muted-foreground hover:text-foreground disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3 h-3 ${checking ? 'animate-spin' : ''}`} />
+          Re-check
+        </button>
+      </div>
+
+      {sources.map(s => {
+        const doc = SOURCE_DOCS[s.id];
+        const state = !s.configured ? 'Not configured' : s.reachable ? 'Reachable' : 'Unreachable';
+        const tone = !s.configured
+          ? 'bg-secondary text-muted-foreground'
+          : s.reachable
+            ? 'bg-success/15 text-success'
+            : 'bg-danger/15 text-danger';
+        return (
+          <div key={s.id} className="bg-card border border-border p-4">
+            <div className="flex items-center justify-between gap-3 mb-1.5">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                {s.label}
+                {doc && (
+                  <a href={doc.docUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground" title="Documentation">
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </h3>
+              <span className={`text-[10px] font-medium px-1.5 py-0.5 ${tone}`}>{state}</span>
+            </div>
+            {doc && <p className="text-xs text-muted-foreground mb-2">{doc.description}</p>}
+            <p className="text-[11px] text-muted-foreground font-mono break-all">{s.detail}</p>
+            {s.tools && s.tools.length > 0 && (
+              <p className="text-[11px] text-muted-foreground mt-1 font-mono break-all">
+                tools: {s.tools.join(', ')}
+              </p>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground mb-2">{b.description}</p>
-          {b.enabled && (
-            <p className="text-[11px] text-muted-foreground font-mono truncate">
-              {b.url}{b.key !== 'native' && (b.hasAuth ? ' · auth ✓' : ' · no auth header')}
-            </p>
-          )}
-        </div>
-      ))}
+        );
+      })}
 
       <Link
-        href="/settings"
+        href="/settings?section=memory"
         className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
       >
         <SettingsIcon className="w-3.5 h-3.5" />
-        Configure backends in Settings Memory Backends
+        Configure backends in Settings
       </Link>
     </div>
   );
@@ -498,7 +524,7 @@ export default function MemoryPage() {
       )}
 
       {/* ── Shared backends tab ── */}
-      {activeTab === 'backends' && <BackendsTab />}
+      {activeTab === 'backends' && <BackendsTab projectPath={selectedProject?.projectPath} />}
 
       {/* ── Projects tab content ── */}
       {activeTab === 'projects' && <>
