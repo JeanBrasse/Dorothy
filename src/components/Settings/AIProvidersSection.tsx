@@ -129,7 +129,7 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
       const results = await Promise.all(
         cliProviders.map(async (cli) => {
           try {
-            const result = await window.electronAPI?.shell?.exec({ command: `${cli.binary} --version 2>&1` });
+            const result = await window.electronAPI?.shell?.version(cli.binary);
             const version = result?.success && result.output && !result.output.includes('not found') && !result.output.includes('command not found')
               ? result.output.trim().split('\n')[0]
               : null;
@@ -146,10 +146,16 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
 
   return (
     <div className="space-y-6">
-      {/* Claude Code */}
       <div>
-        <h2 className="text-lg font-semibold mb-1">Claude Code</h2>
-        <p className="text-sm text-muted-foreground">Anthropic&apos;s official coding CLI — always available when installed.</p>
+        <h2 className="text-lg font-semibold mb-1">Providers</h2>
+        <p className="text-sm text-muted-foreground">
+          Every CLI and API Tars can run. They are all equal here — the options below each one
+          are that provider&apos;s own, not the app&apos;s.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Claude Code</h3>
       </div>
 
       <div className="border border-border bg-card p-5 space-y-4">
@@ -184,15 +190,21 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
             onChange={(e) => onSaveAppSettings({ defaultClaudeModel: e.target.value })}
             className="w-full sm:w-64 bg-secondary border border-border text-sm text-foreground px-3 py-2 focus:outline-none focus:border-foreground appearance-none"
           >
-            <option value="sonnet">Sonnet — Daily coding</option>
-            <option value="opus">Opus — Complex reasoning</option>
-            <option value="haiku">Haiku — Fast &amp; efficient</option>
+            <option value="sonnet">Sonnet - Daily coding</option>
+            <option value="opus">Opus - Complex reasoning</option>
+            <option value="haiku">Haiku - Fast &amp; efficient</option>
           </select>
         </div>
 
         {/* Agent Settings */}
         <div className="border-t border-border pt-4 space-y-0">
-          <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">Agent Settings</p>
+          <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">
+            Claude Code options
+          </p>
+          <p className="text-xs text-muted-foreground mb-3">
+            These are flags the Claude CLI understands. Other providers have their own, set in
+            their own rows.
+          </p>
           <div className="flex items-center justify-between py-3 border-b border-border">
             <div>
               <span className="text-sm">Verbose Mode</span>
@@ -246,10 +258,10 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold mb-1">External AI Providers</h2>
+        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">API providers</h3>
         <p className="text-sm text-muted-foreground">
-          Configure API keys to use models from other providers. All providers route through
-          the Claude CLI using the <code className="bg-secondary px-1 text-xs">ANTHROPIC_BASE_URL</code> override.
+          Model lists and prices for all of these come from the live catalogue, so you do not
+          need a key just to see what a provider offers. A key is what lets an agent run on it.
         </p>
       </div>
 
@@ -288,7 +300,7 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
       {/* OpenRouter */}
       <ProviderCard
         title="OpenRouter"
-        description="Universal gateway — one API key to access 300+ models from all providers."
+        description="Universal gateway - one API key to access 300+ models from all providers."
         docsUrl="https://openrouter.ai/keys"
         badge="Recommended"
         badgeColor="bg-success/20 text-success border border-success/30"
@@ -299,7 +311,7 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
         onApiKeyChange={(v) => onUpdateLocalSettings({ openRouterApiKey: v })}
         onApiKeyBlur={() => onSaveAppSettings({ openRouterApiKey: appSettings.openRouterApiKey })}
         models={['deepseek/deepseek-r1', 'moonshotai/kimi-k2', 'xiaomi/mimo-v2-pro', 'qwen/qwq-32b', 'openai/gpt-4.1', 'google/gemini-2.5-pro', '300+ more…']}
-        routingNote="Provider: openrouter — Claude CLI with ANTHROPIC_BASE_URL=https://openrouter.ai/api (Anthropic-compatible)."
+        routingNote="Provider: openrouter - Claude CLI with ANTHROPIC_BASE_URL=https://openrouter.ai/api (Anthropic-compatible)."
       />
 
       {/* DeepSeek */}
@@ -314,13 +326,13 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
         onApiKeyChange={(v) => onUpdateLocalSettings({ deepSeekApiKey: v })}
         onApiKeyBlur={() => onSaveAppSettings({ deepSeekApiKey: appSettings.deepSeekApiKey })}
         models={['deepseek/deepseek-r1', 'deepseek/deepseek-chat', 'deepseek/deepseek-r1-distill-llama-70b']}
-        routingNote="Provider: deepseek — direct via https://api.deepseek.com/anthropic (Anthropic-compatible). Falls back to OpenRouter if no DeepSeek key set."
+        routingNote="Provider: deepseek - direct via https://api.deepseek.com/anthropic (Anthropic-compatible). Falls back to OpenRouter if no DeepSeek key set."
       />
 
       {/* Moonshot / Kimi */}
       <ProviderCard
         title="MoonshotAI (Kimi)"
-        description="Kimi K2 — long-context agentic model optimized for real-world tasks."
+        description="Kimi K2 - long-context agentic model optimized for real-world tasks."
         docsUrl="https://platform.moonshot.cn/console/api-keys"
         enabled={!!appSettings.moonshotEnabled}
         onToggle={() => onSaveAppSettings({ moonshotEnabled: !appSettings.moonshotEnabled })}
@@ -329,13 +341,13 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
         onApiKeyChange={(v) => onUpdateLocalSettings({ moonshotApiKey: v })}
         onApiKeyBlur={() => onSaveAppSettings({ moonshotApiKey: appSettings.moonshotApiKey })}
         models={['moonshotai/kimi-k2', 'moonshotai/moonlight-16k', 'moonshotai/kimi-vl-a3b-thinking']}
-        routingNote="Provider: moonshot — direct via https://api.moonshot.ai/anthropic (Anthropic-compatible). Falls back to OpenRouter if no Moonshot key set."
+        routingNote="Provider: moonshot - direct via https://api.moonshot.ai/anthropic (Anthropic-compatible). Falls back to OpenRouter if no Moonshot key set."
       />
 
       {/* Xiaomi MiMo */}
       <ProviderCard
         title="MiMo (Xiaomi)"
-        description="MiMo V2 Pro — Xiaomi's flagship agentic model at $1/M input tokens."
+        description="MiMo V2 Pro - Xiaomi's flagship agentic model at $1/M input tokens."
         docsUrl="https://platform.xiaomimimo.com"
         enabled={!!appSettings.mimoEnabled}
         onToggle={() => onSaveAppSettings({ mimoEnabled: !appSettings.mimoEnabled })}
@@ -344,7 +356,7 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
         onApiKeyChange={(v) => onUpdateLocalSettings({ mimoApiKey: v })}
         onApiKeyBlur={() => onSaveAppSettings({ mimoApiKey: appSettings.mimoApiKey })}
         models={['xiaomi/mimo-v2-pro', 'xiaomi/mimo-v2-flash', 'xiaomi/mimo-v2-omni']}
-        routingNote="Provider: mimo — no Anthropic-compatible endpoint: requests always route via your OpenRouter key."
+        routingNote="Provider: mimo - no Anthropic-compatible endpoint: requests always route via your OpenRouter key."
       />
 
       {/* Alibaba Qwen */}
@@ -359,7 +371,7 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
         onApiKeyChange={(v) => onUpdateLocalSettings({ qwenApiKey: v })}
         onApiKeyBlur={() => onSaveAppSettings({ qwenApiKey: appSettings.qwenApiKey })}
         models={['qwen/qwq-32b', 'qwen/qwen-2.5-72b-instruct', 'qwen/qwen-2.5-coder-32b-instruct', 'qwen/qwen3-235b-a22b']}
-        routingNote="Provider: qwen — no Anthropic-compatible endpoint: requests always route via your OpenRouter key."
+        routingNote="Provider: qwen - no Anthropic-compatible endpoint: requests always route via your OpenRouter key."
       />
 
       {/* Zai GLM */}
@@ -374,13 +386,13 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
         onApiKeyChange={(v) => onUpdateLocalSettings({ zhipuApiKey: v })}
         onApiKeyBlur={() => onSaveAppSettings({ zhipuApiKey: appSettings.zhipuApiKey })}
         models={['zhipuai/glm-4.6', 'zhipuai/glm-4.5', 'zhipuai/glm-4-plus', 'zhipuai/glm-4-air', 'zhipuai/glm-4-flash']}
-        routingNote="Provider: zhipu — direct via https://open.bigmodel.cn/api/anthropic (Anthropic-compatible). Falls back to OpenRouter if no Zhipu key set."
+        routingNote="Provider: zhipu - direct via https://open.bigmodel.cn/api/anthropic (Anthropic-compatible). Falls back to OpenRouter if no Zhipu key set."
       />
 
       {/* MiniMax */}
       <ProviderCard
         title="MiniMax"
-        description="MiniMax M-series — agentic flagship models for code and reasoning."
+        description="MiniMax M-series - agentic flagship models for code and reasoning."
         docsUrl="https://www.minimax.chat/platform"
         enabled={!!appSettings.minimaxEnabled}
         onToggle={() => onSaveAppSettings({ minimaxEnabled: !appSettings.minimaxEnabled })}
@@ -389,7 +401,7 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
         onApiKeyChange={(v) => onUpdateLocalSettings({ minimaxApiKey: v })}
         onApiKeyBlur={() => onSaveAppSettings({ minimaxApiKey: appSettings.minimaxApiKey })}
         models={['minimax/minimax-m2', 'minimax/minimax-m1', 'minimax/minimax-01']}
-        routingNote="Provider: minimax — direct via https://api.minimax.io/anthropic (Anthropic-compatible). Falls back to OpenRouter if no MiniMax key set."
+        routingNote="Provider: minimax - direct via https://api.minimax.io/anthropic (Anthropic-compatible). Falls back to OpenRouter if no MiniMax key set."
       />
 
       {/* Routing note */}
@@ -400,7 +412,7 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
           Anthropic-compatible endpoint. Your API key is injected via <code className="bg-secondary px-1 text-xs">ANTHROPIC_API_KEY</code>.
         </p>
         <p>
-          When creating an agent, select the provider in the &quot;Model&quot; dropdown —
+          When creating an agent, select the provider in the &quot;Model&quot; dropdown -
           each provider shows its own model list. If a provider-specific key is set, it is used;
           otherwise the OpenRouter key is used as fallback.
         </p>

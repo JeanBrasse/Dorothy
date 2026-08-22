@@ -58,7 +58,7 @@ describe('team-template-handlers', () => {
       const team = BUILTIN_TEAM_TEMPLATES[0];
       expect(team.members).toHaveLength(6);
       expect(team.members.map(m => m.name)).toEqual([
-        'Orchestrator', 'Frontend Dev', 'Backend Dev', 'QA', 'Audit', 'Database Dev',
+        'Orchestrator', 'Frontend Engineer', 'Backend Engineer', 'QA Engineer', 'Audit Engineer', 'Database Engineer',
       ]);
       // Only the orchestrator has orchestratorMode; every dev has its own branch
       expect(team.members[0].orchestratorMode).toBe(true);

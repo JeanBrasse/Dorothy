@@ -273,7 +273,7 @@ export function registerTemplateHandlers(): void {
       }
       const p = payload as Partial<TemplateExport>;
       if (p.kind !== TEMPLATE_EXPORT_KIND) {
-        return { success: false, error: 'Not a Dorothy template file' };
+        return { success: false, error: 'Not a Tars template file' };
       }
       if (p.version !== TEMPLATE_EXPORT_VERSION) {
         return { success: false, error: `Unsupported template version: ${String(p.version)}` };

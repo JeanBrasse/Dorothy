@@ -43,6 +43,8 @@ next-env.d.ts
 release/
 
 # mcp-orchestrator
+mcp-memory/node_modules
+mcp-memory/dist
 mcp-orchestrator/node_modules
 mcp-orchestrator/dist
 mcp-telegram/node_modules

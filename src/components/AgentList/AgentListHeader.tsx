@@ -11,7 +11,7 @@ interface AgentListHeaderProps {
 
 /**
  * Two actions only: one agent, or a whole team. Templates and the
- * orchestrator (Super Agent) are choices inside the agent creation flow —
+ * orchestrator (Super Agent) are choices inside the agent creation flow -
  * not competing top-level buttons.
  */
 export function AgentListHeader({
@@ -41,7 +41,7 @@ export function AgentListHeader({
         <button
           onClick={onNewAgentClick}
           className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors text-sm cursor-pointer"
-          title="Create an agent — from scratch, from a template, or as an orchestrator"
+          title="Create an agent - from scratch, from a template, or as an orchestrator"
         >
           <Plus className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Agent</span>

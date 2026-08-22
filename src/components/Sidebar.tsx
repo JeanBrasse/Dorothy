@@ -11,6 +11,9 @@ import {
   Bot,
   BarChart2,
   Columns,
+  CalendarClock,
+  FileDiff,
+  ScrollText,
   Moon,
   Sun,
   Archive,
@@ -23,17 +26,20 @@ import { LATEST_RELEASE, WHATS_NEW_STORAGE_KEY } from '@/data/changelog';
 import { useStore } from '@/store';
 import Link from 'next/link';
 import { Brand } from '@/components/Brand';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 const navItems = [
   { href: '/', icon: LayoutDashboard, label: 'Dashboard', shortcut: '1' },
   { href: '/agents', icon: Bot, label: 'Agents', shortcut: '2' },
   { href: '/kanban', icon: Columns, label: 'Kanban', shortcut: '3' },
-  { href: '/vault', icon: Archive, label: 'Vault', shortcut: '4' },
-  { href: '/projects', icon: FolderKanban, label: 'Projects', shortcut: '5' },
-  { href: '/skills', icon: Sparkles, label: 'Extensions', shortcut: '6' },
-  { href: '/usage', icon: BarChart2, label: 'Usage', shortcut: '7' },
-  { href: '/memory', icon: Brain, label: 'Brain', shortcut: '8' },
+  { href: '/crons', icon: CalendarClock, label: 'Schedules', shortcut: '4' },
+  { href: '/review', icon: FileDiff, label: 'Review', shortcut: '5' },
+  { href: '/logs', icon: ScrollText, label: 'Logs', shortcut: '6' },
+  { href: '/vault', icon: Archive, label: 'Vault', shortcut: '7' },
+  { href: '/projects', icon: FolderKanban, label: 'Projects', shortcut: '8' },
+  { href: '/skills', icon: Sparkles, label: 'Extensions', shortcut: '9' },
+  { href: '/usage', icon: BarChart2, label: 'Usage', shortcut: '0' },
+  { href: '/memory', icon: Brain, label: 'Brain' },
 ];
 
 interface SidebarProps {
@@ -56,14 +62,40 @@ function useWhatsNewBadge() {
   return hasNew;
 }
 
+/**
+ * Cmd/Ctrl + digit jumps to a page. The shortcuts were declared next to each
+ * nav item and bound to nothing, so they were decoration until now.
+ */
+function useNavShortcuts() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.metaKey && !e.ctrlKey) return;
+      if (e.altKey || e.shiftKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (target?.isContentEditable) return;
+
+      const item = navItems.find(nav => nav.shortcut && nav.shortcut === e.key);
+      if (!item) return;
+      e.preventDefault();
+      router.push(item.href);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [router]);
+}
+
 export default function Sidebar({ isMobile = false }: SidebarProps) {
   const pathname = usePathname();
-  const { sidebarCollapsed, toggleSidebar, mobileMenuOpen, setMobileMenuOpen, darkMode, toggleDarkMode, vaultUnreadCount } = useStore();
+  useNavShortcuts();
+  const { mobileMenuOpen, setMobileMenuOpen, darkMode, toggleDarkMode, vaultUnreadCount } = useStore();
   const whatsNewHasNew = useWhatsNewBadge();
 
   // For mobile, sidebar is always expanded (240px) when open
-  const sidebarWidth = isMobile ? 240 : (sidebarCollapsed ? 72 : 240);
-  const showLabels = isMobile || !sidebarCollapsed;
+  const sidebarWidth = 240;
+  const showLabels = true;
 
   // Close mobile menu when navigating
   const handleNavClick = () => {
@@ -81,9 +113,17 @@ export default function Sidebar({ isMobile = false }: SidebarProps) {
         transition={{ duration: 0.2, ease: 'easeInOut' }}
         className="fixed left-0 top-0 h-screen bg-card border-r border-border flex-col z-50 hidden lg:flex"
       >
-        {/* Logo — top area also serves as drag region for macOS traffic lights */}
-        <div className="window-drag flex items-center px-4 pt-5 pb-4 border-b border-border shrink-0">
-          <Brand showWordmark={showLabels} markClassName="w-2.5 h-2.5" wordmarkClassName="font-serif text-xl text-foreground" />
+        {/* Logo - top area also serves as drag region for macOS traffic lights */}
+        {/* px-6 + a 20px mark slot + gap-3 puts the mark on the nav icons'
+            left edge and the wordmark on the nav labels'. */}
+        <div className="window-drag flex items-center px-6 pt-5 pb-4 border-b border-border shrink-0">
+          <Brand
+            showWordmark={showLabels}
+            markClassName="w-2.5 h-2.5"
+            wordmarkClassName="font-serif text-xl text-foreground"
+            markSlotClassName="w-5"
+            gapClassName="gap-3"
+          />
         </div>
 
         {/* Navigation */}
@@ -180,7 +220,7 @@ export default function Sidebar({ isMobile = false }: SidebarProps) {
           )}
         </div>
 
-        {/* Settings & Collapse */}
+        {/* Settings */}
         <div className="border-t border-border">
           <Link
             href="/settings"
@@ -201,19 +241,6 @@ export default function Sidebar({ isMobile = false }: SidebarProps) {
           >
             {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             {showLabels && <span className="text-sm">{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
-          </button>
-          <button
-            onClick={toggleSidebar}
-            className="w-full flex items-center gap-3 px-5 py-3 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer"
-          >
-            {sidebarCollapsed ? (
-              <ChevronRight className="w-5 h-5" />
-            ) : (
-              <>
-                <ChevronLeft className="w-5 h-5" />
-                <span className="text-sm">Collapse</span>
-              </>
-            )}
           </button>
         </div>
       </motion.aside>

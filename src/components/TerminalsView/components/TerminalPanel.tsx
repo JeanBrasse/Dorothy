@@ -48,7 +48,7 @@ export default function TerminalPanel({
     data: { type: 'terminal-panel', agentId: agent.id },
   });
 
-  // Register container for xterm mounting — only on mount or agent ID change.
+  // Register container for xterm mounting - only on mount or agent ID change.
   // Uses a ref for the callback to avoid re-registering when the parent
   // re-creates the callback (e.g. on agents poll or font size change).
   useEffect(() => {

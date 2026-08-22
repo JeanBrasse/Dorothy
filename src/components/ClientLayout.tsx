@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Download, ExternalLink, RotateCw, Loader2 } from 'lucide-react';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import { Splash } from '@/components/Splash';
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -49,6 +50,8 @@ interface UpdateInfo {
 type UpdateFlowState = 'available' | 'downloading' | 'ready' | 'restarting';
 
 const VAULT_READ_DOCS_KEY = 'vault-read-docs';
+/** Kept in sync with the pre-hydration script in app/layout.tsx. */
+const THEME_KEY = 'tars-theme';
 
 function loadVaultReadDocs(): Set<string> {
   try {
@@ -63,7 +66,7 @@ function loadVaultReadDocs(): Set<string> {
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // Tray panel is a standalone Electron popup — render without sidebar/chrome
+  // Tray panel is a standalone Electron popup - render without sidebar/chrome
   if (pathname?.startsWith('/tray-panel')) {
     return <>{children}</>;
   }
@@ -74,6 +77,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 function ClientLayoutInner({ children }: { children: React.ReactNode }) {
   const { sidebarCollapsed, mobileMenuOpen, setMobileMenuOpen, darkMode, setDarkMode, setVaultUnreadCount } = useStore();
   const isMobile = useIsMobile();
+
+  // Only on a genuine cold start: navigating between pages must never replay it.
+  const [showSplash, setShowSplash] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if (sessionStorage.getItem('tars-splash-shown')) return false;
+    sessionStorage.setItem('tars-splash-shown', '1');
+    return true;
+  });
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [updateDismissed, setUpdateDismissed] = useState(false);
   const [updateFlowState, setUpdateFlowState] = useState<UpdateFlowState>('available');
@@ -141,20 +152,18 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
     window.electronAPI?.updates?.quitAndInstall();
   }, []);
 
-  // Initialize dark mode from localStorage on mount
+  // Initialize dark mode from localStorage on mount. Dark is the launch
+  // default: only an explicit 'light' pref moves off it. The old
+  // 'dorothy-dark-mode' key is deliberately not migrated - it carries the
+  // previous brand, and a stale 'false' in it used to open the app light.
   useEffect(() => {
-    const saved = localStorage.getItem('dorothy-dark-mode');
-    // Must honour an explicit 'false' too, otherwise picking light mode never
-    // survives a restart (the store defaults to dark).
-    if (saved !== null) {
-      setDarkMode(saved === 'true');
-    }
+    if (localStorage.getItem(THEME_KEY) === 'light') setDarkMode(false);
   }, [setDarkMode]);
 
   // Sync dark class on <html> and persist to localStorage
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
-    localStorage.setItem('dorothy-dark-mode', String(darkMode));
+    localStorage.setItem(THEME_KEY, darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
   // Global vault unread badge: listen for new documents even when VaultView is not mounted
@@ -178,7 +187,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
     };
     initUnread();
 
-    // Listen for real-time document creation — increment unread
+    // Listen for real-time document creation - increment unread
     const unsub = window.electronAPI!.vault!.onDocumentCreated(() => {
       setVaultUnreadCount(useStore.getState().vaultUnreadCount + 1);
     });
@@ -197,6 +206,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
+      {showSplash && <Splash onDone={() => setShowSplash(false)} />}
       {/* Full-width window drag bar at the very top (desktop only) */}
       <div className="window-drag hidden lg:block fixed top-0 left-0 right-0 h-7 z-[60]" />
 
@@ -264,7 +274,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
                 <div>
                   <h3 className="font-semibold text-foreground">Update Available</h3>
                   <p className="text-sm text-muted-foreground">
-                    Dorothy {updateInfo.latestVersion} is ready
+                    Tars {updateInfo.latestVersion} is ready
                   </p>
                 </div>
               </div>

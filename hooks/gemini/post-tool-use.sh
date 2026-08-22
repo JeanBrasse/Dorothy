@@ -1,5 +1,5 @@
 #!/bin/bash
-# Post-tool-use hook for dorothy memory system (Gemini CLI)
+# Post-tool-use hook for tars memory system (Gemini CLI)
 
 INPUT=$(cat)
 
@@ -19,6 +19,11 @@ PROJECT_PATH="${DOROTHY_PROJECT_PATH:-$CWD}"
 
 # jq-built payload: tool input contains quotes/newlines that would break
 # naive JSON interpolation (observation dropped) or inject extra fields.
+API_TOKEN=""
+if [ -f "$HOME/.dorothy/api-token" ]; then
+  API_TOKEN=$(cat "$HOME/.dorothy/api-token" 2>/dev/null)
+fi
+
 store_observation() {
   local content="$1"
   local type="$2"
@@ -33,6 +38,7 @@ store_observation() {
 
   curl -s -X POST "$API_URL" \
     -H "Content-Type: application/json" \
+    -H @<(printf "Authorization: Bearer %s" "$API_TOKEN") \
     -d "$payload" \
     > /dev/null 2>&1 &
 }

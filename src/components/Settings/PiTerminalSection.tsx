@@ -27,10 +27,8 @@ export const PiTerminalSection = ({ appSettings, onSaveAppSettings, onUpdateLoca
     setTesting(true);
     setTestResult(null);
     try {
-      const result = await window.electronAPI?.shell?.exec?.({
-        command: `${appSettings.cliPaths?.pi || 'pi'} --version 2>&1 || echo "not found"`,
-      });
-      if (result?.success && result.output && !result.output.includes('not found')) {
+      const result = await window.electronAPI?.shell?.version(appSettings.cliPaths?.pi || 'pi');
+      if (result?.success && result.output) {
         setTestResult({ success: true, version: result.output.trim() });
       } else {
         setTestResult({ success: false, error: result?.output || result?.error || 'Pi CLI not found' });
@@ -46,7 +44,7 @@ export const PiTerminalSection = ({ appSettings, onSaveAppSettings, onUpdateLoca
       <div>
         <h2 className="text-lg font-semibold mb-1">Pi Terminal</h2>
         <p className="text-sm text-muted-foreground">
-          Configure Pi coding agent — a minimal terminal coding harness supporting 15+ AI providers
+          Configure Pi coding agent - a minimal terminal coding harness supporting 15+ AI providers
         </p>
       </div>
 

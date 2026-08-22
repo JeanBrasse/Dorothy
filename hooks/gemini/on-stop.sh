@@ -1,5 +1,5 @@
 #!/bin/bash
-# Stop hook for dorothy (Gemini CLI)
+# Stop hook for tars (Gemini CLI)
 # Sets agent status to "waiting"
 
 INPUT=$(cat)

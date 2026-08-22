@@ -1,3 +1,87 @@
+export interface RepoSummary {
+  branch: string;
+  status: { status: string; file: string }[];
+  commits: { hash: string; subject: string; author: string; when: string }[];
+  additions: number;
+  deletions: number;
+}
+
+export interface LogLine {
+  agentId: string;
+  agentName: string;
+  projectPath: string;
+  branch?: string;
+  status: string;
+  line: string;
+  position: number;
+}
+
+export interface FleetEntry {
+  agentId: string;
+  agentName: string;
+  projectPath: string;
+  branch?: string;
+  provider?: string;
+  status: string;
+  lastActivity?: string;
+  lines: number;
+}
+
+export interface ChangedFile {
+  path: string;
+  status: 'added' | 'modified' | 'deleted' | 'renamed' | 'untracked';
+  additions: number;
+  deletions: number;
+}
+
+export interface ReviewDiff {
+  repo: string;
+  branch: string;
+  baseBranch: string | null;
+  ahead: number;
+  behind: number;
+  files: ChangedFile[];
+  totalAdditions: number;
+  totalDeletions: number;
+  patch: string;
+  truncated: boolean;
+}
+
+export interface MemorySourceStatus {
+  id: string;
+  label: string;
+  configured: boolean;
+  reachable: boolean;
+  detail: string;
+  tools?: string[];
+}
+
+export interface MemoryHit {
+  source: string;
+  title: string;
+  content: string;
+  ref?: string;
+}
+
+export interface ModelCost {
+  /** USD per million tokens */
+  input?: number;
+  output?: number;
+  cache_read?: number;
+  cache_write?: number;
+}
+
+export interface CatalogModel {
+  id: string;
+  name: string;
+  contextWindow?: number;
+  maxOutput?: number;
+  reasoning?: boolean;
+  effortValues?: string[];
+  cost?: ModelCost;
+  releaseDate?: string;
+}
+
 export type DisplayStatus = 'working' | 'waiting' | 'done' | 'ready' | 'stopped' | 'error';
 
 export interface AgentTickItem {
@@ -219,7 +303,7 @@ export interface AgentTemplatePatch extends Partial<AgentTemplateInput> {
 
 export interface TemplateExport {
   version: number;
-  kind: 'dorothy.agent-template';
+  kind: 'tars.agent-template';
   exportedAt: string;
   templates: AgentTemplateInput[];
 }
@@ -383,7 +467,12 @@ export interface ElectronAPI {
 
   // File system
   fs: {
-    listProjects: () => Promise<{ path: string; name: string; lastModified: string }[]>;
+    listProjects: () => Promise<{ path: string; name: string; lastModified?: string; custom?: boolean }[]>;
+    readTextFile: (filePath: string) => Promise<{ content: string; error?: string }>;
+    writeTextFile: (params: { filePath: string; content: string }) => Promise<{ success: boolean; error?: string }>;
+    readProjectFiles: (params: { paths: string[]; relative: string[] }) => Promise<{ files: Record<string, string> }>;
+    addCustomProject: (projectPath: string) => Promise<{ success: boolean; projects?: string[]; error?: string }>;
+    removeCustomProject: (projectPath: string) => Promise<{ success: boolean; projects?: string[]; error?: string }>;
   };
 
   // Claude data
@@ -440,6 +529,70 @@ export interface ElectronAPI {
   };
 
   // App settings (notifications, etc.)
+  app?: {
+    getVersion: () => Promise<{ version: string }>;
+  };
+
+  /** Per-provider spend, merged from transcripts and reported turns. */
+  usage?: {
+    byProvider: (sinceDays?: number) => Promise<{
+      providers: Array<{
+        provider: string;
+        inputTokens: number;
+        outputTokens: number;
+        costUSD: number;
+        turns: number;
+        models: string[];
+        measured: boolean;
+      }>;
+      dailyCost: Record<string, number>;
+    }>;
+  };
+
+  /** Search across every agent's output at once. */
+  logs?: {
+    search: (query: string, opts?: { agentIds?: string[]; projectPath?: string; limit?: number }) =>
+      Promise<{ lines: LogLine[]; scannedAgents: number; truncated: boolean }>;
+    tail: (agentId: string, lines?: number) => Promise<{ lines: string[]; agentName: string }>;
+    fleet: () => Promise<{ agents: FleetEntry[] }>;
+  };
+
+  /** Browsing a project without a shell: walked and read directly. */
+  project?: {
+    listFiles: (root: string, maxDepth?: number) =>
+      Promise<{ success: boolean; files?: string[]; error?: string }>;
+    searchFiles: (root: string, query: string) =>
+      Promise<{ success: boolean; files?: string[]; error?: string }>;
+    searchContent: (root: string, query: string) =>
+      Promise<{ success: boolean; hits?: { path: string; line: number; text: string }[]; error?: string }>;
+  };
+
+  /** What an agent changed: per-file stats plus the actual patch. */
+  review?: {
+    diff: (repoPath: string, baseBranch?: string) =>
+      Promise<{ success: boolean; diff?: ReviewDiff; error?: string }>;
+    file: (repoPath: string, file: string, baseBranch?: string) =>
+      Promise<{ success: boolean; patch?: string; error?: string }>;
+    repo: (repoPath: string) => Promise<{ success: boolean; summary?: RepoSummary; error?: string }>;
+  };
+
+  /** Federated memory: every source probed for real, searchable from one place. */
+  memoryHub?: {
+    sources: (projectPath?: string) => Promise<{ sources: MemorySourceStatus[] }>;
+    search: (
+      query: string,
+      opts?: { projectPath?: string; sources?: string[]; limit?: number },
+    ) => Promise<{ hits: MemoryHit[]; errors: { source: string; error: string }[] }>;
+  };
+
+  /** Live model + price catalogue, refreshed from models.dev. */
+  models?: {
+    list: (provider: string) => Promise<{ models: CatalogModel[] }>;
+    price: (modelId: string, provider?: string) => Promise<{ price: ModelCost | null }>;
+    catalogStatus: () => Promise<{ loaded: boolean; fetchedAt: number | null; providers: number; models: number }>;
+    refresh: () => Promise<{ loaded: boolean; fetchedAt: number | null; providers: number; models: number }>;
+  };
+
   appSettings?: {
     get: () => Promise<{
       notificationsEnabled: boolean;
@@ -676,7 +829,12 @@ export interface ElectronAPI {
   // Shell operations
   shell: {
     openTerminal: (params: { cwd: string; command?: string }) => Promise<{ success: boolean }>;
-    exec: (params: { command: string; cwd?: string }) => Promise<{ success: boolean; output?: string; error?: string; code?: number }>;
+    /** A CLI's --version, run through execFile with an argv array. */
+    version: (binary: string) => Promise<{ success: boolean; output?: string; error?: string }>;
+    /** The current branch of a repository. */
+    branch: (cwd: string) => Promise<{ success: boolean; output?: string; error?: string }>;
+    /** Reveal a path in Finder, through Electron's own shell API. */
+    reveal: (path: string) => Promise<{ success: boolean; error?: string }>;
     // Quick terminal PTY
     startPty?: (params: { cwd?: string; cols?: number; rows?: number }) => Promise<string>;
     writePty?: (params: { ptyId: string; data: string }) => Promise<{ success: boolean }>;
@@ -893,6 +1051,9 @@ export interface ElectronAPI {
     }>;
     signIn: (params: { connection: HermesConnection; username: string; password: string; provider?: string }) => Promise<{ success: boolean; version?: string; gatewayState?: string; error?: string }>;
     signOut: (connection: HermesConnection) => Promise<{ success: boolean }>;
+    crons: () => Promise<{ success: boolean; jobs?: unknown; error?: string; needsSignIn?: boolean }>;
+    cronAction: (params: { action: 'pause' | 'resume' | 'trigger'; jobId: string; profile?: string }) => Promise<{ success: boolean; job?: unknown; error?: string }>;
+    cronDelete: (params: { jobId: string; profile?: string }) => Promise<{ success: boolean; error?: string }>;
     kanbanBoard: (params?: { board?: string }) => Promise<{ success: boolean; board?: unknown; error?: string; needsSignIn?: boolean }>;
     kanbanCreateTask: (task: Record<string, unknown>) => Promise<{ success: boolean; task?: unknown; error?: string }>;
     kanbanUpdateTask: (params: { taskId: string; patch: Record<string, unknown> }) => Promise<{ success: boolean; task?: unknown; error?: string }>;

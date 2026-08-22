@@ -10,6 +10,7 @@ import type {
   ProviderModel,
   HookConfig,
 } from './cli-provider';
+import { safeEffort } from './cli-provider';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api'; // claude appends /v1/messages
 
@@ -74,8 +75,8 @@ export class OpenRouterProvider implements CLIProvider {
       command += ' --permission-mode bypassPermissions';
     }
 
-    if (params.effort && params.effort !== 'medium') {
-      command += ` --effort ${params.effort}`;
+    if (safeEffort(params.effort) && params.effort !== 'medium') {
+      command += ` --effort ${safeEffort(params.effort)}`;
     }
 
     command += ` --add-dir '${os.homedir()}/.dorothy'`;
@@ -149,8 +150,8 @@ export class OpenRouterProvider implements CLIProvider {
       vars.ANTHROPIC_BASE_URL = OPENROUTER_BASE_URL;
       vars.ANTHROPIC_API_KEY = apiKey;
       // OpenRouter HTTP-Referer header (optional but recommended)
-      vars.OR_SITE_URL = 'https://dorothy.app';
-      vars.OR_APP_NAME = 'Dorothy';
+      vars.OR_SITE_URL = 'https://tars.app';
+      vars.OR_APP_NAME = 'Tars';
     }
 
     return vars;

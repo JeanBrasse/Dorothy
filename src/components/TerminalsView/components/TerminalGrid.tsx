@@ -83,7 +83,7 @@ export default function TerminalGrid({
     return () => observer.disconnect();
   }, []);
 
-  // Compute row height — use the preset's defined rows, not item count
+  // Compute row height - use the preset's defined rows, not item count
   const expectedRows = Math.max(1, rows);
   const MARGIN: readonly [number, number] = [2, 2];
   const CONTAINER_PADDING: readonly [number, number] = [0, 0];
@@ -107,7 +107,7 @@ export default function TerminalGrid({
   }), []);
 
   // Debounced fit after any RGL layout change (mount, drag, resize cascade).
-  // This is the ONLY thing onLayoutChange does — no state updates.
+  // This is the ONLY thing onLayoutChange does - no state updates.
   const handleLayoutChange = useCallback((_newLayout: Layout) => {
     if (fitTimerRef.current) clearTimeout(fitTimerRef.current);
     fitTimerRef.current = setTimeout(onFitAll, 150);

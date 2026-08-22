@@ -58,7 +58,7 @@ describe('isSuperAgent', () => {
     // A worker whose name happens to contain "orchestrator" is NOT a super
     // agent, and an orchestrator with an arbitrary name IS one.
     expect(isSuperAgent(makeAgent({ name: 'orchestrator docs writer', role: 'worker' }))).toBe(false);
-    expect(isSuperAgent(makeAgent({ name: 'Dorothy', role: 'orchestrator' }))).toBe(true);
+    expect(isSuperAgent(makeAgent({ name: 'Tars', role: 'orchestrator' }))).toBe(true);
   });
 });
 
@@ -88,11 +88,11 @@ describe('getSuperAgent', () => {
     // The old cross-project bug: three orchestrators (one per project) and
     // getSuperAgent returned whichever came first in the map.
     const agents = new Map<string, AgentStatus>();
-    agents.set('1', makeAgent({ id: '1', name: 'Orchestrator', projectPath: '/proj/tars' }));
-    agents.set('2', makeAgent({ id: '2', name: 'Orchestrator', projectPath: '/proj/dorothy' }));
+    agents.set('1', makeAgent({ id: '1', name: 'Orchestrator', projectPath: '/proj/beta' }));
+    agents.set('2', makeAgent({ id: '2', name: 'Orchestrator', projectPath: '/proj/alpha' }));
 
-    expect(getSuperAgent(agents, '/proj/dorothy')?.id).toBe('2');
-    expect(getSuperAgent(agents, '/proj/tars')?.id).toBe('1');
+    expect(getSuperAgent(agents, '/proj/alpha')?.id).toBe('2');
+    expect(getSuperAgent(agents, '/proj/beta')?.id).toBe('1');
     expect(getSuperAgent(agents, '/proj/unknown')).toBeUndefined();
     // Without a project (Telegram/Slack context), first orchestrator wins.
     expect(getSuperAgent(agents)?.id).toBe('1');

@@ -11,29 +11,46 @@ set -euo pipefail
 
 INPUT=$(cat)
 
-# --- Extract rate_limits and write to file for Dorothy Usage page ---
+# --- One jq pass for everything ---
+# This script runs on every turn, for every agent. Each field used to cost its
+# own echo-into-jq, eighteen processes per render; one pass emits them all.
+FIELDS=$(echo "$INPUT" | jq -r '
+  [ (.session_id // ""),
+    (.context_window.total_input_tokens // 0),
+    (.context_window.total_output_tokens // 0),
+    (.cost.total_cost_usd // 0),
+    (.model.model_id // .model.display_name // "unknown"),
+    (.rate_limits.five_hour.used_percentage // 0),
+    (.rate_limits.seven_day.used_percentage // 0),
+    (.model.display_name // "..."),
+    (.context_window.used_percentage // 0),
+    (.context_window.context_window_size // 200000),
+    (.cost.total_duration_ms // 0),
+    (.cost.total_lines_added // 0),
+    (.cost.total_lines_removed // 0),
+    ((.rate_limits // empty) | tostring)
+  ] | @tsv' 2>/dev/null || true)
+
+IFS=$'\t' read -r SESSION_ID T_IN T_OUT T_COST T_MODEL PCT_5H PCT_7D \
+  MODEL RAW_PCT_RAW CTX_MAX DURATION_MS LINES_ADDED LINES_REMOVED RATE_LIMITS \
+  <<< "$FIELDS"
+
+: "\${SESSION_ID:=}" "\${T_IN:=0}" "\${T_OUT:=0}" "\${T_COST:=0}" "\${T_MODEL:=unknown}"
+: "\${PCT_5H:=0}" "\${PCT_7D:=0}" "\${MODEL:=...}" "\${RAW_PCT_RAW:=0}" "\${CTX_MAX:=200000}"
+: "\${DURATION_MS:=0}" "\${LINES_ADDED:=0}" "\${LINES_REMOVED:=0}"
+INPUT_TOKENS="$T_IN"
+OUTPUT_TOKENS="$T_OUT"
+RAW_PCT=$(awk -v p="$RAW_PCT_RAW" 'BEGIN {printf "%d", p}')
+
 RATE_LIMITS_FILE="$HOME/.dorothy/rate-limits.json"
-RATE_LIMITS=$(echo "$INPUT" | jq -c '.rate_limits // empty' 2>/dev/null || true)
 if [ -n "$RATE_LIMITS" ] && [ "$RATE_LIMITS" != "null" ]; then
   echo "$RATE_LIMITS" > "$RATE_LIMITS_FILE" 2>/dev/null || true
 fi
 
-# --- Accumulate token stats per session for Dorothy Usage page ---
+# --- Accumulate token stats per session for the Usage page ---
 TOKEN_STATS_FILE="$HOME/.dorothy/token-stats.json"
-SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null || true)
 if [ -n "$SESSION_ID" ]; then
-  T_IN=$(echo "$INPUT" | jq -r '.context_window.total_input_tokens // 0' 2>/dev/null || echo 0)
-  T_OUT=$(echo "$INPUT" | jq -r '.context_window.total_output_tokens // 0' 2>/dev/null || echo 0)
-  T_COST=$(echo "$INPUT" | jq -r '.cost.total_cost_usd // 0' 2>/dev/null || echo 0)
-  T_MODEL=$(echo "$INPUT" | jq -r '.model.model_id // .model.display_name // "unknown"' 2>/dev/null || echo "unknown")
-
-  # Check if in extra usage (either 5h or 7d quota > 100%)
-  PCT_5H=$(echo "$INPUT" | jq -r '.rate_limits.five_hour.used_percentage // 0' 2>/dev/null || echo 0)
-  PCT_7D=$(echo "$INPUT" | jq -r '.rate_limits.seven_day.used_percentage // 0' 2>/dev/null || echo 0)
-  IS_EXTRA="false"
-  if [ "$(echo "$PCT_5H > 100" | bc -l 2>/dev/null || echo 0)" = "1" ] || [ "$(echo "$PCT_7D > 100" | bc -l 2>/dev/null || echo 0)" = "1" ]; then
-    IS_EXTRA="true"
-  fi
+  IS_EXTRA=$(awk -v a="$PCT_5H" -v b="$PCT_7D" 'BEGIN { print (a > 100 || b > 100) ? "true" : "false" }')
 
   # Acquire lock to prevent concurrent read-modify-write races
   LOCK_DIR="$HOME/.dorothy/token-stats.lock"
@@ -89,16 +106,8 @@ fi
 # Autocompact buffer size (tokens). Adjust if Claude Code changes this.
 AUTOCOMPACT_BUFFER=33000
 
-# --- Parse fields with jq ---
-MODEL=$(echo "$INPUT" | jq -r '.model.display_name // "..."')
-RAW_PCT=$(echo "$INPUT" | jq -r '.context_window.used_percentage // 0' | awk '{printf "%d", $1}')
-CTX_MAX=$(echo "$INPUT" | jq -r '.context_window.context_window_size // 200000')
+# Fields already read above in a single jq pass.
 CTX_USED=$(awk -v pct="$RAW_PCT" -v max="$CTX_MAX" 'BEGIN {printf "%d", (pct * max) / 100}')
-DURATION_MS=$(echo "$INPUT" | jq -r '.cost.total_duration_ms // 0')
-LINES_ADDED=$(echo "$INPUT" | jq -r '.cost.total_lines_added // 0')
-LINES_REMOVED=$(echo "$INPUT" | jq -r '.cost.total_lines_removed // 0')
-INPUT_TOKENS=$(echo "$INPUT" | jq -r '.context_window.total_input_tokens // 0')
-OUTPUT_TOKENS=$(echo "$INPUT" | jq -r '.context_window.total_output_tokens // 0')
 
 # Usable space = total - autocompact buffer
 CTX_USABLE=$((CTX_MAX - AUTOCOMPACT_BUFFER))
@@ -106,7 +115,7 @@ CTX_USABLE=$((CTX_MAX - AUTOCOMPACT_BUFFER))
 CTX_PCT=$(awk -v used="$CTX_USED" -v usable="$CTX_USABLE" 'BEGIN {printf "%d", (used * 100) / usable}')
 
 # --- Git branch (cached for performance) ---
-GIT_CACHE="/tmp/claude-statusline-git-cache"
+GIT_CACHE="/tmp/claude-statusline-git\${PWD//\//_}"
 GIT_CACHE_TTL=5  # seconds
 BRANCH="?"
 if [ -f "$GIT_CACHE" ]; then

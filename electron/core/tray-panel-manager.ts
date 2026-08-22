@@ -1,4 +1,5 @@
 import { BrowserWindow, screen } from 'electron';
+import { hardenWindow } from './window-manager';
 import * as path from 'path';
 
 let trayPanel: BrowserWindow | null = null;
@@ -32,6 +33,8 @@ export function createTrayPanel(): BrowserWindow {
       nodeIntegration: false,
     },
   });
+
+  hardenWindow(trayPanel);
 
   const isDev = process.env.NODE_ENV === 'development';
   if (isDev) {

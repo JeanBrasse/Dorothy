@@ -12,7 +12,7 @@ type NodeShape = 'circle' | 'tag';
 
 interface NodeMeta {
   filePath?: string;     // for memory / instructions
-  skillPath?: string;    // for skill nodes — path on disk
+  skillPath?: string;    // for skill nodes - path on disk
   description?: string;  // for plugins / skills
   command?: string;      // for mcp nodes
   args?: string;         // for mcp nodes
@@ -102,9 +102,15 @@ const ATTRACTION  = 0.032;
 const DAMPING     = 0.85;
 const ITERATIONS  = 1;
 
-function tickForce(nodes: GraphNode[], edges: GraphEdge[]) {
+/**
+ * One step of the layout.
+ *
+ * Returns the total kinetic energy so the caller can stop once the graph has
+ * settled: this used to run forever at 60fps, O(n²) per frame with a fresh Map
+ * each time, burning a core for as long as the page was open.
+ */
+function tickForce(nodes: GraphNode[], edges: GraphEdge[], idx: Map<string, number>): number {
   const n = nodes.length;
-  const idx = new Map(nodes.map((nd, i) => [nd.id, i]));
 
   for (let iter = 0; iter < ITERATIONS; iter++) {
     // Repulsion between all pairs
@@ -149,7 +155,14 @@ function tickForce(nodes: GraphNode[], edges: GraphEdge[]) {
       nd.y += nd.vy;
     }
   }
+
+  let energy = 0;
+  for (const nd of nodes) energy += nd.vx * nd.vx + nd.vy * nd.vy;
+  return energy;
 }
+
+/** Below this the graph has stopped moving in any way a person can see. */
+const SETTLED_ENERGY = 0.05;
 
 // ── Data types ────────────────────────────────────────────────────────────────
 
@@ -162,7 +175,7 @@ type ClaudeDataType = {
   projectMcpServers?: Record<string, McpEntry & { projectPaths: string[] }>;
 };
 
-// { filePath → agentId[] | 'global' }
+// { filePath > agentId[] | 'global' }
 type InstructionFiles = Record<string, string[] | 'global'>;
 
 // ── Build graph ───────────────────────────────────────────────────────────────
@@ -188,7 +201,7 @@ function buildGraph(
   };
 
   const addEdge = (source: string, target: string) => {
-    const key = `${source}→${target}`;
+    const key = `${source}>${target}`;
     if (edgeSet.has(key)) return;
     edgeSet.add(key);
     edges.push({ source, target });
@@ -254,7 +267,7 @@ function buildGraph(
         addEdge(agent.id, memId);
       });
     }
-    // No fallback node — if there's no memory file, don't show one
+    // No fallback node - if there's no memory file, don't show one
   });
 
   // ── Instruction files (CLAUDE.md) ──
@@ -304,7 +317,7 @@ function buildGraph(
     }
   }
 
-  // ── MCP servers from ~/.claude/mcp.json (global — connect to all agents) ──
+  // ── MCP servers from ~/.claude/mcp.json (global - connect to all agents) ──
   const mcpServers = claudeData?.mcpServers;
   if (mcpServers) {
     for (const [mcpName, mcpCfg] of Object.entries(mcpServers).slice(0, 20)) {
@@ -515,6 +528,8 @@ function drawGraph(
 export default function AgentKnowledgeGraph() {
   const canvasRef    = useRef<HTMLCanvasElement>(null);
   const animRef      = useRef<number>(0);
+  /** Set by the render loop; kicks it back off after an interaction. */
+  const restartRef   = useRef<() => void>(() => undefined);
   const graphRef     = useRef<GraphData>({ nodes: [], edges: [] });
   const transformRef = useRef({ x: 0, y: 0, scale: 1 });
   const hoveredRef   = useRef<string | null>(null);
@@ -547,7 +562,7 @@ export default function AgentKnowledgeGraph() {
         window.electronAPI?.agent.list().catch(() => []) ?? [],
         window.electronAPI?.claude?.getData().catch(() => null) ?? null,
         window.electronAPI?.memory?.listProjects().catch(() => ({ projects: [], error: null })) ?? { projects: [], error: null },
-        window.electronAPI?.shell?.exec({ command: 'cat ~/.claude/mcp.json' }).catch(() => null) ?? null,
+        window.electronAPI?.fs?.readTextFile('~/.claude/mcp.json').catch(() => null) ?? null,
       ]);
 
       const typedAgents = agentList as AgentStatus[];
@@ -565,7 +580,7 @@ export default function AgentKnowledgeGraph() {
       } catch { /* ignore parse errors */ }
 
       // enrichedClaude is built later after project MCPs are loaded
-      // (placeholder — filled in after CLAUDE.md/MCP discovery below)
+      // (placeholder - filled in after CLAUDE.md/MCP discovery below)
       claudeDataRef.current = null; // reset; will be set after discovery
       memoriesRef.current = memories;
 
@@ -575,21 +590,15 @@ export default function AgentKnowledgeGraph() {
 
       // Only include the CLAUDE.md files that are actually loaded per agent:
       // - ~/.claude/CLAUDE.md  (global Claude config)
-      // - ~/.dorothy/CLAUDE.md (global Dorothy config)
+      // - ~/.dorothy/CLAUDE.md (global Tars config)
       // - {projectPath}/CLAUDE.md and {projectPath}/.claude/CLAUDE.md per agent
-      const cmds = [
-        `[ -f "$HOME/.claude/CLAUDE.md" ] && echo "$HOME/.claude/CLAUDE.md"`,
-        `[ -f "$HOME/.dorothy/CLAUDE.md" ] && echo "$HOME/.dorothy/CLAUDE.md"`,
-        ...uniqueProjectPaths.flatMap(p => [
-          `[ -f "${p}/CLAUDE.md" ] && echo "${p}/CLAUDE.md"`,
-          `[ -f "${p}/.claude/CLAUDE.md" ] && echo "${p}/.claude/CLAUDE.md"`,
-        ]),
-        // Ensure exit code 0 so shell:exec puts output in .output not .error
-        `true`,
-      ].join('; ');
-      const claudeMdResult = await window.electronAPI?.shell?.exec({ command: cmds }).catch(() => null);
+      const homeFiles = await window.electronAPI?.fs?.readProjectFiles({
+        paths: uniqueProjectPaths,
+        relative: ['CLAUDE.md', '.claude/CLAUDE.md'],
+      }).catch(() => null);
+      const claudeMdResult = { output: Object.keys(homeFiles?.files ?? {}).join('\n') };
       const instrFiles: InstructionFiles = {};
-      // shell:exec via PTY may include \r and ANSI codes — strip them
+      // shell:exec via PTY may include \r and ANSI codes - strip them
       const rawOutput = (claudeMdResult as { output?: string; error?: string } | null)?.output
         ?? (claudeMdResult as { output?: string; error?: string } | null)?.error
         ?? '';
@@ -613,13 +622,15 @@ export default function AgentKnowledgeGraph() {
       instructionsRef.current = instrFiles;
 
       // ── Load per-project MCP servers (.mcp.json / .claude/mcp.json) ──
+      const mcpFiles = await window.electronAPI?.fs?.readProjectFiles({
+        paths: uniqueProjectPaths,
+        relative: ['.mcp.json', '.claude/mcp.json'],
+      }).catch(() => null);
       const projectMcpResults = await Promise.all(
         uniqueProjectPaths.map(async p => {
-          const res = await window.electronAPI?.shell?.exec({
-            command: `cat "${p}/.mcp.json" 2>/dev/null || cat "${p}/.claude/mcp.json" 2>/dev/null || true`,
-          }).catch(() => null);
-          const r = res as { output?: string; error?: string } | null;
-          const output = (r?.output ?? r?.error ?? '').replace(/\r/g, '').trim();
+          const found = Object.entries(mcpFiles?.files ?? {}).find(([k]) => k.startsWith(p + '/'));
+          const output = (found?.[1] ?? '').replace(/\r/g, '').trim();
+
           if (!output) return null;
           try {
             const parsed = JSON.parse(output);
@@ -703,13 +714,37 @@ export default function AgentKnowledgeGraph() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // The node index is stable for a given graph, so it is built once rather
+    // than allocated on every frame.
+    let idx = new Map(graphRef.current.nodes.map((nd, i) => [nd.id, i]));
+    let indexedCount = graphRef.current.nodes.length;
+
     const loop = () => {
-      animRef.current = requestAnimationFrame(loop);
       const graph = graphRef.current;
       const t = transformRef.current;
-      tickForce(graph.nodes, graph.edges);
-      if (warmupRef.current > 0) { warmupRef.current--; return; }
-      drawGraph(ctx, graph, hoveredRef.current, t);
+
+      if (graph.nodes.length !== indexedCount) {
+        idx = new Map(graph.nodes.map((nd, i) => [nd.id, i]));
+        indexedCount = graph.nodes.length;
+      }
+
+      const energy = tickForce(graph.nodes, graph.edges, idx);
+      if (warmupRef.current > 0) {
+        warmupRef.current--;
+      } else {
+        drawGraph(ctx, graph, hoveredRef.current, t);
+      }
+
+      // Settled: draw one last frame and stop. Interaction restarts it.
+      if (energy < SETTLED_ENERGY && warmupRef.current <= 0) {
+        animRef.current = 0;
+        return;
+      }
+      animRef.current = requestAnimationFrame(loop);
+    };
+
+    restartRef.current = () => {
+      if (!animRef.current) animRef.current = requestAnimationFrame(loop);
     };
 
     animRef.current = requestAnimationFrame(loop);
@@ -775,6 +810,7 @@ export default function AgentKnowledgeGraph() {
     const hit = hitTest(ex, ey);
     const prev = hoveredRef.current;
     hoveredRef.current = hit?.id ?? null;
+    restartRef.current();
     if (canvasRef.current) canvasRef.current.style.cursor = hit ? 'pointer' : 'grab';
     if (prev !== hoveredRef.current) warmupRef.current = 0;
   }, [hitTest]);
@@ -825,14 +861,14 @@ export default function AgentKnowledgeGraph() {
         content = res?.content ?? '';
       } else if (node.kind === 'instructions' && node.meta?.filePath) {
         const fp = node.meta.filePath.replace(/^~/, '');
-        const res = await window.electronAPI?.shell?.exec({ command: `cat "${fp}" 2>/dev/null || cat "$HOME${fp}" 2>/dev/null` });
-        content = (res as { output?: string } | null)?.output ?? '';
+        const res = await window.electronAPI?.fs?.readTextFile(fp);
+        content = res?.content ?? '';
       } else if (node.kind === 'skill' && node.meta?.skillPath) {
         const p = node.meta.skillPath;
-        const res = await window.electronAPI?.shell?.exec({
-          command: `cat "${p}/AGENTS.md" 2>/dev/null || cat "${p}/SKILL.md" 2>/dev/null || cat "${p}/skills/SKILL.md" 2>/dev/null || cat "${p}/README.md" 2>/dev/null || find "${p}" -maxdepth 2 -name "*.md" 2>/dev/null | head -1 | xargs cat 2>/dev/null || echo "_No documentation found._"`,
-        });
-        content = (res as { output?: string } | null)?.output ?? '';
+        const docs = await window.electronAPI?.fs?.readProjectFiles({
+          paths: [p], relative: ['AGENTS.md', 'SKILL.md', 'skills/SKILL.md', 'README.md'],
+        }).catch(() => null);
+        content = Object.values(docs?.files ?? {})[0] ?? '_No documentation found._';
         setPanelTab('preview');
       } else if (node.kind === 'plugin') {
         content = node.meta?.description
@@ -859,8 +895,7 @@ export default function AgentKnowledgeGraph() {
       await window.electronAPI?.memory?.writeFile(fp, panelDraft);
     } else {
       // For instruction files outside ~/.claude/projects/
-      const safe = panelDraft.replace(/'/g, "'\\''");
-      await window.electronAPI?.shell?.exec({ command: `printf '%s' '${safe}' > '${fp}'` });
+      await window.electronAPI?.fs?.writeTextFile({ filePath: fp, content: panelDraft });
     }
     setPanelContent(panelDraft);
   }, [panelNode, panelDraft]);
@@ -1039,7 +1074,7 @@ export default function AgentKnowledgeGraph() {
             )}
           </div>
 
-          {/* Footer — save button for editable files */}
+          {/* Footer - save button for editable files */}
           {panelNode.meta?.editable && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-border shrink-0">
               {panelDraft !== panelContent && (

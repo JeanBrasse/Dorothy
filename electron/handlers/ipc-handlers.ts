@@ -8,6 +8,7 @@ import { broadcastToAllWindows } from '../utils/broadcast';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { DATA_DIR } from '../constants';
 import { v4 as uuidv4 } from 'uuid';
 import * as pty from 'node-pty';
 import TelegramBot from 'node-telegram-bot-api';
@@ -19,9 +20,15 @@ import { buildFullPath } from '../utils/path-builder';
 import { decodeProjectPath } from '../utils/decode-project-path';
 import { getProvider, getAllProviders } from '../providers';
 import { writeProgrammaticInput } from '../core/pty-manager';
-import { killStalePty, ensureProjectTrusted } from '../core/agent-manager';
+import { killStalePty, ensureProjectTrusted, appendAgentOutput } from '../core/agent-manager';
 import { extractStatusLine } from '../utils/ansi';
 import { scheduleTick } from '../utils/agents-tick';
+import { loadCatalog, modelsForProvider, priceFor, catalogStatus } from '../services/model-catalog';
+import { assembleDigest, needsPromptInjection, wrapDigestForPrompt, searchMemory, memoryStatus } from '../services/memory-hub';
+import { usableHermesConnection } from '../services/hermes-config';
+import { reviewDiff, fileDiff, repoSummary } from '../services/git-review';
+import { searchLogs, agentTail, fleetSummary } from '../services/log-search';
+import { providerTotals as ledgerProviderTotals, dailyCost as ledgerDailyCost } from '../services/usage-ledger';
 
 /**
  * Normalize a JIRA domain value to a full hostname.
@@ -76,6 +83,27 @@ export interface IpcHandlerDependencies {
 /**
  * Register all IPC handlers
  */
+
+/** Projects the user added by hand. Kept in ~/.dorothy so they outlive app
+ *  updates and are shared by every surface (the renderer's localStorage was
+ *  neither durable nor visible outside the Projects page). */
+const CUSTOM_PROJECTS_FILE = path.join(DATA_DIR, 'projects.json');
+
+function readCustomProjects(): string[] {
+  try {
+    if (!fs.existsSync(CUSTOM_PROJECTS_FILE)) return [];
+    const parsed = JSON.parse(fs.readFileSync(CUSTOM_PROJECTS_FILE, 'utf-8'));
+    return Array.isArray(parsed) ? parsed.filter((p: unknown) => typeof p === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCustomProjects(list: string[]): void {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(CUSTOM_PROJECTS_FILE, JSON.stringify(Array.from(new Set(list)), null, 2));
+}
+
 export function registerIpcHandlers(deps: IpcHandlerDependencies): void {
   registerPtyHandlers(deps);
   registerAgentHandlers(deps);
@@ -398,7 +426,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       const agent = agents.get(id);
       if (!agent || agent.ptyId !== ptyId) return;
 
-      agent.output.push(data);
+      appendAgentOutput(agent, data);
       agent.lastActivity = new Date().toISOString();
       agent.statusLine = extractStatusLine(agent.output);
 
@@ -557,7 +585,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       newPty.onData((data) => {
         const agentData = agents.get(id);
         if (agentData) {
-          agentData.output.push(data);
+          appendAgentOutput(agentData, data);
           agentData.lastActivity = new Date().toISOString();
           agentData.statusLine = extractStatusLine(agentData.output);
           if (getSuperAgentTelegramTask() && isSuperAgent(agentData)) {
@@ -637,9 +665,27 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
 
     const resolvedModel = (provider !== 'local') ? (options?.model || agent.model) : undefined;
 
+    // CLIs without Claude's SessionStart hook get the project's memory in the
+    // prompt instead - otherwise those agents start knowing nothing.
+    let promptWithMemory = prompt;
+    if (needsPromptInjection(cliProvider.configDir)) {
+      try {
+        const digest = await assembleDigest({
+          projectPath: agent.projectPath,
+          settings: appSettingsForCommand as never,
+          hermes: usableHermesConnection(),
+          budgetMs: 3000,
+        });
+        const wrapped = wrapDigestForPrompt(digest);
+        if (wrapped) promptWithMemory = `${wrapped}\n\n${prompt}`;
+      } catch {
+        // Memory is context, not a precondition.
+      }
+    }
+
     const command = cliProvider.buildInteractiveCommand({
       binaryPath,
-      prompt,
+      prompt: promptWithMemory,
       model: resolvedModel,
       verbose: appSettingsForCommand.verboseModeEnabled,
       permissionMode: isSuperAgentCheck ? 'bypass' : (agent.permissionMode ?? (agent.skipPermissions ? 'auto' : 'normal')),
@@ -713,7 +759,11 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
 
   // Get all agents
   ipcMain.handle('agent:list', async () => {
-    return Array.from(agents.values());
+    // Without the scrollback. This runs on mount, after every create, start,
+    // stop, remove and update, on every agent:complete and on every tick where
+    // the count changed - serialising each agent's whole terminal history over
+    // IPC each time. Whoever needs the output asks for that agent.
+    return Array.from(agents.values()).map(agent => ({ ...agent, output: [] }));
   });
 
   // Update an agent (supports all editable fields)
@@ -1089,7 +1139,7 @@ function registerSkillHandlers(deps: IpcHandlerDependencies): void {
   ipcMain.handle('skill:fetch-marketplace', async () => {
     try {
       const res = await fetch('https://skills.sh/', {
-        headers: { 'User-Agent': 'Dorothy/1.0' },
+        headers: { 'User-Agent': 'Tars/1.0' },
       });
       if (!res.ok) return { skills: null };
 
@@ -1100,7 +1150,9 @@ function registerSkillHandlers(deps: IpcHandlerDependencies): void {
       const raw = match[1].replace(/\\"/g, '"');
       const allSkills: { source: string; name: string; installs: number }[] = JSON.parse(raw);
 
-      const skills = allSkills.slice(0, 300).map((s, i) => ({
+      // The directory publishes ~600 skills; the old 300 cap hid half of them
+      // behind a search box that only filters what was already downloaded.
+      const skills = allSkills.map((s, i) => ({
         rank: i + 1,
         name: s.name,
         repo: s.source,
@@ -1208,7 +1260,29 @@ function registerPluginHandlers(deps: IpcHandlerDependencies): void {
   // Start plugin installation (creates interactive PTY)
   // Start plugin installation (uses --no-rcs to skip shell rc files that may
   // contain broken completions like compdef from other tools)
+  /**
+   * Installing a plugin or a skill.
+   *
+   * This spawns a PTY, so the user can answer the CLI's prompts. What it will
+   * not do is run an arbitrary string: the command has to be one of the shapes
+   * an install actually takes, built from names the catalogue validated. It
+   * used to accept anything, which made a marketplace entry a one-click way to
+   * run code on this machine.
+   */
+  const INSTALL_SHAPES = [
+    /^claude plugin marketplace add [A-Za-z0-9._-]+\/[A-Za-z0-9._-]+( && claude plugin install [A-Za-z0-9._-]+@[A-Za-z0-9._-]+( -y)?)?$/,
+    /^claude plugin install [A-Za-z0-9._-]+(@[A-Za-z0-9._-]+)?( -y)?$/,
+    /^npx (-y )?skills add [A-Za-z0-9._\/-]+$/,
+    /^\/plugin install [A-Za-z0-9._-]+@[A-Za-z0-9._-]+$/,
+    /^\/skill install [A-Za-z0-9._\/-]+$/,
+  ];
+
   ipcMain.handle('plugin:install-start', async (_event, { command, cols, rows }: { command: string; cols?: number; rows?: number }) => {
+    if (typeof command !== 'string' || !INSTALL_SHAPES.some(shape => shape.test(command.trim()))) {
+      console.error('[plugin] refused an install command that is not an install:', command);
+      return { error: 'That command is not an install and will not be run.' };
+    }
+
     const id = uuidv4();
     const shell = process.env.SHELL || '/bin/zsh';
 
@@ -1485,8 +1559,106 @@ function registerAppSettingsHandlers(deps: IpcHandlerDependencies): void {
   } = deps;
 
   // Get app settings (notifications, etc.)
+  ipcMain.handle('app:getVersion', async () => {
+    const { app } = await import('electron');
+    return { version: app.getVersion() };
+  });
+
   ipcMain.handle('app:getSettings', async () => {
     return getAppSettings();
+  });
+
+  // Live model + price catalogue. A new model or a price change lands here
+  // without a release; the renderer never has to know where it came from.
+  ipcMain.handle('models:list', async (_event, { provider }: { provider: string }) => {
+    await loadCatalog();
+    return { models: modelsForProvider(provider) };
+  });
+
+  ipcMain.handle('models:price', async (_event, { modelId, provider }: { modelId: string; provider?: string }) => {
+    await loadCatalog();
+    return { price: priceFor(modelId, provider) };
+  });
+
+  ipcMain.handle('models:catalog-status', async () => catalogStatus());
+
+  // What an agent actually changed. Shell-free: git runs with an argv array,
+  // so a branch or path with a quote in it is data rather than syntax.
+  ipcMain.handle('review:diff', async (_event, { repoPath, baseBranch }: { repoPath: string; baseBranch?: string }) => {
+    try {
+      return { success: true as const, diff: await reviewDiff(repoPath, { baseBranch }) };
+    } catch (err) {
+      return { success: false as const, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  // One search across every agent's output, instead of opening 29 terminals.
+  ipcMain.handle('logs:search', async (
+    _event,
+    { query, agentIds, projectPath, limit }: { query: string; agentIds?: string[]; projectPath?: string; limit?: number },
+  ) => {
+    if (!query?.trim()) return { lines: [], scannedAgents: 0, truncated: false };
+    return searchLogs({ query, agentIds, projectPath, limit });
+  });
+
+  ipcMain.handle('logs:tail', async (_event, { agentId, lines }: { agentId: string; lines?: number }) => {
+    return agentTail(agentId, lines) ?? { lines: [], agentName: '' };
+  });
+
+  ipcMain.handle('logs:fleet', async () => ({ agents: fleetSummary() }));
+
+  // Per-provider spend. Claude's own transcripts cover its family; the ledger
+  // is what makes every other CLI countable at all.
+  ipcMain.handle('usage:by-provider', async (_event, { sinceDays }: { sinceDays?: number } = {}) => ({
+    providers: ledgerProviderTotals(sinceDays),
+    dailyCost: ledgerDailyCost(sinceDays ?? 30),
+  }));
+
+  ipcMain.handle('review:repo', async (_event, { repoPath }: { repoPath: string }) => {
+    try {
+      return { success: true as const, summary: await repoSummary(repoPath) };
+    } catch (err) {
+      return { success: false as const, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('review:file', async (
+    _event,
+    { repoPath, file, baseBranch }: { repoPath: string; file: string; baseBranch?: string },
+  ) => {
+    try {
+      return { success: true as const, patch: await fileDiff(repoPath, file, baseBranch) };
+    } catch (err) {
+      return { success: false as const, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  // Memory: real status (each backend is probed, not inferred from settings)
+  // and federated search across every configured source.
+  ipcMain.handle('memory:sources', async (_event, { projectPath }: { projectPath?: string } = {}) => {
+    const settings = getAppSettings() as never;
+    return { sources: await memoryStatus({ settings, hermes: usableHermesConnection(), projectPath }) };
+  });
+
+  ipcMain.handle('memory:search', async (
+    _event,
+    { query, projectPath, sources, limit }: { query: string; projectPath?: string; sources?: string[]; limit?: number },
+  ) => {
+    if (!query?.trim()) return { hits: [], errors: [] };
+    const settings = getAppSettings() as never;
+    return searchMemory({
+      query,
+      projectPath,
+      settings,
+      hermes: usableHermesConnection(),
+      sources: sources as never,
+      limit,
+    });
+  });
+
+  ipcMain.handle('models:refresh', async () => {
+    await loadCatalog(true);
+    return catalogStatus();
   });
 
   // Save app settings
@@ -1568,7 +1740,7 @@ function registerAppSettingsHandlers(deps: IpcHandlerDependencies): void {
     }
 
     try {
-      await telegramBot.sendMessage(chatId, '✅ Test message from Dorothy!');
+      await telegramBot.sendMessage(chatId, '✅ Test message from Tars!');
       return { success: true };
     } catch (err) {
       console.error('Telegram send test failed:', err);
@@ -1773,7 +1945,7 @@ function registerAppSettingsHandlers(deps: IpcHandlerDependencies): void {
     try {
       await slackApp.client.chat.postMessage({
         channel: appSettings.slackChannelId,
-        text: ':white_check_mark: Test message from Dorothy!',
+        text: ':white_check_mark: Test message from Tars!',
         mrkdwn: true,
       });
       return { success: true };
@@ -1845,28 +2017,121 @@ function registerFileSystemHandlers(deps: IpcHandlerDependencies): void {
   ipcMain.handle('fs:list-projects', async () => {
     try {
       const claudeDir = path.join(os.homedir(), '.claude', 'projects');
-      if (!fs.existsSync(claudeDir)) return [];
+      const projects: Array<{ id: string; path: string; name: string; custom?: boolean }> = [];
+      const seen = new Set<string>();
 
-      const dirs = fs.readdirSync(claudeDir);
-      const projects: Array<{ id: string; path: string; name: string }> = [];
+      const push = (p: string, id: string, custom = false) => {
+        if (!p || p === '/' || p === os.homedir()) return;
+        if (seen.has(p) || !fs.existsSync(p)) return;
+        if (/\/\.?worktrees\//.test(p)) return;
+        seen.add(p);
+        projects.push({ id, path: p, name: path.basename(p), ...(custom ? { custom: true } : {}) });
+      };
 
-      for (const dir of dirs) {
-        const fullPath = path.join(claudeDir, dir);
-        const stat = fs.statSync(fullPath);
-        if (!stat.isDirectory()) continue;
+      // Projects the user explicitly added (persisted here, not in the
+      // renderer's localStorage, so they survive updates and are visible to
+      // every surface: agent creation, team deployment, Brain).
+      for (const p of readCustomProjects()) push(p, `custom:${p}`, true);
 
-        const decodedPath = decodeProjectPath(dir);
-        projects.push({
-          id: dir,
-          path: decodedPath,
-          name: path.basename(decodedPath),
-        });
+      if (fs.existsSync(claudeDir)) {
+        for (const dir of fs.readdirSync(claudeDir)) {
+          const fullPath = path.join(claudeDir, dir);
+          if (!fs.statSync(fullPath).isDirectory()) continue;
+          push(decodeProjectPath(dir), dir);
+        }
       }
 
       return projects;
     } catch (err) {
       console.error('Failed to list projects:', err);
       return [];
+    }
+  });
+
+  /**
+   * Reads well-known project files without a shell. The Brain graph used to
+   * build `cat "<projectPath>/..."` command strings and hand them to
+   * shell:exec: a path containing $(...) or a backtick executed arbitrary
+   * code as soon as the page opened.
+   */
+  /** Roots a free-form file path is allowed to live under. */
+  const textFileRoots = () => [
+    path.join(os.homedir(), '.claude'),
+    path.join(os.homedir(), '.codex'),
+    path.join(os.homedir(), '.gemini'),
+    path.join(os.homedir(), '.grok'),
+    DATA_DIR,
+    ...readCustomProjects(),
+  ];
+
+  const isAllowedTextFile = (target: string) => {
+    const resolved = path.resolve(target.replace(/^~/, os.homedir()));
+    return textFileRoots().some(root => resolved === root || resolved.startsWith(root + path.sep));
+  };
+
+  ipcMain.handle('fs:read-text-file', async (_event, filePath: string) => {
+    try {
+      const target = path.resolve(String(filePath || '').replace(/^~/, os.homedir()));
+      if (!isAllowedTextFile(target)) return { content: '', error: 'Path outside allowed roots' };
+      if (!fs.existsSync(target) || !fs.statSync(target).isFile()) return { content: '', error: 'Not found' };
+      return { content: fs.readFileSync(target, 'utf-8') };
+    } catch (err) {
+      return { content: '', error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('fs:write-text-file', async (_event, params: { filePath: string; content: string }) => {
+    try {
+      const target = path.resolve(String(params?.filePath || '').replace(/^~/, os.homedir()));
+      if (!isAllowedTextFile(target)) return { success: false, error: 'Path outside allowed roots' };
+      fs.writeFileSync(target, String(params?.content ?? ''), 'utf-8');
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('fs:read-project-files', async (_event, params: { paths: string[]; relative: string[] }) => {
+    const out: Record<string, string> = {};
+    const paths = Array.isArray(params?.paths) ? params.paths : [];
+    const relative = Array.isArray(params?.relative) ? params.relative : [];
+    for (const base of paths) {
+      if (typeof base !== 'string' || !path.isAbsolute(base)) continue;
+      for (const rel of relative) {
+        if (typeof rel !== 'string' || rel.includes('..')) continue;
+        const target = path.join(base, rel);
+        try {
+          if (fs.existsSync(target) && fs.statSync(target).isFile()) {
+            out[target] = fs.readFileSync(target, 'utf-8');
+          }
+        } catch { /* unreadable, skip */ }
+      }
+    }
+    return { files: out };
+  });
+
+  ipcMain.handle('fs:add-custom-project', async (_event, projectPath: string) => {
+    try {
+      const clean = String(projectPath || '').trim();
+      if (!clean || !fs.existsSync(clean)) return { success: false, error: 'Folder not found' };
+      const list = readCustomProjects();
+      if (!list.includes(clean)) {
+        list.push(clean);
+        writeCustomProjects(list);
+      }
+      return { success: true, projects: list };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('fs:remove-custom-project', async (_event, projectPath: string) => {
+    try {
+      const list = readCustomProjects().filter(p => p !== projectPath);
+      writeCustomProjects(list);
+      return { success: true, projects: list };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
   });
 
@@ -2125,31 +2390,129 @@ function registerShellHandlers(deps: IpcHandlerDependencies): void {
   });
 
   // Execute arbitrary command (uses PTY)
-  ipcMain.handle('shell:exec', async (_event, { command, cwd }: { command: string; cwd?: string }) => {
-    return new Promise((resolve) => {
-      const shell = process.env.SHELL || '/bin/zsh';
-      const ptyProcess = pty.spawn(shell, ['-l', '-c', command], {
-        name: 'xterm-256color',
-        cols: 80,
-        rows: 24,
-        cwd: cwd || os.homedir(),
-        env: process.env as { [key: string]: string },
-      });
+  /**
+   * The renderer can ask for three things, by name.
+   *
+   * This used to take an arbitrary string and run it through a login shell,
+   * which made every other sandbox in the app decorative: anything that ran in
+   * the renderer had full user-privilege command execution. The three real
+   * uses are asking a CLI its version, reading a repository's branch, and
+   * revealing a path in Finder — so those are what it does now, through
+   * execFile with an argv array, or through Electron's own shell API.
+   */
+  /**
+   * Browsing a project, without a shell.
+   *
+   * The code panel used to build `find`, `cat` and `grep` command strings and
+   * run them through a login shell, so a search query containing a quote was
+   * command execution. These walk and read the tree directly, confined to the
+   * project root.
+   */
+  const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', '.next', '__pycache__', 'out', 'release', '.worktrees']);
 
-      let output = '';
+  function withinRoot(root: string, target: string): boolean {
+    const r = path.resolve(root);
+    const t = path.resolve(target);
+    return t === r || t.startsWith(r + path.sep);
+  }
 
-      ptyProcess.onData((data) => {
-        output += data;
-      });
-
-      ptyProcess.onExit(({ exitCode }) => {
-        if (exitCode === 0) {
-          resolve({ success: true, output });
-        } else {
-          resolve({ success: false, error: output, code: exitCode });
+  function walkProject(root: string, maxDepth: number, limit: number, match?: (name: string) => boolean): string[] {
+    const out: string[] = [];
+    const walk = (dir: string, depth: number) => {
+      if (depth > maxDepth || out.length >= limit) return;
+      let entries: fs.Dirent[];
+      try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+      for (const entry of entries) {
+        if (out.length >= limit) return;
+        if (entry.name.startsWith('.') && entry.name !== '.env.example') continue;
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (IGNORED_DIRS.has(entry.name)) continue;
+          walk(full, depth + 1);
+        } else if (!match || match(entry.name)) {
+          out.push(path.relative(root, full));
         }
+      }
+    };
+    walk(root, 1);
+    return out.sort();
+  }
+
+  ipcMain.handle('project:list-files', async (_event, { root, maxDepth }: { root: string; maxDepth?: number }) => {
+    if (!root || !fs.existsSync(root)) return { success: false as const, error: 'no such directory' };
+    return { success: true as const, files: walkProject(root, Math.min(maxDepth ?? 3, 6), 300) };
+  });
+
+  ipcMain.handle('project:search-files', async (_event, { root, query }: { root: string; query: string }) => {
+    if (!root || !fs.existsSync(root) || !query) return { success: false as const, error: 'root and query are required' };
+    const needle = query.toLowerCase();
+    return { success: true as const, files: walkProject(root, 6, 50, name => name.toLowerCase().includes(needle)) };
+  });
+
+  ipcMain.handle('project:search-content', async (
+    _event,
+    { root, query }: { root: string; query: string },
+  ) => {
+    if (!root || !fs.existsSync(root) || !query) return { success: false as const, error: 'root and query are required' };
+    const exts = new Set(['.ts', '.tsx', '.js', '.jsx', '.json', '.css', '.md']);
+    const needle = query.toLowerCase();
+    const hits: { path: string; line: number; text: string }[] = [];
+
+    for (const rel of walkProject(root, 6, 4000, name => exts.has(path.extname(name)))) {
+      if (hits.length >= 50) break;
+      const full = path.join(root, rel);
+      if (!withinRoot(root, full)) continue;
+      let content: string;
+      try {
+        if (fs.statSync(full).size > 512_000) continue;
+        content = fs.readFileSync(full, 'utf-8');
+      } catch { continue; }
+      if (!content.toLowerCase().includes(needle)) continue;
+      content.split('\n').forEach((text, i) => {
+        if (hits.length >= 50) return;
+        if (text.toLowerCase().includes(needle)) hits.push({ path: rel, line: i + 1, text: text.slice(0, 300) });
       });
-    });
+    }
+    return { success: true as const, hits };
+  });
+
+  ipcMain.handle('shell:version', async (_event, { binary }: { binary: string }) => {
+    // A path from settings or a bare binary name, never an expression.
+    if (!binary || /[;&|`$<>(){}\n\r"']/.test(binary)) {
+      return { success: false, error: 'invalid binary' };
+    }
+    try {
+      const { execFile } = await import('child_process');
+      const { promisify } = await import('util');
+      const { stdout, stderr } = await promisify(execFile)(binary, ['--version'], {
+        timeout: 8000,
+        env: { ...process.env, PATH: buildFullPath() },
+      });
+      return { success: true, output: (stdout || stderr || '').trim() };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('shell:branch', async (_event, { cwd }: { cwd: string }) => {
+    if (!cwd || !fs.existsSync(cwd)) return { success: false, error: 'no such directory' };
+    try {
+      const { execFile } = await import('child_process');
+      const { promisify } = await import('util');
+      const { stdout } = await promisify(execFile)('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+        cwd, timeout: 8000,
+      });
+      return { success: true, output: stdout.trim() };
+    } catch {
+      return { success: false, error: 'not a git repository' };
+    }
+  });
+
+  ipcMain.handle('shell:reveal', async (_event, { path: target }: { path: string }) => {
+    if (!target || !fs.existsSync(target)) return { success: false, error: 'no such path' };
+    const { shell } = await import('electron');
+    const error = await shell.openPath(target);
+    return error ? { success: false, error } : { success: true };
   });
 
   // Start a new quick terminal PTY

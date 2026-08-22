@@ -7,14 +7,52 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    id: 15,
+    version: '1.5.0',
+    date: '2026-08-22',
+    updates: [
+      'Delegation over the Agent Client Protocol — a delegated task now returns: the agent\'s answer, why the turn ended, which tools it used and what it cost. Typing a task into a terminal never told you any of that. Works on Claude Code, Codex, Gemini, Grok, opencode and pi through the same conversation',
+      'Tool denial for every agent, not just Claude — risky calls arrive as a permission request Tars answers itself, so an orchestrator that must not edit files is stopped by the protocol rather than by a flag one CLI happens to support',
+      'Memory reaches every CLI. Hermes\' own MEMORY.md and USER.md, full-text search over its past sessions, gbrain and Honcho are real sources now, contacted for real: the Brain page says "reachable" only when something answered, and lists the tools each backend offers',
+      'A bundled memory MCP server (search, read, write, sources) is registered with every provider, and the CLIs with no session-start hook get the project\'s memory injected into their prompt so they cannot start blind',
+      'Prices and model lists come from a live catalogue instead of a table baked into the release. A model shipped today appears today; a price change lands without an update. The old table had already drifted - Gemini 3 Pro was listed at a sixth of its real output price',
+      'Review page — what each agent actually changed: the files, the line counts and the patch, compared against the branch it was cut from, with untracked files included instead of invisible',
+      'Logs page — one search across every agent\'s output, with regex, instead of opening each terminal in turn',
+      'Schedules, Review and Logs all reachable from the sidebar, and the Cmd+digit shortcuts printed next to each entry finally do something',
+      'Your agent list can no longer be lost: the file is written atomically, a corrupt copy can no longer overwrite the backup, a parse failure is preserved instead of silently replaced, and terminal activity is flushed on a timer rather than only at quit',
+      'Statusline costs half what it did (115ms to 49ms per render): it spawned 32 subprocesses per turn, per agent, one per field read',
+      'Agents stopped re-registering their MCP servers on every boot — the check looked in the wrong file and always answered "not registered"',
+      'A new icon, and the app finally packages itself as Tars rather than Dorothy',
+    ],
+  },
+  {
+    id: 14,
+    version: '1.4.0',
+    date: '2026-08-22',
+    updates: [
+      'Dorothy is now Tars — new name, new landing page, same app',
+      'Opening the dashboard no longer starts your agents. A mount-time effect was resuming every idle agent that had no terminal attached, so simply navigating home launched all of them; starting is now an explicit action, and leaving and coming back never touches a running session',
+      'Schedules page — your Hermes cron jobs finally have a screen: every profile in one list, run now, pause, resume or delete, refreshed while the window is visible',
+      'Settings went from seventeen flat entries to six groups (General, AI & Providers, Hermes, Integrations, Extensions, Workspace). Nothing was removed, it just stopped being a scroll hunt',
+      'Usage shows real money again. The page priced tokens from ~/.claude/stats-cache.json, a file most accounts never get, so every cost was computed from zero. Tars now reads the transcripts directly, drops the messages a resumed session copies forward (over half of them, which would have doubled every figure), and prices 1h cache writes at their real rate',
+      'Plugin catalogue was pointing at a deleted repository and served nothing on a fresh install. It now reads the seven real Claude Code marketplaces: 685 plugins, and installing one registers its marketplace first, which is the step that used to fail',
+      'Skills directory no longer truncated to 300 of its ~600 entries',
+      'Your projects survive updates — they live in ~/.dorothy/projects.json instead of browser storage keyed to the app origin, and the phantom card that claimed every agent is gone',
+      'Deploy Team: pick which members to deploy, add extras beyond the template, and choose the provider and model per member instead of Claude for everyone',
+      'The version in Settings is the real one, read from the running app rather than a hardcoded string',
+      'Security: closed command injection through the Brain page, added Origin checks on the local API, removed an unauthenticated memory endpoint, and the Hermes webhook now publishes a single path instead of the whole API',
+      'Menus, dropdowns and selects are rendered by the app, not the OS, so they follow the theme; sidebar collapse and the heavy yellow rules are gone, and page titles have their subtitles back',
+    ],
+  },
+  {
     id: 13,
     version: '1.3.0',
     date: '2026-08-22',
     updates: [
-      'Hermes integration — connect Dorothy to your self-hosted Hermes gateway with the same four modes as Hermes Desktop (local, SSH, remote gateway, cloud), including one-click "Import from Desktop" and sign-in for cookie-gated gateways',
-      'Kanban now reads the Hermes board — tasks, workers and runs stay in Hermes (its harness owns them); Dorothy shows the native eight columns, with the local board still one click away',
+      'Hermes integration — connect Tars to your self-hosted Hermes gateway with the same four modes as Hermes Desktop (local, SSH, remote gateway, cloud), including one-click "Import from Desktop" and sign-in for cookie-gated gateways',
+      'Kanban now reads the Hermes board — tasks, workers and runs stay in Hermes (its harness owns them); Tars shows the native eight columns, with the local board still one click away',
       'Incoming webhook (POST /api/webhooks/hermes) so Hermes cron jobs can drive your agents — resolve by agent name or id, with a dry-run mode for wiring it up',
-      'Shared memory backends — point Dorothy at gbrain and Honcho and every claude-binary agent gets the same brain as Hermes; the Brain page browses native project memory alongside them',
+      'Shared memory backends — point Tars at gbrain and Honcho and every claude-binary agent gets the same brain as Hermes; the Brain page browses native project memory alongside them',
       'Memory really is injected now: agents wake up with the project MEMORY.md plus recent cross-session activity (the endpoints the hooks called never existed)',
       'Cooperlabs redesign — tangerine on near-black, Roboto Condensed/Mono, hard corners, flat surfaces, dark by default',
       'White flash on navigation fixed at the root: RSC payloads were served with the wrong MIME type, forcing a full document reload on every first visit to a page',
@@ -88,9 +126,9 @@ export const CHANGELOG: Release[] = [
       'Add support of JIRA self hosted domain',
       'Added macOS menu bar tray with live agent status panel',
       'Status tabs in tray: Working, Waiting for inputs, Ready to work, Idle',
-      'Manage all your external MCP servers (outside of Dorothy) from the settings page',
+      'Manage all your external MCP servers (outside of Tars) from the settings page',
       'Live task preview next to agent name when working or waiting',
-      'Full-color Dorothy logo in the macOS menu bar',
+      'Full-color Tars logo in the macOS menu bar',
       'Revamped agents page with improved layout and filtering',
       'Add new Status line option (in settings) to display model, context usage, git branch, session time, and token stats in live on your Claude Code terminal',
       'Custom MP3/audio file support per notification type',
@@ -176,7 +214,7 @@ export const CHANGELOG: Release[] = [
     version: '1.0.0',
     date: '2025-12-01',
     updates: [
-      'Initial release of Dorothy',
+      'Initial release of Tars',
       'Multi-agent management with persistent PTY sessions',
       'Agent creation with project path, skills, and character',
       'Terminal view with live output streaming',
@@ -187,4 +225,4 @@ export const CHANGELOG: Release[] = [
 ];
 
 export const LATEST_RELEASE = CHANGELOG[0];
-export const WHATS_NEW_STORAGE_KEY = 'dorothy_whats_new_last_seen';
+export const WHATS_NEW_STORAGE_KEY = 'tars_whats_new_last_seen';

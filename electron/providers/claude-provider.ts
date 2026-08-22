@@ -11,6 +11,7 @@ import type {
   ProviderModel,
   HookConfig,
 } from './cli-provider';
+import { safeEffort } from './cli-provider';
 
 export class ClaudeProvider implements CLIProvider {
   readonly id = 'claude' as const;
@@ -77,8 +78,8 @@ export class ClaudeProvider implements CLIProvider {
     }
 
     // Effort level
-    if (params.effort && params.effort !== 'medium') {
-      command += ` --effort ${params.effort}`;
+    if (safeEffort(params.effort) && params.effort !== 'medium') {
+      command += ` --effort ${safeEffort(params.effort)}`;
     }
 
     // Chrome browser sharing (uses the user's logged-in Chrome via claude-in-chrome extension)
@@ -102,7 +103,7 @@ export class ClaudeProvider implements CLIProvider {
       }
     }
 
-    // Dorothy's CLAUDE.md via ~/.dorothy
+    // Tars's CLAUDE.md via ~/.dorothy
     command += ` --add-dir '${os.homedir()}/.dorothy'`;
 
     // Prompt with skills directive
@@ -317,16 +318,27 @@ export class ClaudeProvider implements CLIProvider {
   }
 
   isMcpServerRegistered(name: string, expectedServerPath: string): boolean {
-    const mcpConfigPath = path.join(this.configDir, 'mcp.json');
-    if (!fs.existsSync(mcpConfigPath)) return false;
-    try {
-      const mcpConfig = JSON.parse(fs.readFileSync(mcpConfigPath, 'utf-8'));
-      const existing = mcpConfig?.mcpServers?.[name];
-      if (!existing?.args) return false;
-      return existing.args[existing.args.length - 1] === expectedServerPath;
-    } catch {
-      return false;
+    // The happy path writes through `claude mcp add -s user`, which lands in
+    // ~/.claude.json - checking only ~/.claude/mcp.json meant this always
+    // answered false and every server was re-registered, by spawning the CLI,
+    // once per claude-family provider on every single boot.
+    const candidates = [
+      path.join(os.homedir(), '.claude.json'),
+      path.join(this.configDir, 'mcp.json'),
+    ];
+
+    for (const configPath of candidates) {
+      if (!fs.existsSync(configPath)) continue;
+      try {
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        const existing = config?.mcpServers?.[name];
+        if (!existing?.args?.length) continue;
+        if (existing.args[existing.args.length - 1] === expectedServerPath) return true;
+      } catch {
+        // try the next candidate
+      }
     }
+    return false;
   }
 
   getMcpConfigStrategy(): 'flag' | 'config-file' {

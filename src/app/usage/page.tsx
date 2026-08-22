@@ -23,96 +23,7 @@ import {
 import { useClaude } from '@/hooks/useClaude';
 import { getProviderDef, PROVIDER_REGISTRY } from '@/lib/providers';
 import { ProviderIconRenderer } from '@/components/ProviderBadge';
-
-/** Session-level cache for OpenRouter live pricing */
-let openRouterPricingCache: { models: Array<{ id: string; name: string; inputPerMTok: number; outputPerMTok: number }> } | null = null;
-
-/** Per-model pricing defaults for ALL providers (input/output/cache per MTok).
- *  Used by the Pricing Reference table. Users can override via edit mode.
- *  Cache columns only apply to Claude; other providers show "—". */
-const ALL_PROVIDER_MODEL_PRICING: Record<string, {
-  models: { id: string; name: string; inputPerMTok: number | null; outputPerMTok: number | null; cacheHitsPerMTok?: number; cache5mWritePerMTok?: number }[];
-  note?: string;
-}> = {
-  codex: {
-    models: [
-      { id: 'gpt-5.3-codex', name: 'GPT-5.3 Codex', inputPerMTok: 2.50, outputPerMTok: 10 },
-      { id: 'gpt-5.2-codex', name: 'GPT-5.2 Codex', inputPerMTok: 2, outputPerMTok: 8 },
-      { id: 'gpt-5.1-codex', name: 'GPT-5.1 Codex', inputPerMTok: 2, outputPerMTok: 8 },
-      { id: 'gpt-5-codex-mini', name: 'GPT-5 Codex Mini', inputPerMTok: 0.30, outputPerMTok: 1.20 },
-    ],
-  },
-  gemini: {
-    models: [
-      { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro', inputPerMTok: 1.25, outputPerMTok: 10 },
-      { id: 'gemini-3-pro', name: 'Gemini 3 Pro', inputPerMTok: 1.25, outputPerMTok: 10 },
-      { id: 'gemini-3-flash', name: 'Gemini 3 Flash', inputPerMTok: 0.15, outputPerMTok: 0.60 },
-      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', inputPerMTok: 1.25, outputPerMTok: 10 },
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', inputPerMTok: 0.15, outputPerMTok: 0.60 },
-    ],
-  },
-  openrouter: {
-    models: [
-      { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', inputPerMTok: 0.55, outputPerMTok: 2.19 },
-      { id: 'moonshotai/kimi-k2', name: 'Kimi K2', inputPerMTok: null, outputPerMTok: null },
-      { id: 'openai/gpt-4.1', name: 'GPT-4.1', inputPerMTok: 2, outputPerMTok: 8 },
-      { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', inputPerMTok: 1.25, outputPerMTok: 10 },
-      { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', inputPerMTok: 3, outputPerMTok: 15 },
-      { id: 'meta-llama/llama-4-maverick', name: 'Llama 4 Maverick', inputPerMTok: 0.20, outputPerMTok: 0.60 },
-      { id: 'qwen/qwen3-235b', name: 'Qwen3 235B', inputPerMTok: 0.80, outputPerMTok: 3.20 },
-    ],
-    note: 'Pricing varies per model — see openrouter.ai/models for full catalogue of 300+ models.',
-  },
-  deepseek: {
-    models: [
-      { id: 'deepseek-r1', name: 'DeepSeek R1', inputPerMTok: 0.55, outputPerMTok: 2.19 },
-      { id: 'deepseek-chat', name: 'DeepSeek V3', inputPerMTok: 0.27, outputPerMTok: 1.10 },
-      { id: 'deepseek-r1-distill-70b', name: 'R1 Distill 70B', inputPerMTok: 0.55, outputPerMTok: 2.19 },
-    ],
-  },
-  moonshot: {
-    models: [
-      { id: 'kimi-k2.5', name: 'Kimi K2.5', inputPerMTok: null, outputPerMTok: null },
-      { id: 'kimi-k2', name: 'Kimi K2', inputPerMTok: null, outputPerMTok: null },
-      { id: 'moonlight-16k', name: 'Moonlight 16K', inputPerMTok: null, outputPerMTok: null },
-    ],
-    note: 'Pricing not yet published. Check platform.moonshot.cn for current rates.',
-  },
-  mimo: {
-    models: [
-      { id: 'mimo-v2-pro', name: 'MiMo V2 Pro', inputPerMTok: 1, outputPerMTok: 4 },
-      { id: 'mimo-v2-flash', name: 'MiMo V2 Flash', inputPerMTok: 0.25, outputPerMTok: 1 },
-      { id: 'mimo-v2-omni', name: 'MiMo V2 Omni', inputPerMTok: 1, outputPerMTok: 4 },
-    ],
-  },
-  qwen: {
-    models: [
-      { id: 'qwen3.6-72b', name: 'Qwen 3.6 72B', inputPerMTok: 0.40, outputPerMTok: 1.60 },
-      { id: 'qwq-32b', name: 'QwQ 32B', inputPerMTok: 0.30, outputPerMTok: 1.20 },
-      { id: 'qwen3-235b', name: 'Qwen3 235B', inputPerMTok: 0.80, outputPerMTok: 3.20 },
-      { id: 'qwen-2.5-72b', name: 'Qwen 2.5 72B', inputPerMTok: 0.30, outputPerMTok: 1.20 },
-      { id: 'qwen-coder-32b', name: 'Qwen Coder', inputPerMTok: 0.30, outputPerMTok: 1.20 },
-    ],
-  },
-  zhipu: {
-    models: [
-      { id: 'glm-5.1', name: 'GLM-5.1', inputPerMTok: 0.80, outputPerMTok: 3.20 },
-      { id: 'glm-5', name: 'GLM-5', inputPerMTok: 0.70, outputPerMTok: 2.80 },
-      { id: 'glm-4.6', name: 'GLM-4.6', inputPerMTok: 0.70, outputPerMTok: 2.80 },
-      { id: 'glm-4.5', name: 'GLM-4.5', inputPerMTok: 0.70, outputPerMTok: 2.80 },
-      { id: 'glm-4-plus', name: 'GLM-4 Plus', inputPerMTok: 0.50, outputPerMTok: 2 },
-      { id: 'glm-4-air', name: 'GLM-4 Air', inputPerMTok: 0.07, outputPerMTok: 0.07 },
-      { id: 'glm-4-flash', name: 'GLM-4 Flash', inputPerMTok: 0.01, outputPerMTok: 0.01 },
-    ],
-  },
-  minimax: {
-    models: [
-      { id: 'abab7', name: 'ABAB 7', inputPerMTok: 0.70, outputPerMTok: 2.80 },
-      { id: 'abab6.5s', name: 'ABAB 6.5s', inputPerMTok: 0.30, outputPerMTok: 1.20 },
-      { id: 'abab5.5', name: 'ABAB 5.5', inputPerMTok: 0.15, outputPerMTok: 0.60 },
-    ],
-  },
-};
+import { BudgetAndLimits } from '@/components/Usage/BudgetAndLimits';
 
 // Token pricing per million tokens (MTok)
 const MODEL_PRICING: Record<string, {
@@ -122,7 +33,7 @@ const MODEL_PRICING: Record<string, {
   cache5mWritePerMTok: number;
   cache1hWritePerMTok: number;
 }> = {
-  // Fable 5 — Anthropic's most capable widely released model
+  // Fable 5 - Anthropic's most capable widely released model
   'claude-fable-5': { inputPerMTok: 10, outputPerMTok: 50, cacheHitsPerMTok: 1.00, cache5mWritePerMTok: 12.50, cache1hWritePerMTok: 20 },
   'fable': { inputPerMTok: 10, outputPerMTok: 50, cacheHitsPerMTok: 1.00, cache5mWritePerMTok: 12.50, cache1hWritePerMTok: 20 },
   // Opus 5
@@ -168,7 +79,62 @@ const MODEL_PRICING: Record<string, {
 };
 
 // Get pricing for a model (with fallback)
+/**
+ * Prices fetched from the live catalogue for the models actually seen in the
+ * data. Populated once per page load; the table below is the offline floor.
+ */
+const livePricing = new Map<string, { inputPerMTok: number; outputPerMTok: number; cacheHitsPerMTok: number; cache5mWritePerMTok: number; cache1hWritePerMTok: number }>();
+
+async function loadLivePricing(modelIds: string[]): Promise<boolean> {
+  const missing = modelIds.filter(id => !livePricing.has(id));
+  if (missing.length === 0) return false;
+  const results = await Promise.all(missing.map(async id => {
+    try {
+      const res = await window.electronAPI?.models?.price(id);
+      return [id, res?.price] as const;
+    } catch {
+      return [id, null] as const;
+    }
+  }));
+  let changed = false;
+  for (const [id, price] of results) {
+    if (!price || typeof price.input !== 'number' || typeof price.output !== 'number') continue;
+    livePricing.set(id, {
+      inputPerMTok: price.input,
+      outputPerMTok: price.output,
+      cacheHitsPerMTok: price.cache_read ?? price.input * 0.1,
+      cache5mWritePerMTok: price.cache_write ?? price.input * 1.25,
+      cache1hWritePerMTok: price.input * 2,
+    });
+    changed = true;
+  }
+  return changed;
+}
+
+/**
+ * Which provider a model id belongs to. Transcript entries carry the model,
+ * not the CLI that ran it, and every claude-* model comes from a claude-binary
+ * provider whichever wrapper was used.
+ */
+function providerForModel(modelId: string): string {
+  const id = modelId.toLowerCase();
+  if (id.startsWith('claude-') || /fable|mythos|opus|sonnet|haiku/.test(id)) return 'claude';
+  if (id.startsWith('gpt-') || id.includes('codex')) return 'codex';
+  if (id.startsWith('gemini')) return 'gemini';
+  if (id.startsWith('grok')) return 'grok';
+  if (id.startsWith('deepseek')) return 'deepseek';
+  if (id.startsWith('kimi') || id.includes('moonshot')) return 'moonshot';
+  if (id.startsWith('qwen')) return 'qwen';
+  if (id.toLowerCase().startsWith('minimax')) return 'minimax';
+  if (id.startsWith('glm') || id.includes('zhipu')) return 'zhipu';
+  if (id.startsWith('mimo')) return 'mimo';
+  return 'claude';
+}
+
 function getModelPricing(modelId: string) {
+  const live = livePricing.get(modelId);
+  if (live) return live;
+
   // Try exact match first
   if (MODEL_PRICING[modelId]) return MODEL_PRICING[modelId];
 
@@ -271,36 +237,8 @@ type TimeRange = 'daily' | 'weekly' | 'monthly';
 export default function UsagePage() {
   const { data, loading, error } = useClaude();
   const [costTimeRange, setCostTimeRange] = useState<TimeRange>('daily');
-  const [showPricingTable, setShowPricingTable] = useState(false);
-  const [openRouterLiveModels, setOpenRouterLiveModels] = useState<Array<{ id: string; name: string; inputPerMTok: number; outputPerMTok: number }> | null>(openRouterPricingCache?.models ?? null);
-  const [loadingOpenRouterPricing, setLoadingOpenRouterPricing] = useState(false);
-
-  // Fetch OpenRouter live pricing when the section is first opened
-  useEffect(() => {
-    if (!showPricingTable || openRouterPricingCache || loadingOpenRouterPricing) return;
-    let cancelled = false;
-    setLoadingOpenRouterPricing(true);
-    fetch('https://openrouter.ai/api/v1/models')
-      .then(r => r.ok ? r.json() : null)
-      .then(json => {
-        if (cancelled || !json?.data) return;
-        const models = (json.data as Array<{ id: string; name?: string; pricing?: { prompt?: string; completion?: string } }>)
-          .filter(m => m.id && m.pricing?.prompt)
-          .map(m => ({
-            id: m.id,
-            name: m.name || m.id.split('/').pop() || m.id,
-            inputPerMTok: parseFloat(m.pricing!.prompt!) * 1_000_000,
-            outputPerMTok: parseFloat(m.pricing!.completion || '0') * 1_000_000,
-          }))
-          .filter(m => m.inputPerMTok > 0)
-          .slice(0, 100);
-        openRouterPricingCache = { models };
-        setOpenRouterLiveModels(models);
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoadingOpenRouterPricing(false); });
-    return () => { cancelled = true; };
-  }, [showPricingTable]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [, setPricingLoaded] = useState(0);
+  const [ledger, setLedger] = useState<Array<{ provider: string; inputTokens: number; outputTokens: number; costUSD: number; turns: number }>>([]);
 
   // Get today's stats - use the most recent available
   const todayActivity = useMemo(() => {
@@ -374,6 +312,28 @@ export default function UsagePage() {
   }, [data?.stats?.dailyModelTokens]);
 
   // Calculate total usage and cost from model stats
+  // Per-turn usage reported by the agents themselves. This is the only source
+  // that covers the CLIs which write no transcript of their own.
+  useEffect(() => {
+    let cancelled = false;
+    window.electronAPI?.usage?.byProvider()
+      .then(res => { if (!cancelled) setLedger(res?.providers ?? []); })
+      .catch(() => { if (!cancelled) setLedger([]); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Pull live prices for whatever models the data actually contains, then
+  // nudge a re-render so the figures pick them up.
+  useEffect(() => {
+    const ids = Object.keys(data?.stats?.modelUsage || {});
+    if (ids.length === 0) return;
+    let cancelled = false;
+    loadLivePricing(ids).then(changed => {
+      if (changed && !cancelled) setPricingLoaded(n => n + 1);
+    });
+    return () => { cancelled = true; };
+  }, [data?.stats?.modelUsage]);
+
   const totalUsage = useMemo(() => {
     if (!data?.stats?.modelUsage) return { totalCost: 0, totalTokens: 0, totalInput: 0, totalOutput: 0, totalCacheRead: 0, totalCacheWrite: 0 };
 
@@ -423,13 +383,17 @@ export default function UsagePage() {
     Object.entries(data.stats.modelUsage).forEach(([modelId, usage]) => {
       const nonCacheTotal = (usage.inputTokens || 0) + (usage.outputTokens || 0);
       if (nonCacheTotal === 0) return;
-      const cost = calculateModelCost(
-        modelId,
-        usage.inputTokens || 0,
-        usage.outputTokens || 0,
-        usage.cacheReadInputTokens || 0,
-        usage.cacheCreationInputTokens || 0,
-      );
+      // costUSD is the measured figure — it knows the 1h/5m cache write split,
+      // which the flat table below has to guess at.
+      const cost = usage.costUSD && usage.costUSD > 0
+        ? usage.costUSD
+        : calculateModelCost(
+          modelId,
+          usage.inputTokens || 0,
+          usage.outputTokens || 0,
+          usage.cacheReadInputTokens || 0,
+          usage.cacheCreationInputTokens || 0,
+        );
       rateMap.set(modelId, cost / nonCacheTotal);
     });
     return rateMap;
@@ -460,13 +424,15 @@ export default function UsagePage() {
     if (!data?.stats?.modelUsage) return [];
 
     return Object.entries(data.stats.modelUsage).map(([modelId, usage]) => {
-      const cost = calculateModelCost(
-        modelId,
-        usage.inputTokens || 0,
-        usage.outputTokens || 0,
-        usage.cacheReadInputTokens || 0,
-        usage.cacheCreationInputTokens || 0
-      );
+      const cost = usage.costUSD && usage.costUSD > 0
+        ? usage.costUSD
+        : calculateModelCost(
+          modelId,
+          usage.inputTokens || 0,
+          usage.outputTokens || 0,
+          usage.cacheReadInputTokens || 0,
+          usage.cacheCreationInputTokens || 0
+        );
 
       const pricing = getModelPricing(modelId);
 
@@ -485,7 +451,7 @@ export default function UsagePage() {
   }, [data?.stats?.modelUsage]);
 
   // Latest available date in stats (stats-cache.json is updated by Claude Code on session end,
-  // so it may lag behind real-time — use lastComputedDate instead of today's calendar date)
+  // so it may lag behind real-time - use lastComputedDate instead of today's calendar date)
   const latestDataDate = data?.stats?.lastComputedDate ?? null;
 
   // Get cost data for charts based on time range.
@@ -602,118 +568,11 @@ export default function UsagePage() {
         </p>
       </div>
 
-      {/* Subscription Quota */}
-      {!data?.rateLimits && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-none border border-border-primary bg-bg-secondary p-4"
-        >
-          <div className="flex items-center gap-3 text-sm text-text-muted">
-            <Gauge className="w-4 h-4 text-accent-cyan shrink-0" />
-            <p>
-              Enable the <span className="text-text-primary font-medium">Status Line</span> in Settings and run an agent to see your subscription quota here.
-            </p>
-          </div>
-        </motion.div>
-      )}
-      {data?.rateLimits && (data.rateLimits.five_hour || data.rateLimits.seven_day) && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-none border border-border-primary bg-bg-secondary p-5"
-        >
-          <div className="text-sm font-medium mb-4 flex items-center gap-2">
-            <Gauge className="w-4 h-4 text-text-muted" />
-            Subscription Quota
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* 5-Hour Quota */}
-            {data.rateLimits.five_hour && (() => {
-              const rawPct = data.rateLimits.five_hour!.used_percentage;
-              const resetsAt = data.rateLimits.five_hour!.resets_at;
-              const now = Date.now() / 1000;
-              const isStale = resetsAt < now;
-              const pct = isStale ? 0 : rawPct;
-              const remainingSec = Math.max(0, resetsAt - now);
-              const remainingMin = Math.floor(remainingSec / 60);
-              const remainingH = Math.floor(remainingMin / 60);
-              const remainingM = remainingMin % 60;
-              const resetLabel = isStale
-                ? 'Window reset — awaiting update'
-                : remainingH > 0
-                  ? `Resets in ${remainingH}h ${remainingM}m`
-                  : `Resets in ${remainingM}m`;
-              const barColor = pct >= 90 ? 'bg-accent-red' : pct >= 70 ? 'bg-accent-amber' : 'bg-accent-green';
-
-              return (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-text-secondary">5-Hour Window</span>
-                    <span className="text-sm font-mono font-bold">
-                      {pct.toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="h-3 w-full bg-bg-tertiary rounded-none overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(pct, 100)}%` }}
-                      transition={{ duration: 0.6 }}
-                      className={`h-full ${barColor} rounded-none`}
-                    />
-                  </div>
-                  <div className="flex items-center gap-1 mt-1.5 text-xs text-text-muted">
-                    <Timer className="w-3 h-3" />
-                    <span>{resetLabel}</span>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* 7-Day Quota */}
-            {data.rateLimits.seven_day && (() => {
-              const rawPct = data.rateLimits.seven_day!.used_percentage;
-              const resetsAt = data.rateLimits.seven_day!.resets_at;
-              const now = Date.now() / 1000;
-              const isStale = resetsAt < now;
-              const pct = isStale ? 0 : rawPct;
-              const remainingSec = Math.max(0, resetsAt - now);
-              const remainingH = Math.floor(remainingSec / 3600);
-              const remainingD = Math.floor(remainingH / 24);
-              const remainingHMod = remainingH % 24;
-              const resetLabel = isStale
-                ? 'Window reset — awaiting update'
-                : remainingD > 0
-                  ? `Resets in ${remainingD}d ${remainingHMod}h`
-                  : `Resets in ${remainingH}h`;
-              const barColor = pct >= 90 ? 'bg-accent-red' : pct >= 70 ? 'bg-accent-amber' : 'bg-accent-green';
-
-              return (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-text-secondary">7-Day Window</span>
-                    <span className="text-sm font-mono font-bold">
-                      {pct.toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="h-3 w-full bg-bg-tertiary rounded-none overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(pct, 100)}%` }}
-                      transition={{ duration: 0.6 }}
-                      className={`h-full ${barColor} rounded-none`}
-                    />
-                  </div>
-                  <div className="flex items-center gap-1 mt-1.5 text-xs text-text-muted">
-                    <Timer className="w-3 h-3" />
-                    <span>{resetLabel}</span>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </motion.div>
-      )}
+      {/* Budget & limits — each provider gets the limit it actually has */}
+      <BudgetAndLimits
+        rateLimits={data?.rateLimits}
+        providerSpend={ledger.map(l => ({ provider: l.provider, costUSD: l.costUSD }))}
+      />
 
       {/* Cost Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -757,7 +616,7 @@ export default function UsagePage() {
             // Use API dailyCostMap first, fall back to tokenStats.dailyCosts
             let dayCost = todayCost;
             let dayLabel = latestDataDate ?? 'No data';
-            let isDorothyOnly = false;
+            let isTarsOnly = false;
             if (dayCost === 0 && data?.tokenStats?.dailyCosts) {
               const days = Object.keys(data.tokenStats.dailyCosts).sort();
               if (days.length > 0) {
@@ -766,7 +625,7 @@ export default function UsagePage() {
                 if (dc.extraCost > 0) {
                   dayCost = dc.extraCost;
                   dayLabel = latest;
-                  isDorothyOnly = true;
+                  isTarsOnly = true;
                 }
               }
             }
@@ -782,7 +641,7 @@ export default function UsagePage() {
                   </div>
                 </div>
                 <p className="text-xs text-text-muted">
-                  {dayLabel}{isDorothyOnly && ' (extra usage est.)'}
+                  {dayLabel}{isTarsOnly && ' (extra usage est.)'}
                 </p>
               </>
             );
@@ -816,11 +675,11 @@ export default function UsagePage() {
             const ts = data?.tokenStats;
             const inTok = hasModelTokens ? totalUsage.totalInput : (ts?.totalInputTokens ?? 0);
             const outTok = hasModelTokens ? totalUsage.totalOutput : (ts?.totalOutputTokens ?? 0);
-            const dorothyOnly = !hasModelTokens && ts && (ts.totalInputTokens + ts.totalOutputTokens) > 0;
+            const tarsOnly = !hasModelTokens && ts && (ts.totalInputTokens + ts.totalOutputTokens) > 0;
             return (
               <p className="text-xs text-text-muted">
                 {(inTok / 1000000).toFixed(2)}M in / {(outTok / 1000000).toFixed(2)}M out
-                {dorothyOnly && ' (Dorothy only)'}
+                {tarsOnly && ' (Tars only)'}
               </p>
             );
           })()}
@@ -1324,15 +1183,46 @@ export default function UsagePage() {
           Usage by Provider
         </div>
         {(() => {
-          const providerTotals = data?.tokenStats?.providerTotals;
-          const entries = providerTotals ? Object.entries(providerTotals) : [];
-          const sorted = entries
-            .sort(([, a], [, b]) => b.cost !== a.cost ? b.cost - a.cost : b.sessions - a.sessions);
+          // Two sources, because no single one covers every CLI: Claude Code
+          // writes transcripts we can reconstruct after the fact, and every
+          // ACP turn reports its own tokens as it happens. Merged by provider.
+          const rows = new Map<string, { sessions: number; in: number; out: number; cost: number; models: Set<string> }>();
+
+          const add = (providerId: string, patch: { sessions?: number; in?: number; out?: number; cost?: number; model?: string }) => {
+            const row = rows.get(providerId) ?? { sessions: 0, in: 0, out: 0, cost: 0, models: new Set<string>() };
+            row.sessions += patch.sessions ?? 0;
+            row.in += patch.in ?? 0;
+            row.out += patch.out ?? 0;
+            row.cost += patch.cost ?? 0;
+            if (patch.model) row.models.add(patch.model);
+            rows.set(providerId, row);
+          };
+
+          for (const model of modelCostBreakdown) {
+            add(providerForModel(model.modelId), {
+              in: model.inputTokens + model.cacheReadTokens + model.cacheWriteTokens,
+              out: model.outputTokens,
+              cost: model.cost,
+              model: model.modelId,
+            });
+          }
+
+          for (const entry of ledger) {
+            add(entry.provider, {
+              sessions: entry.turns,
+              in: entry.inputTokens,
+              out: entry.outputTokens,
+              cost: entry.costUSD,
+            });
+          }
+
+          const sorted = Array.from(rows.entries()).sort(([, a], [, b]) => b.cost - a.cost);
 
           if (sorted.length === 0) {
             return (
               <p className="text-xs text-text-muted">
-                No usage recorded yet for any provider. Start a chat to see token usage appear here.
+                Nothing recorded yet. Claude usage is read from its transcripts, and every other CLI
+                is counted from the turns it reports back - delegate a task and it appears here.
               </p>
             );
           }
@@ -1343,7 +1233,7 @@ export default function UsagePage() {
                 <thead>
                   <tr className="border-b border-border-primary">
                     <th className="text-left py-2 px-2 text-text-muted font-medium">Provider</th>
-                    <th className="text-right py-2 px-2 text-text-muted font-medium">Sessions</th>
+                    <th className="text-left py-2 px-2 text-text-muted font-medium">Models</th>
                     <th className="text-right py-2 px-2 text-text-muted font-medium">Tokens In</th>
                     <th className="text-right py-2 px-2 text-text-muted font-medium">Tokens Out</th>
                     <th className="text-right py-2 px-2 text-text-muted font-medium">Cost</th>
@@ -1364,11 +1254,13 @@ export default function UsagePage() {
                             <span className="font-medium">{label}</span>
                           </div>
                         </td>
-                        <td className="text-right py-2 px-2 tabular-nums">{totals.sessions}</td>
+                        <td className="py-2 px-2 text-text-muted truncate max-w-[220px]">
+                          {Array.from(totals.models).map(getModelDisplayName).join(', ') || '-'}
+                        </td>
                         <td className="text-right py-2 px-2 tabular-nums">{fmtTokens(totals.in)}</td>
                         <td className="text-right py-2 px-2 tabular-nums">{fmtTokens(totals.out)}</td>
                         <td className="text-right py-2 px-2 tabular-nums text-accent-green">
-                          {totals.cost > 0 ? `$${totals.cost.toFixed(2)}` : '—'}
+                          {totals.cost > 0 ? `$${totals.cost.toFixed(2)}` : '-'}
                         </td>
                       </tr>
                     );
@@ -1378,156 +1270,6 @@ export default function UsagePage() {
             </div>
           );
         })()}
-      </motion.div>
-
-      {/* Pricing Reference — per-provider cards */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.45 }}
-        className="rounded-none border border-border-primary bg-bg-secondary p-5"
-      >
-        <button
-          onClick={() => setShowPricingTable(!showPricingTable)}
-          className="w-full flex items-center justify-between text-sm font-medium cursor-pointer"
-        >
-          <span className="flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-text-muted" />
-            Pricing Reference
-          </span>
-          <ChevronDown className={`w-4 h-4 text-text-muted transition-transform ${showPricingTable ? 'rotate-180' : ''}`} />
-        </button>
-
-        {showPricingTable && (
-          <div className="mt-4 space-y-6">
-            <p className="text-[10px] text-text-muted">All prices in $/MTok (per million tokens).</p>
-
-            {/* Claude (Anthropic) */}
-            <div className="border border-border-primary p-4">
-              <h4 className="text-xs font-medium mb-3 flex items-center gap-1.5">
-                <img src="/claude-ai-icon.webp" alt="" className="w-3.5 h-3.5 object-contain" />
-                Claude (Anthropic)
-              </h4>
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border-primary">
-                    <th className="text-left py-1.5 px-2 text-text-muted font-medium">Model</th>
-                    <th className="text-right py-1.5 px-2 text-text-muted font-medium">Input</th>
-                    <th className="text-right py-1.5 px-2 text-text-muted font-medium">Output</th>
-                    <th className="text-right py-1.5 px-2 text-text-muted font-medium hidden sm:table-cell">Cache Hits</th>
-                    <th className="text-right py-1.5 px-2 text-text-muted font-medium hidden sm:table-cell">5m Write</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { name: 'Opus 4.6', key: 'claude-opus-4-6' },
-                    { name: 'Opus 4.5', key: 'claude-opus-4-5' },
-                    { name: 'Opus 4.1', key: 'claude-opus-4-1' },
-                    { name: 'Sonnet 4.6', key: 'claude-sonnet-4-6' },
-                    { name: 'Sonnet 4.5', key: 'claude-sonnet-4-5' },
-                    { name: 'Sonnet 4', key: 'claude-sonnet-4' },
-                    { name: 'Haiku 4.5', key: 'claude-haiku-4-5' },
-                    { name: 'Haiku 3.5', key: 'claude-haiku-3-5' },
-                    { name: 'Haiku 3', key: 'claude-haiku-3' },
-                  ].map((model) => {
-                    const pricing = MODEL_PRICING[model.key];
-                    return (
-                      <tr key={model.key} className="border-b border-border-primary/50 hover:bg-bg-tertiary/50">
-                        <td className="py-1.5 px-2 font-medium">{model.name}</td>
-                        <td className="text-right py-1.5 px-2">${pricing.inputPerMTok}</td>
-                        <td className="text-right py-1.5 px-2">${pricing.outputPerMTok}</td>
-                        <td className="text-right py-1.5 px-2 hidden sm:table-cell">${pricing.cacheHitsPerMTok}</td>
-                        <td className="text-right py-1.5 px-2 hidden sm:table-cell">${pricing.cache5mWritePerMTok}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* OpenRouter — live from API */}
-            <div className="border border-border-primary p-4">
-              <h4 className="text-xs font-medium mb-3 flex items-center gap-1.5">
-                {(() => { const def = getProviderDef('openrouter'); return def ? <ProviderIconRenderer icon={def.icon} className="w-3.5 h-3.5" /> : null; })()}
-                OpenRouter
-                {loadingOpenRouterPricing && <Loader2 className="w-3 h-3 animate-spin text-text-muted ml-1" />}
-                {openRouterLiveModels && (
-                  <span className="text-[10px] text-accent-green font-normal ml-1">live</span>
-                )}
-              </h4>
-              {openRouterLiveModels ? (
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-border-primary">
-                      <th className="text-left py-1.5 px-2 text-text-muted font-medium">Model</th>
-                      <th className="text-right py-1.5 px-2 text-text-muted font-medium">Input</th>
-                      <th className="text-right py-1.5 px-2 text-text-muted font-medium">Output</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {openRouterLiveModels.map((m) => (
-                      <tr key={m.id} className="border-b border-border-primary/50 hover:bg-bg-tertiary/50">
-                        <td className="py-1.5 px-2 font-medium">{m.name}</td>
-                        <td className="text-right py-1.5 px-2">${m.inputPerMTok.toFixed(4)}</td>
-                        <td className="text-right py-1.5 px-2">${m.outputPerMTok.toFixed(4)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : loadingOpenRouterPricing ? (
-                <div className="flex items-center gap-2 py-4 text-xs text-text-muted">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Fetching live prices from openrouter.ai...
-                </div>
-              ) : (
-                <p className="text-xs text-text-muted py-2">Could not load pricing. See openrouter.ai/models for current rates.</p>
-              )}
-            </div>
-
-            {/* Other providers — hardcoded */}
-            {PROVIDER_REGISTRY.filter(p => !p.requiresCli && p.id !== 'openrouter' && ALL_PROVIDER_MODEL_PRICING[p.id]).map((providerDef) => {
-              const providerData = ALL_PROVIDER_MODEL_PRICING[providerDef.id];
-              return (
-                <div key={providerDef.id} className="border border-border-primary p-4">
-                  <h4 className="text-xs font-medium mb-3 flex items-center gap-1.5">
-                    <ProviderIconRenderer icon={providerDef.icon} className="w-3.5 h-3.5" />
-                    {providerDef.label}
-                  </h4>
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-border-primary">
-                        <th className="text-left py-1.5 px-2 text-text-muted font-medium">Model</th>
-                        <th className="text-right py-1.5 px-2 text-text-muted font-medium">Input</th>
-                        <th className="text-right py-1.5 px-2 text-text-muted font-medium">Output</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {providerData.models.map((model) => (
-                        <tr key={model.id} className="border-b border-border-primary/50 hover:bg-bg-tertiary/50">
-                          <td className="py-1.5 px-2 font-medium">{model.name}</td>
-                          <td className="text-right py-1.5 px-2">
-                            {model.inputPerMTok !== null ? `$${model.inputPerMTok}` : <span className="text-text-muted">—</span>}
-                          </td>
-                          <td className="text-right py-1.5 px-2">
-                            {model.outputPerMTok !== null ? `$${model.outputPerMTok}` : <span className="text-text-muted">—</span>}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <p className="text-[10px] text-text-muted mt-2">Prices may not reflect current rates</p>
-                  {providerData.note && (
-                    <p className="text-[10px] text-text-muted mt-0.5">{providerData.note}</p>
-                  )}
-                </div>
-              );
-            })}
-
-            <p className="text-[10px] text-text-muted border-t border-border-primary pt-3">
-              Actual costs vary by plan, routing, and prompt caching. Check each provider&apos;s pricing page for the latest rates.
-            </p>
-          </div>
-        )}
       </motion.div>
 
     </div>

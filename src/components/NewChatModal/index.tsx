@@ -271,7 +271,7 @@ export default function NewChatModal({
     }
   }, [open, initialProjectPath, initialStep, editAgent, initialOrchestrator, refreshTemplates]);
 
-  // Clear selected skills when the USER changes provider — not when edit-mode
+  // Clear selected skills when the USER changes provider - not when edit-mode
   // prepopulation does (that would wipe the agent's saved skills on open).
   useEffect(() => {
     if (skipNextSkillsClear.current) {
@@ -479,7 +479,7 @@ export default function NewChatModal({
           <div className="flex-1 overflow-y-auto p-5">
             {step === 1 && !isEditMode && (
               <div className="mb-5 space-y-4">
-                {/* What kind of agent — the orchestrator lives here, not in a
+                {/* What kind of agent - the orchestrator lives here, not in a
                     competing top-level button */}
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
@@ -520,7 +520,7 @@ export default function NewChatModal({
                   )}
                 </div>
 
-                {/* Templates — the manager is reachable from here */}
+                {/* Templates - the manager is reachable from here */}
                 {agentTemplates.length > 0 && (
                   <div>
                     <div className="flex items-center justify-between mb-2">

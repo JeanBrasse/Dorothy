@@ -14,7 +14,9 @@ export const VAULT_DIR = path.join(DATA_DIR, 'vault');
 export const VAULT_DB_FILE = path.join(DATA_DIR, 'vault.db');
 export const API_TOKEN_FILE = path.join(DATA_DIR, 'api-token');
 
-export const GITHUB_REPO = 'Charlie85270/dorothy';
+// Updates come from the fork. Pointing this at the upstream repo offered an
+// upstream build as an update to a fork install, which would overwrite it.
+export const GITHUB_REPO = 'JeanBrasse/Dorothy';
 
 export const MIME_TYPES: { [key: string]: string } = {
   '.html': 'text/html',

@@ -67,7 +67,7 @@ export default function GlobalToolbar({
     <div className="flex items-center gap-2 px-3 py-2 bg-card border-b border-border !rounded-b-none [&_button]:cursor-pointer">
       {/* Left section */}
       <div className="flex items-center gap-2">
-        {/* Layout selector — only for custom tabs */}
+        {/* Layout selector - only for custom tabs */}
         {isCustomTabActive && (
           <LayoutPresetSelector
             current={layout}
@@ -150,7 +150,7 @@ export default function GlobalToolbar({
               : 'text-muted-foreground hover:text-foreground hover:bg-primary/5'
             }
           `}
-          title="Toggle broadcast mode — send input to all terminals"
+          title="Toggle broadcast mode - send input to all terminals"
         >
           <Radio className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Broadcast</span>
@@ -171,7 +171,7 @@ export default function GlobalToolbar({
           {isViewFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
         </button>
 
-        {/* Add agent to board dropdown — custom tabs only */}
+        {/* Add agent to board dropdown - custom tabs only */}
         {isCustomTabActive && (
           <AddAgentDropdown
             allAgents={allAgents}

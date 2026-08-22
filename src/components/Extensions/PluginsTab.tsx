@@ -471,7 +471,9 @@ export default function PluginsTab() {
   }, [filteredPlugins, customInstalledPlugins, MARKETPLACES, isPluginInstalled]);
 
   const getInstallCommand = useCallback((plugin: Plugin) => {
-    return `/plugin install ${plugin.name}@${plugin.marketplace}`;
+    // The catalogue command registers the marketplace first: installing by
+    // name alone fails whenever that marketplace was never added.
+    return plugin.installCommand || `/plugin install ${plugin.name}@${plugin.marketplace}`;
   }, []);
 
   const copyInstallCommand = useCallback(async (plugin: Plugin) => {

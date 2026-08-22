@@ -135,84 +135,31 @@ export default function GitPanel({ projectPath, className = '', hideHeader = fal
 
   // Load git data
   const loadGitData = useCallback(async () => {
-    if (!projectPath || !window.electronAPI?.shell?.exec) return;
+    if (!projectPath || !window.electronAPI?.review?.repo) return;
 
     setLoading(true);
 
     try {
-      const [branchResult, statusResult, diffResult, logResult] = await Promise.all([
-        window.electronAPI.shell.exec({
-          command: 'git branch --show-current 2>/dev/null || git rev-parse --abbrev-ref HEAD 2>/dev/null',
-          cwd: projectPath,
-        }),
-        window.electronAPI.shell.exec({
-          command: 'git status --porcelain --untracked-files=all 2>/dev/null',
-          cwd: projectPath,
-        }),
-        window.electronAPI.shell.exec({
-          command: 'git diff --stat 2>/dev/null | tail -20',
-          cwd: projectPath,
-        }),
-        window.electronAPI.shell.exec({
-          command: 'git log --oneline --pretty=format:"%h|%s|%an|%ar" -10 2>/dev/null',
-          cwd: projectPath,
-        }),
-      ]);
-
-      const branch =
-        branchResult.success && branchResult.output
-          ? stripAnsi(branchResult.output).replace(/\r/g, '').trim()
-          : 'unknown';
-
-      const status: Array<{ status: string; file: string }> = [];
-      if (statusResult.success && statusResult.output) {
-        // Strip ANSI codes and handle line endings
-        const cleanOutput = stripAnsi(statusResult.output).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-        const lines = cleanOutput.split('\n').filter((l) => l.length >= 3);
-        lines.forEach((line) => {
-          const statusCode = line.slice(0, 2);
-          const file = line.slice(3).trim();
-          if (file) {
-            let statusText = 'modified';
-            // ?? = untracked (new file)
-            if (statusCode === '??' || statusCode.includes('?')) statusText = 'new';
-            // A = staged added
-            else if (statusCode.includes('A')) statusText = 'added';
-            // D = deleted
-            else if (statusCode.includes('D')) statusText = 'deleted';
-            // R = renamed
-            else if (statusCode.includes('R')) statusText = 'renamed';
-            // M = modified (staged or unstaged)
-            else if (statusCode.includes('M')) statusText = 'modified';
-            status.push({ status: statusText, file });
-          }
-        });
+      // One shell-free call: git runs with an argv array in the main process,
+      // so a branch or path containing a quote is data rather than syntax.
+      const res = await window.electronAPI.review.repo(projectPath);
+      if (!res.success || !res.summary) {
+        setGitData(INITIAL_GIT_DATA);
+        return;
       }
 
-      const diff =
-        diffResult.success && diffResult.output ? stripAnsi(diffResult.output).replace(/\r/g, '') : '';
+      const { branch, status, commits, additions, deletions } = res.summary;
+      const diff = status.length > 0
+        ? `${status.length} file${status.length === 1 ? '' : 's'} changed, +${additions} -${deletions}`
+        : '';
 
-      const commits: Array<{ hash: string; message: string; author: string; date: string }> = [];
-      if (logResult.success && logResult.output) {
-        const cleanLog = stripAnsi(logResult.output).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-        const lines = cleanLog.split('\n').filter((l) => l.trim());
-        lines.forEach((line) => {
-          const parts = line.split('|');
-          if (parts.length >= 4) {
-            commits.push({
-              hash: parts[0].trim(),
-              message: parts[1].trim(),
-              author: parts[2].trim(),
-              date: parts[3].trim(),
-            });
-          }
-        });
-      }
-
-      setGitData({ branch, status, diff, commits });
-      if (onBranchChange) {
-        onBranchChange(branch);
-      }
+      setGitData({
+        branch,
+        status,
+        diff,
+        commits: commits.map(c => ({ hash: c.hash, message: c.subject, author: c.author, date: c.when })),
+      });
+      onBranchChange?.(branch);
     } catch (err) {
       console.error('Failed to load git data:', err);
     } finally {
@@ -222,11 +169,9 @@ export default function GitPanel({ projectPath, className = '', hideHeader = fal
 
   // Open project in Cursor IDE
   const handleOpenInCursor = useCallback(async () => {
-    if (!projectPath || !window.electronAPI?.shell?.exec) return;
+    if (!projectPath || !window.electronAPI?.shell?.reveal) return;
     try {
-      await window.electronAPI.shell.exec({
-        command: `open -a "Cursor" "${projectPath}"`,
-      });
+      await window.electronAPI.shell.reveal(projectPath);
     } catch (err) {
       console.error('Failed to open in Cursor:', err);
     }

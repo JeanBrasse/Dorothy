@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import { execFile } from 'child_process';
+import { randomBytes } from 'crypto';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -7,7 +8,11 @@ import * as os from 'os';
 import * as http from 'http';
 import * as https from 'https';
 import { DATA_DIR } from '../constants';
+import { readHermesConnection, writeHermesConnection } from '../services/hermes-config';
 import {
+  fetchHermesCrons,
+  hermesCronAction,
+  deleteHermesCron,
   probeHermes,
   signInHermes,
   clearHermesSession,
@@ -24,27 +29,13 @@ import {
 
 const execFileAsync = promisify(execFile);
 
-const HERMES_CONNECTION_FILE = path.join(DATA_DIR, 'hermes-connection.json');
 /** Where Hermes Desktop keeps its own connection config on macOS. */
 const HERMES_DESKTOP_CONFIG = path.join(
   os.homedir(), 'Library', 'Application Support', 'Hermes', 'connection.json',
 );
 
-function readConnection(): HermesConnection {
-  try {
-    if (fs.existsSync(HERMES_CONNECTION_FILE)) {
-      return { ...defaultHermesConnection(), ...JSON.parse(fs.readFileSync(HERMES_CONNECTION_FILE, 'utf-8')) };
-    }
-  } catch (err) {
-    console.error('[hermes] cannot read connection config:', err);
-  }
-  return defaultHermesConnection();
-}
-
-function writeConnection(conn: HermesConnection): void {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(HERMES_CONNECTION_FILE, JSON.stringify(conn, null, 2));
-}
+const readConnection = readHermesConnection;
+const writeConnection = writeHermesConnection;
 
 /** Hermes Desktop's config shape -> ours (same vocabulary, nested differently). */
 function importDesktopConfig(): HermesConnection | null {
@@ -106,7 +97,7 @@ const API_PORT = 31415;
 
 /**
  * Hermes integration handlers — everything the Settings → Hermes section
- * needs to wire a remote (VPS) Hermes instance to this Dorothy:
+ * needs to wire a remote (VPS) Hermes instance to this Tars:
  * - connection info: the incoming-webhook URL/token to paste into Hermes
  *   cron jobs, plus Tailscale state (DNS name, serve status) so the user
  *   knows exactly how the VPS reaches this machine
@@ -151,6 +142,22 @@ async function detectTailscale(): Promise<TailscaleInfo> {
   return { installed: false, running: false, serveConfigured: false };
 }
 
+/** Dedicated secret for the incoming webhook: exposing the master API token
+ *  over the tailnet would hand out full control of every route. */
+function readWebhookSecret(): string {
+  const file = path.join(os.homedir(), '.dorothy', 'hermes-webhook-secret');
+  try {
+    if (fs.existsSync(file)) return fs.readFileSync(file, 'utf-8').trim();
+    const secret = randomBytes(32).toString('hex');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, secret, { mode: 0o600 });
+    return secret;
+  } catch (err) {
+    console.error('[hermes] cannot provision webhook secret:', err);
+    return '';
+  }
+}
+
 function readApiToken(): string {
   try {
     return fs.readFileSync(path.join(os.homedir(), '.dorothy', 'api-token'), 'utf-8').trim();
@@ -192,7 +199,7 @@ function postLocal(pathname: string, token: string, payload: unknown): Promise<{
 
 export function registerHermesHandlers(): void {
   ipcMain.handle('hermes:getConnectionInfo', async () => {
-    const [tailscale, token] = await Promise.all([detectTailscale(), Promise.resolve(readApiToken())]);
+    const [tailscale, token] = await Promise.all([detectTailscale(), Promise.resolve(readWebhookSecret())]);
     const tailnetUrl = tailscale.dnsName ? `https://${tailscale.dnsName}/api/webhooks/hermes` : undefined;
     return {
       apiPort: API_PORT,
@@ -201,7 +208,7 @@ export function registerHermesHandlers(): void {
       webhookTailnetUrl: tailnetUrl,
       apiToken: token,
       tailscale,
-      serveCommand: `tailscale serve --bg ${API_PORT}`,
+      serveCommand: `tailscale serve --bg --set-path /api/webhooks/hermes ${API_PORT}`,
     };
   });
 
@@ -266,7 +273,16 @@ export function registerHermesHandlers(): void {
     return { success: true };
   });
 
-  // ── Kanban (the board lives in Hermes; Dorothy is a client) ──
+  // ── Crons (schedules live in Hermes) ──
+  ipcMain.handle('hermes:crons:list', async () => fetchHermesCrons(readConnection()));
+
+  ipcMain.handle('hermes:crons:action', async (_event, params: { action: 'pause' | 'resume' | 'trigger'; jobId: string; profile?: string }) =>
+    hermesCronAction(readConnection(), params.action, params.jobId, params.profile));
+
+  ipcMain.handle('hermes:crons:delete', async (_event, params: { jobId: string; profile?: string }) =>
+    deleteHermesCron(readConnection(), params.jobId, params.profile));
+
+  // ── Kanban (the board lives in Hermes; Tars is a client) ──
   ipcMain.handle('hermes:kanban:board', async (_event, params: { board?: string } = {}) => {
     return fetchHermesBoard(readConnection(), params?.board);
   });

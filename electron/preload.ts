@@ -193,6 +193,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   fs: {
     listProjects: () =>
       ipcRenderer.invoke('fs:list-projects'),
+    readTextFile: (filePath: string) =>
+      ipcRenderer.invoke('fs:read-text-file', filePath),
+    writeTextFile: (params: { filePath: string; content: string }) =>
+      ipcRenderer.invoke('fs:write-text-file', params),
+    readProjectFiles: (params: { paths: string[]; relative: string[] }) =>
+      ipcRenderer.invoke('fs:read-project-files', params),
+    addCustomProject: (projectPath: string) =>
+      ipcRenderer.invoke('fs:add-custom-project', projectPath),
+    removeCustomProject: (projectPath: string) =>
+      ipcRenderer.invoke('fs:remove-custom-project', projectPath),
   },
 
   // Claude data
@@ -218,6 +228,50 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // App settings (notifications, etc.)
+  app: {
+    getVersion: () => ipcRenderer.invoke('app:getVersion'),
+  },
+
+  usage: {
+    byProvider: (sinceDays?: number) =>
+      ipcRenderer.invoke('usage:by-provider', { sinceDays }),
+  },
+
+  logs: {
+    search: (query: string, opts?: { agentIds?: string[]; projectPath?: string; limit?: number }) =>
+      ipcRenderer.invoke('logs:search', { query, ...opts }),
+    tail: (agentId: string, lines?: number) =>
+      ipcRenderer.invoke('logs:tail', { agentId, lines }),
+    fleet: () => ipcRenderer.invoke('logs:fleet'),
+  },
+
+  review: {
+    diff: (repoPath: string, baseBranch?: string) =>
+      ipcRenderer.invoke('review:diff', { repoPath, baseBranch }),
+    file: (repoPath: string, file: string, baseBranch?: string) =>
+      ipcRenderer.invoke('review:file', { repoPath, file, baseBranch }),
+    repo: (repoPath: string) =>
+      ipcRenderer.invoke('review:repo', { repoPath }),
+  },
+
+  memoryHub: {
+    sources: (projectPath?: string) =>
+      ipcRenderer.invoke('memory:sources', { projectPath }),
+    search: (query: string, opts?: { projectPath?: string; sources?: string[]; limit?: number }) =>
+      ipcRenderer.invoke('memory:search', { query, ...opts }),
+  },
+
+  models: {
+    list: (provider: string) =>
+      ipcRenderer.invoke('models:list', { provider }),
+    price: (modelId: string, provider?: string) =>
+      ipcRenderer.invoke('models:price', { modelId, provider }),
+    catalogStatus: () =>
+      ipcRenderer.invoke('models:catalog-status'),
+    refresh: () =>
+      ipcRenderer.invoke('models:refresh'),
+  },
+
   appSettings: {
     get: () =>
       ipcRenderer.invoke('app:getSettings'),
@@ -317,31 +371,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // Shell operations
+  project: {
+    listFiles: (root: string, maxDepth?: number) =>
+      ipcRenderer.invoke('project:list-files', { root, maxDepth }),
+    searchFiles: (root: string, query: string) =>
+      ipcRenderer.invoke('project:search-files', { root, query }),
+    searchContent: (root: string, query: string) =>
+      ipcRenderer.invoke('project:search-content', { root, query }),
+  },
+
   shell: {
-    openTerminal: (params: { cwd: string; command?: string }) =>
-      ipcRenderer.invoke('shell:open-terminal', params),
-    exec: (params: { command: string; cwd?: string }) =>
-      ipcRenderer.invoke('shell:exec', params),
-    // Quick terminal PTY
-    startPty: (params: { cwd?: string; cols?: number; rows?: number }) =>
-      ipcRenderer.invoke('shell:startPty', params),
-    writePty: (params: { ptyId: string; data: string }) =>
-      ipcRenderer.invoke('shell:writePty', params),
-    resizePty: (params: { ptyId: string; cols: number; rows: number }) =>
-      ipcRenderer.invoke('shell:resizePty', params),
-    killPty: (params: { ptyId: string }) =>
-      ipcRenderer.invoke('shell:killPty', params),
-    // Event listeners for quick terminal
-    onPtyOutput: (callback: (event: { ptyId: string; data: string }) => void) => {
-      const listener = (_: unknown, event: { ptyId: string; data: string }) => callback(event);
-      ipcRenderer.on('shell:ptyOutput', listener);
-      return () => ipcRenderer.removeListener('shell:ptyOutput', listener);
-    },
-    onPtyExit: (callback: (event: { ptyId: string; exitCode: number }) => void) => {
-      const listener = (_: unknown, event: { ptyId: string; exitCode: number }) => callback(event);
-      ipcRenderer.on('shell:ptyExit', listener);
-      return () => ipcRenderer.removeListener('shell:ptyExit', listener);
-    },
+    version: (binary: string) => ipcRenderer.invoke('shell:version', { binary }),
+    branch: (cwd: string) => ipcRenderer.invoke('shell:branch', { cwd }),
+    reveal: (path: string) => ipcRenderer.invoke('shell:reveal', { path }),
   },
 
   // Orchestrator (Super Agent) management
@@ -443,6 +485,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('hermes:signIn', params),
     signOut: (connection: Record<string, unknown>) =>
       ipcRenderer.invoke('hermes:signOut', connection),
+    crons: () => ipcRenderer.invoke('hermes:crons:list'),
+    cronAction: (params: { action: 'pause' | 'resume' | 'trigger'; jobId: string; profile?: string }) =>
+      ipcRenderer.invoke('hermes:crons:action', params),
+    cronDelete: (params: { jobId: string; profile?: string }) =>
+      ipcRenderer.invoke('hermes:crons:delete', params),
     kanbanBoard: (params?: { board?: string }) =>
       ipcRenderer.invoke('hermes:kanban:board', params ?? {}),
     kanbanCreateTask: (task: Record<string, unknown>) =>

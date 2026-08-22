@@ -29,7 +29,7 @@ function getCredentials(): OAuthCredentials {
     // Ignore read errors
   }
   throw new Error(
-    "X API credentials not configured. Please add your API keys in Dorothy Settings > X (Twitter)."
+    "X API credentials not configured. Please add your API keys in Tars Settings > X (Twitter)."
   );
 }
 

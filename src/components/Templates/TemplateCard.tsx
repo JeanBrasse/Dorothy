@@ -76,7 +76,7 @@ export function TemplateCard({ template, installedSkills, onUse, onEdit, onDupli
               <span
                 key={skill}
                 className="text-[10px] px-1.5 py-0.5 border bg-warning/10 border-warning/30 text-warning dark:text-warning"
-                title="Skill not installed — visit the Skills page to install"
+                title="Skill not installed - visit the Skills page to install"
               >
                 {skill}
               </span>

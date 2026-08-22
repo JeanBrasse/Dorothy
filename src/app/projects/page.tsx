@@ -110,17 +110,14 @@ export default function ProjectsPage() {
 
   // Load git branch for selected project
   const loadGitBranch = useCallback(async (projectPath: string) => {
-    if (!projectPath || typeof window === 'undefined' || !window.electronAPI?.shell?.exec) {
+    if (!projectPath || typeof window === 'undefined' || !window.electronAPI?.shell?.branch) {
       setGitBranch(null);
       return;
     }
 
     setGitLoading(true);
     try {
-      const result = await window.electronAPI.shell.exec({
-        command: 'git branch --show-current 2>/dev/null || git rev-parse --abbrev-ref HEAD 2>/dev/null',
-        cwd: projectPath,
-      });
+      const result = await window.electronAPI.shell.branch(projectPath);
 
       if (result.success && result.output) {
         const branch = stripAnsi(result.output).replace(/\r/g, '').trim();
@@ -145,27 +142,32 @@ export default function ProjectsPage() {
     }
   }, [selectedProject, loadGitBranch]);
 
-  // Load custom projects from localStorage
+  // Custom projects live in ~/.dorothy/projects.json (main process): they
+  // survive app updates and every surface sees them (agent creation, team
+  // deployment, Brain). Anything left in localStorage is migrated once.
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(CUSTOM_PROJECTS_KEY);
-      if (stored) {
-        setCustomProjects(JSON.parse(stored));
+    let cancelled = false;
+    (async () => {
+      try {
+        const legacyRaw = localStorage.getItem(CUSTOM_PROJECTS_KEY);
+        if (legacyRaw) {
+          const legacy = JSON.parse(legacyRaw) as CustomProject[];
+          for (const p of legacy) {
+            if (p?.path) await window.electronAPI?.fs?.addCustomProject(p.path);
+          }
+          localStorage.removeItem(CUSTOM_PROJECTS_KEY);
+        }
+      } catch (err) {
+        console.error('Failed to migrate custom projects:', err);
       }
-    } catch (err) {
-      console.error('Failed to load custom projects:', err);
-    }
+      const list = await window.electronAPI?.fs?.listProjects().catch(() => []);
+      if (cancelled || !list) return;
+      setCustomProjects(list.filter(p => p.custom).map(p => ({
+        path: p.path, name: p.name, addedAt: p.lastModified ?? '',
+      })));
+    })();
+    return () => { cancelled = true; };
   }, []);
-
-  // Save custom projects
-  const saveCustomProjects = (projects: CustomProject[]) => {
-    setCustomProjects(projects);
-    try {
-      localStorage.setItem(CUSTOM_PROJECTS_KEY, JSON.stringify(projects));
-    } catch (err) {
-      console.error('Failed to save custom projects:', err);
-    }
-  };
 
   // Add a new project
   const handleAddProject = async () => {
@@ -177,7 +179,8 @@ export default function ProjectsPage() {
         const existsInCustom = customProjects.some(p => p.path.replace(/\/+$/, '').toLowerCase() === normalizedPath.toLowerCase());
         if (!existsInCustom) {
           const name = selectedPath.split('/').pop() || 'Unknown Project';
-          saveCustomProjects([...customProjects, { path: normalizedPath, name, addedAt: new Date().toISOString() }]);
+          await window.electronAPI?.fs?.addCustomProject(normalizedPath);
+          setCustomProjects([...customProjects, { path: normalizedPath, name, addedAt: new Date().toISOString() }]);
         }
       }
     } catch (err) {
@@ -188,7 +191,8 @@ export default function ProjectsPage() {
   // Remove a custom project
   const handleRemoveProject = (projectPath: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    saveCustomProjects(customProjects.filter(p => p.path !== projectPath));
+    window.electronAPI?.fs?.removeCustomProject(projectPath);
+    setCustomProjects(customProjects.filter(p => p.path !== projectPath));
     if (selectedProject?.path === projectPath) {
       setSelectedProject(null);
     }
@@ -300,7 +304,7 @@ export default function ProjectsPage() {
 
   // Segment-boundary matching. The old version used endsWith(), and since
   // normalizing '/' produced an empty string, endsWith('') was true for every
-  // path — one phantom card claimed every agent on the machine.
+  // path - one phantom card claimed every agent on the machine.
   const pathsMatch = (path1: string, path2: string) => {
     const a = normalizePath(path1);
     const b = normalizePath(path2);
@@ -858,7 +862,7 @@ export default function ProjectsPage() {
                 {/* Quick Actions */}
                 <div className="flex gap-2">
                   <button
-                    onClick={() => window.electronAPI?.shell?.exec({ command: `open ${JSON.stringify(selectedProject.path)}` })}
+                    onClick={() => window.electronAPI?.shell?.reveal(selectedProject.path)}
                     className="flex-1 px-4 py-2.5 border border-border bg-secondary text-sm flex items-center justify-center gap-2 hover:bg-accent/50 transition-colors"
                     title="Reveal this folder in Finder"
                   >
@@ -1039,7 +1043,7 @@ export default function ProjectsPage() {
                             <div
                               key={message.uuid}
                               className={`p-3 ${message.type === 'user'
-                                  ? 'bg-white/10 border-l-2 border-white'
+                                  ? 'bg-white/10 border-l border-border-accent'
                                   : 'bg-secondary'
                                 }`}
                             >

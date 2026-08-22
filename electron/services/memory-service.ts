@@ -76,7 +76,7 @@ function encodeProjectPath(projectPath: string): string {
 }
 
 /**
- * @param extraProjectPaths Dorothy's own projects (agent folders, projects
+ * @param extraProjectPaths Tars's own projects (agent folders, projects
  * page). They belong in Brain even when Claude Code never opened them —
  * otherwise a freshly added project is invisible here.
  */
@@ -143,13 +143,13 @@ export function listProjectMemories(extraProjectPaths: string[] = []): ProjectMe
     }
   }
 
-  // Dorothy-known projects with no memory yet: surfaced as empty entries so
+  // Tars-known projects with no memory yet: surfaced as empty entries so
   // the user can create their MEMORY.md from the UI.
   for (const projectPath of extraProjectPaths) {
     if (!projectPath || seenPaths.has(projectPath)) continue;
     seenPaths.add(projectPath);
     results.push({
-      id: `dorothy:${projectPath}`,
+      id: `tars:${projectPath}`,
       projectName: getProjectName(projectPath),
       projectPath,
       memoryDir: path.join(CLAUDE_PROJECTS_DIR, encodeProjectPath(projectPath), 'memory'),

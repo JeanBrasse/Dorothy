@@ -26,15 +26,15 @@ export function ensureDataDir() {
 }
 
 /**
- * Write Dorothy's CLAUDE.md to ~/.dorothy/CLAUDE.md so all agents spawned from
- * Dorothy can load it via --add-dir ~/.dorothy with
+ * Write Tars's CLAUDE.md to ~/.dorothy/CLAUDE.md so all agents spawned from
+ * Tars can load it via --add-dir ~/.dorothy with
  * CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1.
  *
  * First tries to read the live CLAUDE.md from the app source directory.
  * Falls back to a bundled minimal version if the source file is unavailable
  * (e.g. in a packaged .asar build without unpacked assets).
  */
-export function ensureDorothyClaudeMd(): void {
+export function ensureTarsClaudeMd(): void {
   try {
     ensureDataDir();
     const dest = path.join(DATA_DIR, 'CLAUDE.md');
@@ -55,7 +55,7 @@ export function ensureDorothyClaudeMd(): void {
 
     // Fallback: write essential agent instructions
     if (!content) {
-      content = `# Dorothy Agent Instructions
+      content = `# Tars Agent Instructions
 
 ## Memory
 
@@ -80,7 +80,7 @@ Use auto memory (\`~/.claude/projects/.../memory/\`) actively on every project:
 
 ## Autonomy
 
-When you are delegated a task by Dorothy or an orchestrator agent, **always act autonomously**:
+When you are delegated a task by Tars or an orchestrator agent, **always act autonomously**:
 - Do NOT ask for confirmation before proceeding — just do the work and report results
 - Do NOT ask "Would you like me to continue?" or "Shall I proceed?" — the answer is always yes
 - If a task is ambiguous, make reasonable assumptions and state them in your report
@@ -90,7 +90,7 @@ When you are delegated a task by Dorothy or an orchestrator agent, **always act 
 
     fs.writeFileSync(dest, content, 'utf-8');
   } catch (err) {
-    console.warn('Failed to write Dorothy CLAUDE.md:', err);
+    console.warn('Failed to write Tars CLAUDE.md:', err);
   }
 }
 

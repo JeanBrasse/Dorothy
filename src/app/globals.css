@@ -14,7 +14,7 @@
    - Vibrant teal & copper accent palette
    - Dark brown text for contrast
    - Generous rounded corners for retro charm
-   - Matches the Dorothy landing page design
+   - Matches the Tars landing page design
 
    ============================================ */
 
@@ -617,4 +617,11 @@ button, a, input, textarea, select {
 }
 .xterm-viewport::-webkit-scrollbar-thumb {
   background: #CFCBC4;
+}
+
+
+/* Waiting, in the app's own mark: squares that light in turn. */
+@keyframes square-pulse {
+  0%, 70%, 100% { opacity: 0.18; }
+  35%           { opacity: 1; }
 }

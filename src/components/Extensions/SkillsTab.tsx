@@ -93,7 +93,7 @@ export default function SkillsTab() {
   const initialLoadDone = useRef(false);
   useEffect(() => { loadSkills(1, ''); initialLoadDone.current = true; }, [loadSkills]);
 
-  // Search with debounce — triggers server-side search
+  // Search with debounce - triggers server-side search
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     // Skip on initial mount (the initial load effect handles that)
@@ -129,7 +129,7 @@ export default function SkillsTab() {
     return installedSkillNames.includes(skillName.toLowerCase());
   };
 
-  // Filter skills — client-side filter for instant feedback on currently loaded data.
+  // Filter skills - client-side filter for instant feedback on currently loaded data.
   // The debounced search also triggers a server-side fetch for broader results.
   const filteredSkills = useMemo(() => {
     let skills = skillsDatabase;

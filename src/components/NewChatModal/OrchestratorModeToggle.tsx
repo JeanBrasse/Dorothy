@@ -30,7 +30,7 @@ export default function OrchestratorModeToggle({
   const [isSettingUp, setIsSettingUp] = useState(false);
 
   useEffect(() => {
-    // Use cached result if available — instant, no IPC call
+    // Use cached result if available - instant, no IPC call
     if (cachedStatus) {
       setStatus(cachedStatus);
       setErrorMessage(cachedError);

@@ -20,7 +20,7 @@ import {
 import type { AgentProvider } from '@/types/electron';
 import { PROVIDER_REGISTRY, getProviderDef } from '@/lib/providers';
 
-/** MCP provider ID — extends AgentProvider with qwencode (CLI-only, not an agent provider) */
+/** MCP provider ID - extends AgentProvider with qwencode (CLI-only, not an agent provider) */
 type McpProvider = AgentProvider | 'qwencode';
 
 interface McpServer {
@@ -71,7 +71,7 @@ function ProviderIcon({ provider, className }: { provider: McpProvider; classNam
   if (icon.type === 'text') {
     return <span className={`font-bold text-xs ${className}`}>{icon.content}</span>;
   }
-  // SVG provider icons — show label abbreviation
+  // SVG provider icons - show label abbreviation
   return <span className={`font-bold text-xs ${className}`}>{label.slice(0, 2)}</span>;
 }
 
@@ -259,7 +259,7 @@ export function McpSection() {
       <div>
         <h2 className="text-lg font-semibold mb-1">Custom MCP Servers</h2>
         <p className="text-sm text-muted-foreground">
-          View and edit MCP server configurations installed via CLI commands. Dorothy-managed servers are hidden.
+          View and edit MCP server configurations installed via CLI commands. Tars-managed servers are hidden.
         </p>
       </div>
 

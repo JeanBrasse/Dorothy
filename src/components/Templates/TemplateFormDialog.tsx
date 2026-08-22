@@ -20,7 +20,7 @@ export function TemplateFormDialog({ initialTemplate, installedSkills, onClose, 
   const [icon, setIcon] = useState(initialTemplate?.icon ?? '🤖');
   const [character, setCharacter] = useState<AgentCharacter>(initialTemplate?.character ?? 'robot');
   const [provider, setProvider] = useState<AgentProvider>(initialTemplate?.provider ?? 'claude');
-  // Model is preserved when editing an existing template, but not asked on create —
+  // Model is preserved when editing an existing template, but not asked on create -
   // it falls back to the provider's default.
   const initialModel = initialTemplate?.model;
   const [permissionMode, setPermissionMode] = useState<'normal' | 'auto' | 'bypass'>(initialTemplate?.permissionMode ?? 'normal');
@@ -180,7 +180,7 @@ export function TemplateFormDialog({ initialTemplate, installedSkills, onClose, 
               Skills <span className="text-muted-foreground font-normal">({skills.length} selected)</span>
             </label>
             {allSkills.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">No skills installed yet — visit the Skills page to install some.</p>
+              <p className="text-xs text-muted-foreground italic">No skills installed yet - visit the Skills page to install some.</p>
             ) : (
               <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto p-2 border border-border bg-secondary/30">
                 {allSkills.map(skill => {

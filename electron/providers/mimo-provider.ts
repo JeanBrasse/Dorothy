@@ -10,6 +10,7 @@ import type {
   ProviderModel,
   HookConfig,
 } from './cli-provider';
+import { safeEffort } from './cli-provider';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api'; // claude appends /v1/messages
 
@@ -42,7 +43,7 @@ export class MiMoProvider implements CLIProvider {
     if (params.verbose) command += ' --verbose';
     if (params.permissionMode === 'auto') command += ' --permission-mode auto';
     else if (params.permissionMode === 'bypass') command += ' --permission-mode bypassPermissions';
-    if (params.effort && params.effort !== 'medium') command += ` --effort ${params.effort}`;
+    if (safeEffort(params.effort) && params.effort !== 'medium') command += ` --effort ${safeEffort(params.effort)}`;
     command += ` --add-dir '${os.homedir()}/.dorothy'`;
     let finalPrompt = params.prompt;
     if (params.skills && params.skills.length > 0 && !params.isSuperAgent) {

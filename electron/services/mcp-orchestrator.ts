@@ -67,6 +67,14 @@ export function getMcpXPath(): string {
 }
 
 /**
+ * Get the path to the bundled memory MCP server.
+ * This is the one that makes memory provider-agnostic: every CLI gets it.
+ */
+export function getMcpMemoryPath(): string {
+  return path.join(process.resourcesPath, 'mcp-memory', 'dist', 'bundle.js');
+}
+
+/**
  * Auto-setup MCP servers on app start for ALL providers.
  * Registers bundled MCP servers (orchestrator, telegram, kanban, etc.)
  * with each provider's configuration system.
@@ -76,6 +84,7 @@ export async function setupMcpOrchestrator(appSettings?: AppSettings): Promise<v
     // Build the list of MCP servers to register
     const mcpServers: Array<{ name: string; serverPath: string }> = [
       { name: 'claude-mgr-orchestrator', serverPath: getMcpOrchestratorPath() },
+      { name: 'tars-memory', serverPath: getMcpMemoryPath() },
       { name: 'claude-mgr-telegram', serverPath: getMcpTelegramPath() },
       { name: 'claude-mgr-kanban', serverPath: getMcpKanbanPath() },
       { name: 'claude-mgr-vault', serverPath: getMcpVaultPath() },
@@ -108,9 +117,11 @@ export async function setupMcpOrchestrator(appSettings?: AppSettings): Promise<v
       for (const provider of providers) {
         try {
           if (!provider.isMcpServerRegistered(name, serverPath)) {
+            // Registering spawns a CLI, and this is the main thread — the one
+            // that paints the window and pumps every PTY. Yield between each
+            // so the app stays answerable while it catches up.
+            await new Promise(resolve => setImmediate(resolve));
             await provider.registerMcpServer(name, command, args);
-          } else {
-            console.log(`[${provider.id}] ${name} already registered`);
           }
         } catch (err) {
           console.error(`[${provider.id}] Failed to register ${name}:`, err);
@@ -136,7 +147,7 @@ async function installBundledSkills(): Promise<void> {
   const bundledSkills: string[] = [];
   const providers = getAllProviders();
 
-  // Older Dorothy versions copied world-builder into every provider's skill
+  // Older Tars versions copied world-builder into every provider's skill
   // dir; agents still list it although its MCP tools are gone. Remove those
   // copies — but only when the content is recognizably ours.
   for (const provider of providers) {
@@ -208,7 +219,7 @@ async function installBundledSkills(): Promise<void> {
  * Writes ~/.claude.json (the file `claude mcp add -s user` maintains)
  * directly: no dependency on the claude binary being on the packaged app's
  * PATH, and no CLI boot blocking the main process. Removal only touches
- * entries whose URL matches Dorothy's own settings — a gbrain/honcho the
+ * entries whose URL matches Tars's own settings — a gbrain/honcho the
  * user registered independently is never deleted.
  *
  * Claude-binary providers only: native CLIs (codex, gemini, grok, opencode,

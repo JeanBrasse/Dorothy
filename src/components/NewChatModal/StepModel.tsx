@@ -30,73 +30,37 @@ interface ProviderModel {
   description: string;
 }
 
-/** Model definitions per provider — derived from shared registry */
+/** Model definitions per provider - derived from shared registry */
 const PROVIDER_MODELS: Record<string, ProviderModel[]> = Object.fromEntries(
   PROVIDER_REGISTRY.map((p) => [p.id, p.models]),
 );
 
-/** Default model per provider — derived from shared registry */
+/** Default model per provider - derived from shared registry */
 const PROVIDER_DEFAULT_MODEL: Record<string, string> = Object.fromEntries(
   PROVIDER_REGISTRY.map((p) => [p.id, p.defaultModel]),
 );
 
-/* ── Dynamic model fetching ────────────────────────────────── */
+/* ── Live model catalogue ──────────────────────────────── */
 
-/** API endpoint config per provider */
-const PROVIDER_API_ENDPOINTS: Record<string, { url: string; keySettingField?: string }> = {
-  openrouter: { url: 'https://openrouter.ai/api/v1/models' }, // public, no key needed
-  deepseek: { url: 'https://api.deepseek.com/models', keySettingField: 'deepSeekApiKey' },
-  qwen: { url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/models', keySettingField: 'qwenApiKey' },
-  moonshot: { url: 'https://api.moonshot.cn/v1/models', keySettingField: 'moonshotApiKey' },
-  mimo: { url: 'https://api.mimo.com/v1/models', keySettingField: 'mimoApiKey' },
-  zhipu: { url: 'https://open.bigmodel.cn/api/paas/v4/models', keySettingField: 'zhipuApiKey' },
-  minimax: { url: 'https://api.minimax.chat/v1/models', keySettingField: 'minimaxApiKey' },
-};
-
-/** Module-level cache: provider → { models, timestamp } */
-const modelCache = new Map<string, { models: ProviderModel[]; ts: number }>();
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
-
-/** Fetch models from a provider's API. Returns null on failure. */
+/**
+ * Model lists come from the models.dev catalogue in the main process, so a
+ * model released today shows up without a release of Tars and without the
+ * user having to hold an API key for that provider. The static registry stays
+ * as the offline floor.
+ */
 async function fetchProviderModels(providerId: string): Promise<ProviderModel[] | null> {
-  const endpoint = PROVIDER_API_ENDPOINTS[providerId];
-  if (!endpoint) return null;
-
-  // Check cache
-  const cached = modelCache.get(providerId);
-  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.models;
-
   try {
-    // Get API key from app settings if needed
-    let apiKey: string | undefined;
-    if (endpoint.keySettingField) {
-      const settings = await window.electronAPI?.appSettings?.get();
-      apiKey = (settings as Record<string, unknown> | undefined)?.[endpoint.keySettingField] as string | undefined;
-      if (!apiKey) return null; // No key, can't fetch
-    }
-
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
-
-    const res = await fetch(endpoint.url, { headers, signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return null;
-
-    const json = await res.json();
-    const rawModels: { id: string; name?: string; description?: string; created?: number }[] = json.data || json.models || [];
-
-    if (!Array.isArray(rawModels) || rawModels.length === 0) return null;
-
-    const models: ProviderModel[] = rawModels
-      .filter((m) => m.id)
-      .slice(0, 50) // Limit to avoid huge lists
-      .map((m) => ({
-        id: m.id,
-        name: m.name || m.id.split('/').pop() || m.id,
-        description: m.description || '',
-      }));
-
-    modelCache.set(providerId, { models, ts: Date.now() });
-    return models;
+    const res = await window.electronAPI?.models?.list(providerId);
+    if (!res?.models?.length) return null;
+    return res.models.map(m => ({
+      id: m.id,
+      name: m.name || m.id,
+      description: [
+        m.contextWindow ? `${Math.round(m.contextWindow / 1000)}K context` : '',
+        m.cost?.input != null ? `$${m.cost.input}/M in` : '',
+        m.releaseDate || '',
+      ].filter(Boolean).join(' · '),
+    }));
   } catch {
     return null;
   }
@@ -175,12 +139,8 @@ const StepModel = React.memo(function StepModel({
     });
   }, []);
 
-  // Fetch dynamic models when provider changes
+  // The catalogue covers every provider, so this runs on each switch.
   const loadDynamicModels = useCallback(async () => {
-    if (!PROVIDER_API_ENDPOINTS[provider]) {
-      setDynamicModels(null);
-      return;
-    }
     setLoadingModels(true);
     const models = await fetchProviderModels(provider);
     setDynamicModels(models);
@@ -290,17 +250,17 @@ const StepModel = React.memo(function StepModel({
         </div>
       </div>
 
-      {/* Model Selection — dynamic dropdown based on provider */}
+      {/* Model Selection - dynamic dropdown based on provider */}
       {provider !== 'local' ? (
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="block text-sm font-medium">Model</label>
-            {PROVIDER_API_ENDPOINTS[provider] && (
+            {(
               <button
                 onClick={loadDynamicModels}
                 disabled={loadingModels}
                 className="text-xs text-text-muted hover:text-text-primary flex items-center gap-1 transition-colors"
-                title="Refresh model list from API"
+                title="Refresh from the live model catalogue"
               >
                 <RefreshCw className={`w-3 h-3 ${loadingModels ? 'animate-spin' : ''}`} />
                 {loadingModels ? 'Loading...' : dynamicModels ? 'Refresh' : 'Fetch models'}
@@ -395,7 +355,7 @@ const StepModel = React.memo(function StepModel({
             <option value="">Default (provider default)</option>
             {detectedClis.map((cli) => (
               <option key={cli.key} value={cli.path}>
-                {cli.label} — {cli.path}
+                {cli.label} - {cli.path}
               </option>
             ))}
           </select>

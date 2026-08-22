@@ -37,15 +37,8 @@ export function useMemory() {
       // Agents first: their project folders are part of what Brain must show,
       // even when Claude Code never wrote memory for them yet.
       const agents = await window.electronAPI.agent.list().catch(() => []);
-      const customProjects: string[] = (() => {
-        try {
-          const raw = localStorage.getItem('dorothy-custom-projects');
-          const parsed = raw ? JSON.parse(raw) : [];
-          return Array.isArray(parsed)
-            ? parsed.map((p: unknown) => (typeof p === 'string' ? p : (p as { path?: string })?.path)).filter(Boolean) as string[]
-            : [];
-        } catch { return []; }
-      })();
+      const allProjects = await window.electronAPI?.fs?.listProjects().catch(() => []) ?? [];
+      const customProjects: string[] = allProjects.map(p => p.path).filter(Boolean);
       const knownPaths = Array.from(new Set([
         ...agents.map(a => a.projectPath).filter(Boolean),
         ...customProjects,

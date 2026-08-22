@@ -31,7 +31,7 @@ function loadReadDocs(): Set<string> {
   try {
     const stored = localStorage.getItem(READ_DOCS_KEY);
     if (stored) return new Set(JSON.parse(stored));
-    return new Set(); // First load — will be populated after initial fetch
+    return new Set(); // First load - will be populated after initial fetch
   } catch {
     return new Set();
   }
@@ -120,7 +120,7 @@ export default function VaultView({ embedded }: { embedded?: boolean } = {}) {
     }
   }, []);
 
-  // Initial load — on first ever load, mark all existing docs as read
+  // Initial load - on first ever load, mark all existing docs as read
   useEffect(() => {
     const firstLoad = isFirstLoad();
     const init = async () => {

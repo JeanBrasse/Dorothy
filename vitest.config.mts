@@ -1,6 +1,12 @@
 import { defineConfig } from 'vitest/config';
+import * as path from 'path';
 
 export default defineConfig({
+  // Renderer modules use the same @ alias Next resolves, so tests that reach
+  // into src/ need it too.
+  resolve: {
+    alias: { '@': path.resolve(process.cwd(), 'src') },
+  },
   test: {
     globals: true,
     environment: 'node',

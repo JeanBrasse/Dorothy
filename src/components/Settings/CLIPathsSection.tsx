@@ -188,7 +188,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
         )}
       </div>
 
-      {/* Provider Toggles — OpenCode & Pi + status rows for others */}
+      {/* Provider Toggles - OpenCode & Pi + status rows for others */}
       <div className="border border-border bg-card p-6 space-y-0">
         <h3 className="text-md font-medium mb-2">CLI Agent Providers</h3>
         <p className="text-xs text-muted-foreground mb-4">
@@ -234,7 +234,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
           );
         })}
 
-        {/* OpenCode — toggle + test */}
+        {/* OpenCode - toggle + test */}
         <div className="flex items-center justify-between py-3 border-b border-border">
           <div className="flex items-center gap-3">
             <Cpu className="w-4 h-4 text-primary" />
@@ -249,7 +249,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
                 setTestingOpencode(true);
                 setOpencodeResult(null);
                 try {
-                  const result = await window.electronAPI?.shell?.exec({ command: 'opencode --version' });
+                  const result = await window.electronAPI?.shell?.version('opencode');
                   setOpencodeResult(result?.success && result.output
                     ? { success: true, message: result.output.trim() }
                     : { success: false, message: 'OpenCode CLI not found' });
@@ -274,7 +274,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
           </div>
         )}
 
-        {/* Pi — toggle + test */}
+        {/* Pi - toggle + test */}
         <div className="flex items-center justify-between py-3">
           <div className="flex items-center gap-3">
             <Cpu className="w-4 h-4 text-primary" />
@@ -289,9 +289,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
                 setTestingPi(true);
                 setPiResult(null);
                 try {
-                  const result = await window.electronAPI?.shell?.exec?.({
-                    command: `${appSettings.cliPaths?.pi || 'pi'} --version 2>&1 || echo "not found"`,
-                  });
+                  const result = await window.electronAPI?.shell?.version(appSettings.cliPaths?.pi || 'pi');
                   setPiResult(result?.success && result.output && !result.output.includes('not found')
                     ? { success: true, message: `Pi CLI: ${result.output.trim()}` }
                     : { success: false, message: 'Pi CLI not found' });

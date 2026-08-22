@@ -153,7 +153,7 @@ export function InstantiateDialog({ template, onClose, onCreated }: InstantiateD
                     key={p.path}
                     onClick={() => setProjectPath(p.path)}
                     className={`w-full flex flex-col items-start px-3 py-2 text-left text-xs hover:bg-primary/5 transition-colors ${
-                      projectPath === p.path ? 'bg-primary/10 border-l-2 border-l-primary' : ''
+                      projectPath === p.path ? 'bg-primary/10 border-l border-l-primary/60' : ''
                     }`}
                   >
                     <span className="font-medium text-foreground">{p.name}</span>

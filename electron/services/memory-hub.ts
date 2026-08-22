@@ -1,0 +1,415 @@
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { DATA_DIR } from '../constants';
+import { probeMcpEndpoint, callMcpTool, listMcpTools, type McpEndpoint } from './mcp-http-client';
+import {
+  fetchHermesMemoryFiles,
+  searchHermesSessions,
+  fetchHermesMemoryState,
+} from './hermes-client';
+import type { HermesConnection } from '../types/hermes';
+
+/**
+ * One memory for every agent, whatever CLI it runs.
+ *
+ * Five sources sit behind this: the project's own memory files, the
+ * observation ledger Tars keeps, the Hermes gateway's MEMORY.md/USER.md and
+ * its searchable session history, and the two remote MCP backends (gbrain,
+ * Honcho). Before this, only the first two existed in practice and only
+ * claude-binary CLIs ever saw them.
+ */
+
+const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
+const OBSERVATIONS_DIR = path.join(DATA_DIR, 'observations');
+
+const MAX_SECTION_CHARS = 4000;
+const MAX_OBSERVATIONS = 15;
+
+export type MemorySourceId = 'project' | 'observations' | 'hermes' | 'gbrain' | 'honcho';
+
+export interface MemorySettings {
+  memoryGbrainEnabled?: boolean;
+  memoryGbrainMcpUrl?: string;
+  memoryGbrainAuthToken?: string;
+  memoryHonchoEnabled?: boolean;
+  memoryHonchoMcpUrl?: string;
+  memoryHonchoApiKey?: string;
+}
+
+export interface MemoryHit {
+  source: MemorySourceId;
+  title: string;
+  content: string;
+  ref?: string;
+}
+
+export interface SourceStatus {
+  id: MemorySourceId;
+  label: string;
+  configured: boolean;
+  reachable: boolean;
+  detail: string;
+  tools?: string[];
+}
+
+/* ── Local sources ─────────────────────────────────────── */
+
+function candidateProjectDirs(projectPath: string): string[] {
+  return [...new Set([
+    projectPath.replace(/[^a-zA-Z0-9]/g, '-'),
+    projectPath.replace(/[/.]/g, '-'),
+    projectPath.replace(/\//g, '-'),
+  ])];
+}
+
+export function projectMemoryDir(projectPath: string): string | null {
+  for (const dir of candidateProjectDirs(projectPath)) {
+    const candidate = path.join(CLAUDE_PROJECTS_DIR, dir, 'memory');
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+function readProjectMemory(projectPath: string): { file: string; content: string }[] {
+  const dir = projectMemoryDir(projectPath);
+  if (!dir) return [];
+  try {
+    return fs.readdirSync(dir)
+      .filter(f => f.endsWith('.md'))
+      .sort((a, b) => (a === 'MEMORY.md' ? -1 : b === 'MEMORY.md' ? 1 : a.localeCompare(b)))
+      .map(f => ({ file: f, content: fs.readFileSync(path.join(dir, f), 'utf-8') }))
+      .filter(entry => entry.content.trim());
+  } catch {
+    return [];
+  }
+}
+
+interface Observation { ts: string; agentId: string; type: string; content: string }
+
+function ledgerPathFor(projectPath: string): string {
+  return path.join(OBSERVATIONS_DIR, `${projectPath.replace(/[^a-zA-Z0-9]/g, '-')}.jsonl`);
+}
+
+function readObservations(projectPath: string, limit: number): Observation[] {
+  try {
+    const p = ledgerPathFor(projectPath);
+    if (!fs.existsSync(p)) return [];
+    return fs.readFileSync(p, 'utf-8').trim().split('\n').slice(-limit).flatMap(line => {
+      try { return [JSON.parse(line) as Observation]; } catch { return []; }
+    });
+  } catch {
+    return [];
+  }
+}
+
+/* ── Remote backends ───────────────────────────────────── */
+
+function gbrainEndpoint(s: MemorySettings): McpEndpoint | null {
+  if (!s.memoryGbrainEnabled || !s.memoryGbrainMcpUrl) return null;
+  return { url: s.memoryGbrainMcpUrl, token: s.memoryGbrainAuthToken, label: 'gbrain' };
+}
+
+function honchoEndpoint(s: MemorySettings): McpEndpoint | null {
+  if (!s.memoryHonchoEnabled || !s.memoryHonchoMcpUrl) return null;
+  return { url: s.memoryHonchoMcpUrl, token: s.memoryHonchoApiKey, label: 'Honcho' };
+}
+
+/** The first tool whose name looks like a search over stored knowledge. */
+function pickSearchTool(tools: { name: string }[]): string | null {
+  const names = tools.map(t => t.name);
+  const preferred = ['memory_search', 'search_memory', 'honcho_search', 'search', 'recall', 'query', 'retrieve'];
+  for (const p of preferred) {
+    const hit = names.find(n => n === p || n.endsWith(`_${p}`));
+    if (hit) return hit;
+  }
+  return names.find(n => /search|recall|query|retriev/i.test(n)) ?? null;
+}
+
+async function searchBackend(endpoint: McpEndpoint, query: string, source: MemorySourceId): Promise<MemoryHit[]> {
+  const tools = await listMcpTools(endpoint);
+  const tool = pickSearchTool(tools);
+  if (!tool) return [];
+
+  const schema = tools.find(t => t.name === tool)?.inputSchema as
+    { properties?: Record<string, unknown> } | undefined;
+  const props = Object.keys(schema?.properties ?? {});
+  const queryKey = props.find(p => ['query', 'q', 'search', 'text', 'question'].includes(p)) ?? 'query';
+
+  const text = await callMcpTool(endpoint, tool, { [queryKey]: query });
+  if (!text.trim()) return [];
+  return [{ source, title: `${endpoint.label} · ${tool}`, content: text.slice(0, 4000) }];
+}
+
+/* ── Public API ────────────────────────────────────────── */
+
+/**
+ * The block injected into a fresh session. Local sources are read
+ * synchronously; the gateway is only consulted when a connection exists, and
+ * a slow gateway must never hold up an agent starting.
+ */
+export async function assembleDigest(opts: {
+  projectPath: string;
+  settings: MemorySettings;
+  hermes?: HermesConnection | null;
+  budgetMs?: number;
+}): Promise<string> {
+  const { projectPath, settings, hermes } = opts;
+  const sections: string[] = [];
+
+  for (const { file, content } of readProjectMemory(projectPath)) {
+    const body = content.length > MAX_SECTION_CHARS
+      ? `${content.slice(0, MAX_SECTION_CHARS)}\n…(truncated, read memory/${file} for the rest)`
+      : content;
+    sections.push(`## Project memory — ${file}\n${body.trim()}`);
+  }
+
+  const observations = readObservations(projectPath, MAX_OBSERVATIONS);
+  if (observations.length > 0) {
+    sections.push(
+      `## Recent activity on this project (other sessions)\n` +
+      observations.map(o => `- [${o.ts.slice(0, 16)}] ${o.content}`).join('\n'),
+    );
+  }
+
+  if (hermes) {
+    try {
+      const res = await Promise.race([
+        fetchHermesMemoryFiles(hermes),
+        new Promise<null>(resolve => setTimeout(() => resolve(null), opts.budgetMs ?? 4000)),
+      ]);
+      if (res && res.success) {
+        for (const file of res.files) {
+          const body = file.content.length > MAX_SECTION_CHARS
+            ? `${file.content.slice(0, MAX_SECTION_CHARS)}\n…(truncated)`
+            : file.content;
+          sections.push(`## Hermes memory — ${file.name}\n${body.trim()}`);
+        }
+      }
+    } catch {
+      // A gateway that is down must not delay the agent.
+    }
+  }
+
+  const backends = [gbrainEndpoint(settings), honchoEndpoint(settings)].filter(Boolean) as McpEndpoint[];
+  if (backends.length > 0) {
+    sections.push(
+      `## Shared memory backends\n` +
+      backends.map(b => `- ${b.label} is connected: search it with the memory_search tool before assuming anything is new.`).join('\n'),
+    );
+  }
+
+  return sections.join('\n\n');
+}
+
+/** Federated search. Every source is optional and failures are per-source. */
+export async function searchMemory(opts: {
+  query: string;
+  projectPath?: string;
+  settings: MemorySettings;
+  hermes?: HermesConnection | null;
+  sources?: MemorySourceId[];
+  limit?: number;
+}): Promise<{ hits: MemoryHit[]; errors: { source: MemorySourceId; error: string }[] }> {
+  const { query, projectPath, settings, hermes } = opts;
+  const wanted = new Set<MemorySourceId>(opts.sources ?? ['project', 'observations', 'hermes', 'gbrain', 'honcho']);
+  const limit = opts.limit ?? 10;
+  const hits: MemoryHit[] = [];
+  const errors: { source: MemorySourceId; error: string }[] = [];
+  const needle = query.toLowerCase();
+
+  if (projectPath && wanted.has('project')) {
+    for (const { file, content } of readProjectMemory(projectPath)) {
+      const paragraphs = content.split(/\n{2,}/).filter(p => p.toLowerCase().includes(needle));
+      for (const p of paragraphs.slice(0, limit)) {
+        hits.push({ source: 'project', title: `memory/${file}`, content: p.trim().slice(0, 1200), ref: file });
+      }
+    }
+  }
+
+  if (projectPath && wanted.has('observations')) {
+    const matches = readObservations(projectPath, 500).filter(o => o.content.toLowerCase().includes(needle));
+    for (const o of matches.slice(-limit).reverse()) {
+      hits.push({ source: 'observations', title: `${o.type} · ${o.ts.slice(0, 16)}`, content: o.content });
+    }
+  }
+
+  const remote: Promise<void>[] = [];
+
+  if (hermes && wanted.has('hermes')) {
+    remote.push((async () => {
+      try {
+        const res = await searchHermesSessions(hermes, query, limit);
+        if (res.success) {
+          for (const hit of res.hits) {
+            hits.push({
+              source: 'hermes',
+              title: hit.title || hit.sessionId || 'Hermes session',
+              content: (hit.snippet || '').slice(0, 1200),
+              ref: hit.sessionId,
+            });
+          }
+        } else {
+          errors.push({ source: 'hermes', error: res.error });
+        }
+      } catch (err) {
+        errors.push({ source: 'hermes', error: err instanceof Error ? err.message : String(err) });
+      }
+    })());
+  }
+
+  for (const [id, endpoint] of [
+    ['gbrain', gbrainEndpoint(settings)],
+    ['honcho', honchoEndpoint(settings)],
+  ] as const) {
+    if (!endpoint || !wanted.has(id)) continue;
+    remote.push((async () => {
+      try {
+        hits.push(...await searchBackend(endpoint, query, id));
+      } catch (err) {
+        errors.push({ source: id, error: err instanceof Error ? err.message : String(err) });
+      }
+    })());
+  }
+
+  await Promise.all(remote);
+  return { hits, errors };
+}
+
+/** Writes a note into the project's own memory directory. */
+export function writeProjectMemory(projectPath: string, content: string, file = 'MEMORY.md'): { success: boolean; error?: string; path?: string } {
+  if (!/^[A-Za-z0-9._-]+\.md$/.test(file)) return { success: false, error: 'invalid memory file name' };
+
+  let dir = projectMemoryDir(projectPath);
+  if (!dir) {
+    dir = path.join(CLAUDE_PROJECTS_DIR, projectPath.replace(/[^a-zA-Z0-9]/g, '-'), 'memory');
+  }
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    const target = path.join(dir, file);
+    const previous = fs.existsSync(target) ? fs.readFileSync(target, 'utf-8').trimEnd() : '';
+    const next = previous ? `${previous}\n\n${content.trim()}\n` : `${content.trim()}\n`;
+    fs.writeFileSync(target, next);
+    return { success: true, path: target };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** Real status for every source: reachable means we spoke to it. */
+export async function memoryStatus(opts: {
+  settings: MemorySettings;
+  hermes?: HermesConnection | null;
+  projectPath?: string;
+}): Promise<SourceStatus[]> {
+  const { settings, hermes, projectPath } = opts;
+  const out: SourceStatus[] = [];
+
+  const dir = projectPath ? projectMemoryDir(projectPath) : null;
+  const files = projectPath ? readProjectMemory(projectPath) : [];
+  out.push({
+    id: 'project',
+    label: 'Project memory',
+    configured: true,
+    reachable: !!dir,
+    detail: dir ? `${files.length} file${files.length === 1 ? '' : 's'} in ${dir}` : 'no memory directory yet',
+  });
+
+  const observations = projectPath ? readObservations(projectPath, 500) : [];
+  out.push({
+    id: 'observations',
+    label: 'Session observations',
+    configured: true,
+    reachable: observations.length > 0,
+    detail: observations.length > 0
+      ? `${observations.length} recorded, latest ${observations[observations.length - 1].ts.slice(0, 16)}`
+      : 'nothing recorded yet',
+  });
+
+  const probes: Promise<void>[] = [];
+
+  probes.push((async () => {
+    if (!hermes) {
+      out.push({ id: 'hermes', label: 'Hermes memory', configured: false, reachable: false, detail: 'no gateway configured' });
+      return;
+    }
+    try {
+      const [state, filesRes] = await Promise.all([
+        fetchHermesMemoryState(hermes),
+        fetchHermesMemoryFiles(hermes),
+      ]);
+      if (!state.success) {
+        out.push({ id: 'hermes', label: 'Hermes memory', configured: true, reachable: false, detail: state.error });
+        return;
+      }
+      const active = (state.state?.active as string) || 'built-in';
+      const count = filesRes.success ? filesRes.files.length : 0;
+      out.push({
+        id: 'hermes',
+        label: 'Hermes memory',
+        configured: true,
+        reachable: true,
+        detail: `provider ${active}, ${count} file${count === 1 ? '' : 's'} readable`,
+      });
+    } catch (err) {
+      out.push({
+        id: 'hermes',
+        label: 'Hermes memory',
+        configured: true,
+        reachable: false,
+        detail: err instanceof Error ? err.message : String(err),
+      });
+    }
+  })());
+
+  for (const [id, label, endpoint] of [
+    ['gbrain', 'gbrain', gbrainEndpoint(settings)],
+    ['honcho', 'Honcho', honchoEndpoint(settings)],
+  ] as const) {
+    probes.push((async () => {
+      if (!endpoint) {
+        out.push({ id, label, configured: false, reachable: false, detail: 'not enabled' });
+        return;
+      }
+      const probe = await probeMcpEndpoint(endpoint);
+      out.push({
+        id,
+        label,
+        configured: true,
+        reachable: probe.reachable,
+        detail: probe.reachable
+          ? `${probe.tools.length} tool${probe.tools.length === 1 ? '' : 's'} available`
+          : probe.error ?? 'unreachable',
+        tools: probe.tools,
+      });
+    })());
+  }
+
+  await Promise.all(probes);
+
+  const order: MemorySourceId[] = ['project', 'observations', 'hermes', 'gbrain', 'honcho'];
+  return out.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+}
+
+/**
+ * Providers whose config dir is ~/.claude inherit Claude Code's SessionStart
+ * hook, so the digest already reaches them. The others (codex, gemini, grok,
+ * opencode, pi) have no such hook — for them the digest has to travel in the
+ * prompt, otherwise those agents start with no memory at all.
+ */
+export function needsPromptInjection(providerConfigDir: string): boolean {
+  return path.resolve(providerConfigDir) !== path.resolve(path.join(os.homedir(), '.claude'));
+}
+
+/** The digest wrapped so a CLI reads it as context, not as the task. */
+export function wrapDigestForPrompt(digest: string): string {
+  if (!digest.trim()) return '';
+  return [
+    '<project-memory>',
+    'What this project already knows. Treat it as established fact, and search',
+    'the memory tools before re-investigating anything mentioned here.',
+    '',
+    digest.trim(),
+    '</project-memory>',
+  ].join('\n');
+}

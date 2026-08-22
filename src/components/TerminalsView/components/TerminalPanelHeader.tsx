@@ -58,7 +58,7 @@ export default function TerminalPanelHeader({
       className={`${showDragHandle ? 'terminal-drag-handle' : ''} window-no-drag flex items-center gap-2 px-3 py-1.5 !rounded-none bg-secondary border-b border-border select-none`}
       onContextMenu={onContextMenu}
     >
-      {/* Drag handle grip — custom tabs only */}
+      {/* Drag handle grip - custom tabs only */}
       {showDragHandle && (
         <GripVertical className="w-3 h-3 text-muted-foreground/50 flex-shrink-0" />
       )}
@@ -86,24 +86,24 @@ export default function TerminalPanelHeader({
 
       {/* Permission mode indicator */}
       {(agent.permissionMode === 'auto' || (!agent.permissionMode && agent.skipPermissions)) && (
-        <span title="Auto mode — runs autonomously">
+        <span title="Auto mode - runs autonomously">
           <Bot className="w-3 h-3 text-warning" />
         </span>
       )}
       {agent.permissionMode === 'bypass' && (
-        <span title="Bypass mode — all permissions skipped">
+        <span title="Bypass mode - all permissions skipped">
           <ShieldOff className="w-3 h-3 text-danger" />
         </span>
       )}
       {agent.permissionMode === 'normal' && (
-        <span title="Normal mode — asks for permissions">
+        <span title="Normal mode - asks for permissions">
           <Shield className="w-3 h-3 text-primary" />
         </span>
       )}
 
       {/* Effort indicator */}
       {agent.effort === 'high' && (
-        <span title="High effort — extended thinking">
+        <span title="High effort - extended thinking">
           <Gauge className="w-3 h-3 text-primary" />
         </span>
       )}
@@ -152,7 +152,7 @@ export default function TerminalPanelHeader({
           {isFullscreen ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
         </button>
 
-        {/* Remove button — custom tabs only */}
+        {/* Remove button - custom tabs only */}
         {showRemoveButton && !isFullscreen && (
           <button
             onClick={onRemove}

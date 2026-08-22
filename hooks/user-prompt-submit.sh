@@ -1,5 +1,5 @@
 #!/bin/bash
-# UserPromptSubmit hook for dorothy
+# UserPromptSubmit hook for tars
 # Sets agent status back to "running" when user submits a new prompt mid-session
 
 # Read JSON input from stdin

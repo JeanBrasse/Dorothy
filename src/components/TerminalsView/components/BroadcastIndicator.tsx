@@ -19,7 +19,7 @@ export default function BroadcastIndicator({ active }: BroadcastIndicatorProps) 
         >
           <Radio className="w-4 h-4 text-primary animate-pulse" />
           <span className="text-xs font-medium text-primary">
-            Broadcast Mode Active — Input is sent to all terminals
+            Broadcast Mode Active - Input is sent to all terminals
           </span>
         </motion.div>
       )}

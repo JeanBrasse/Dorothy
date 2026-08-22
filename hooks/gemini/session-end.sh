@@ -1,5 +1,5 @@
 #!/bin/bash
-# Session end hook for dorothy (Gemini CLI)
+# Session end hook for tars (Gemini CLI)
 
 INPUT=$(cat)
 

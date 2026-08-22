@@ -1,5 +1,5 @@
 #!/bin/bash
-# PermissionRequest hook for dorothy
+# PermissionRequest hook for tars
 # Fires when Claude Code's permission dialog appears — sets agent to "waiting"
 
 # Read JSON input from stdin

@@ -46,7 +46,7 @@ interface StepTaskProps {
 
 const PERMISSION_MODES: { value: AgentPermissionMode; label: string; description: string; icon: React.ReactNode; iconColor: string; accent: string }[] = [
   { value: 'normal', label: 'Normal', description: 'Asks before each tool',    icon: <Shield className="w-5 h-5 mx-auto mb-1" />,    iconColor: 'text-accent-blue',  accent: 'border-accent-blue bg-accent-blue/10' },
-  { value: 'auto',   label: 'Auto',   description: 'Autonomous — recommended', icon: <Bot className="w-5 h-5 mx-auto mb-1" />,        iconColor: 'text-warning',    accent: 'border-warning bg-warning/10' },
+  { value: 'auto',   label: 'Auto',   description: 'Autonomous - recommended', icon: <Bot className="w-5 h-5 mx-auto mb-1" />,        iconColor: 'text-warning',    accent: 'border-warning bg-warning/10' },
   { value: 'bypass', label: 'Bypass', description: 'Skips all restrictions',   icon: <ShieldOff className="w-5 h-5 mx-auto mb-1" />, iconColor: 'text-danger',      accent: 'border-danger bg-danger/10' },
 ];
 

@@ -26,7 +26,7 @@ export const OpenCodeSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
     setTesting(true);
     setTestResult(null);
     try {
-      const result = await window.electronAPI?.shell?.exec({ command: 'opencode --version' });
+      const result = await window.electronAPI?.shell?.version('opencode');
       if (result?.success && result.output) {
         setTestResult({ success: true, message: `OpenCode found: ${result.output.trim()}` });
       } else {
@@ -56,7 +56,7 @@ export const OpenCodeSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
             <div>
               <p className="font-medium">Enable OpenCode</p>
               <p className="text-sm text-muted-foreground">
-                Use OpenCode CLI as an agent provider in Dorothy
+                Use OpenCode CLI as an agent provider in Tars
               </p>
             </div>
           </div>

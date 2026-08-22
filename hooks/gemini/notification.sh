@@ -1,5 +1,5 @@
 #!/bin/bash
-# Notification hook for dorothy (Gemini CLI)
+# Notification hook for tars (Gemini CLI)
 
 INPUT=$(cat)
 
@@ -17,7 +17,7 @@ if ! curl -s --connect-timeout 1 "$API_URL/api/health" > /dev/null 2>&1; then
   exit 0
 fi
 
-# Forward notification to dorothy
+# Forward notification to tars
 if [ -n "$MESSAGE" ]; then
   SAFE_MSG=$(echo "$MESSAGE" | jq -Rs .)
   curl -s -X POST "$API_URL/api/hooks/notification" \

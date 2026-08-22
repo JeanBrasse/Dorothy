@@ -36,13 +36,13 @@ export function TemplatesManagerDialog({ open, onClose }: TemplatesManagerDialog
 
   useEffect(() => {
     if (!open) return;
-    // The dialog stays mounted on the Agents page, so refetch on every open —
+    // The dialog stays mounted on the Agents page, so refetch on every open -
     // templates saved elsewhere (e.g. "Save as template" on a card) must show.
     refreshTemplates();
     fetchSkillsFromMarketplace().then(s => { if (s) setLiveSkills(s); }).catch(() => {});
   }, [open, refreshTemplates]);
 
-  // Escape closes the manager — but only when no nested dialog is open,
+  // Escape closes the manager - but only when no nested dialog is open,
   // otherwise both layers would close on one keypress.
   useEffect(() => {
     if (!open || hasNestedDialog) return;

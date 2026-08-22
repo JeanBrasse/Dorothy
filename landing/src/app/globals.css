@@ -1,50 +1,31 @@
 @import "tailwindcss";
 
+/* Tars landing: same tokens as the app (cooperlabs), dark by default. */
 @theme inline {
-  --color-cream: #FAF4EA;
-  --color-cream-dark: #EDE5D5;
-  --color-teal: #3D9B94;
-  --color-teal-dark: #2D7A74;
-  --color-teal-light: #E8F4F2;
-  --color-mustard: #D4A03C;
-  --color-rust: #C06840;
-  --color-brown: #3A2E24;
-  --color-brown-light: #7A6E60;
-  --color-warm: #DDD3C0;
+  --color-bg: #121212;
+  --color-surface: #1A1A1A;
+  --color-raised: #222222;
+  --color-line: #2A2A2A;
+  --color-line-strong: #3A3A3A;
+  --color-ink: #F5F4F2;
+  --color-ink-soft: #9B9B9B;
+  --color-ink-muted: #727272;
+  --color-accent: #FF9E42;
+  --color-accent-deep: #C77012;
+  --color-ok: #4CC38A;
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; font-size: 19.2px; }
+html { scroll-behavior: smooth; }
 
 body {
-  background: #FAF4EA;
-  color: #3A2E24;
-  font-family: 'Inter', system-ui, sans-serif;
+  background: #121212;
+  color: #F5F4F2;
+  font-family: 'Roboto Condensed', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-.font-display {
-  font-family: 'Instrument Serif', Georgia, serif;
-}
+.font-display { font-family: 'Instrument Serif', Georgia, serif; }
+.font-mono { font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
 
-/* Marquee */
-@keyframes scroll-left {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-.marquee-track {
-  animation: scroll-left 30s linear infinite;
-}
-
-/* Geometric circle decoration */
-.circle-deco {
-  border: 2px solid #3D9B94;
-  border-radius: 50%;
-  opacity: 0.15;
-  pointer-events: none;
-}
-
-::selection { background: rgba(61,155,148,0.2); }
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #FAF4EA; }
-::-webkit-scrollbar-thumb { background: #DDD3C0; border-radius: 3px; }
+::selection { background: #FF9E42; color: #121212; }

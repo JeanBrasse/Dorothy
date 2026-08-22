@@ -1,5 +1,5 @@
 /**
- * Dorothy - Main Electron Entry Point
+ * Tars - Main Electron Entry Point
  *
  * This file initializes and wires together all the modular components:
  * - Window management and protocol handling
@@ -77,6 +77,8 @@ import {
   getClaudeHistory,
 } from './services/claude-service';
 import { configureStatusHooks } from './services/hooks-manager';
+import { loadCatalog } from './services/model-catalog';
+import { startAgentAutosave, stopAgentAutosave, appendAgentOutput } from './core/agent-manager';
 import {
   setupMcpOrchestrator,
   setupMemoryBackends,
@@ -103,7 +105,7 @@ import {
   isSuperAgent,
   getSuperAgent,
   ensureDataDir,
-  ensureDorothyClaudeMd,
+  ensureTarsClaudeMd,
   migrateFromClaudeManager,
 } from './utils';
 
@@ -321,8 +323,8 @@ app.whenReady().then(async () => {
   // Ensure data directory exists
   ensureDataDir();
 
-  // Write Dorothy's CLAUDE.md to ~/.dorothy/ so all spawned agents can load it
-  ensureDorothyClaudeMd();
+  // Write Tars's CLAUDE.md to ~/.dorothy/ so all spawned agents can load it
+  ensureTarsClaudeMd();
 
   // Install/update statusline script if enabled (ensures script is always up-to-date after app updates)
   // statusLineEnabled defaults to true for new users
@@ -342,6 +344,8 @@ app.whenReady().then(async () => {
 
   // Load agents from disk
   loadAgents();
+  // Bound how much a crash can lose: PTY-driven fields reach disk on a timer.
+  startAgentAutosave();
 
   // Setup protocol handler for production
   setupProtocolHandler();
@@ -482,7 +486,7 @@ app.whenReady().then(async () => {
       ptyProcess.onData((data) => {
         const agent = agents.get(id);
         if (agent) {
-          agent.output.push(data);
+          appendAgentOutput(agent, data);
           agent.lastActivity = new Date().toISOString();
           agent.statusLine = extractStatusLine(agent.output);
         }
@@ -592,7 +596,14 @@ app.whenReady().then(async () => {
   initApiServer();
 
   // Setup MCP orchestrator and hooks
-  await setupMcpOrchestrator(appSettings);
+  // Warm the model/price catalogue without blocking the window: a stale disk
+  // copy answers immediately, the network refresh lands whenever it lands.
+  loadCatalog().catch(() => { /* cached or floor prices carry the app */ });
+
+  // Registration only has to finish before an agent starts, not before the
+  // window paints — it used to hold the main thread through the first render.
+  void setupMcpOrchestrator(appSettings).catch(err =>
+    console.error('MCP registration failed:', err));
   setupMemoryBackends(appSettings);
   await configureStatusHooks();
 
@@ -631,6 +642,7 @@ app.on('activate', () => {
 app.on('before-quit', () => {
   console.log('App quitting, saving agents and killing all PTY processes...');
   destroyTray();
+  stopAgentAutosave();
   saveAgents();
   killAllPty();
   closeVaultDb();

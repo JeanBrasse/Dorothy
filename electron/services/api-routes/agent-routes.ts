@@ -3,12 +3,28 @@ import * as fs from 'fs';
 import * as pty from 'node-pty';
 import { app } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
-import { agents, saveAgents, killStalePty, ensureProjectTrusted } from '../../core/agent-manager';
+import { agents, saveAgents, killStalePty, ensureProjectTrusted, appendAgentOutput } from '../../core/agent-manager';
 import { ptyProcesses, writeProgrammaticInput } from '../../core/pty-manager';
 import { getProvider, isValidProvider } from '../../providers';
 import { buildFullPath } from '../../utils/path-builder';
 import { AgentStatus, AgentCharacter } from '../../types';
 import { RouteApp, RouteContext, RouteRequest, SendJson } from './types';
+import { getSuperAgentInstructionsPath } from '../../utils';
+import { assembleDigest, needsPromptInjection, wrapDigestForPrompt } from '../memory-hub';
+import { canDelegateOverAcp, delegateOverAcp } from '../acp/delegate';
+import { usableHermesConnection } from '../hermes-config';
+
+/**
+ * The orchestrator instructions, or nothing for a regular agent. The UI start
+ * path attached this file; the API path (every MCP delegate_task, start_agent
+ * and send_message) did not, so an orchestrator driven by the MCP ran without
+ * the rules that tell it to delegate rather than code.
+ */
+function orchestratorInstructionsFile(isOrchestrator: boolean | undefined): string | undefined {
+  if (!isOrchestrator) return undefined;
+  const file = getSuperAgentInstructionsPath();
+  return fs.existsSync(file) ? file : undefined;
+}
 
 type SpawnOpts = {
   model?: string;
@@ -100,7 +116,7 @@ async function spawnAgentSession(
   // roster; this header guarantees the essentials even if hooks are absent.
   // (The provider builder handles the skills prefix itself.)
   const identityHeader =
-    `[Dorothy: you are agent "${agent.name || agent.id}" (id ${agent.id}), ` +
+    `[Tars: you are agent "${agent.name || agent.id}" (id ${agent.id}), ` +
     `${agent.role || 'worker'} of project ${agent.projectPath}` +
     (agent.worktreePath
       ? `, working in worktree ${agent.worktreePath}${agent.branchName ? ` (branch ${agent.branchName})` : ''} — stay inside this directory`
@@ -119,13 +135,32 @@ async function spawnAgentSession(
   const resolvedModel = opts.model || agent.model;
   const effectiveMode = opts.permissionMode ?? agent.permissionMode ?? (agent.skipPermissions ? 'auto' : 'normal');
 
+
+  // CLIs without Claude's SessionStart hook get the project's memory in the
+  // prompt instead - otherwise those agents start knowing nothing.
+  let memoryBlock = '';
+  if (needsPromptInjection(cliProvider.configDir)) {
+    try {
+      const digest = await assembleDigest({
+        projectPath: agent.projectPath,
+        settings: appSettings as never,
+        hermes: usableHermesConnection(),
+        budgetMs: 3000,
+      });
+      const wrapped = wrapDigestForPrompt(digest);
+      if (wrapped) memoryBlock = `\n\n${wrapped}`;
+    } catch {
+      // Memory is context, not a precondition: never block a start on it.
+    }
+  }
+
   // Build the CLI command through the provider so non-claude CLIs (codex,
   // gemini, grok, opencode, pi) get their own syntax instead of claude flags.
   let cliCommand: string;
   try {
     cliCommand = cliProvider.buildInteractiveCommand({
       binaryPath,
-      prompt: `${identityHeader}\n\n${prompt}`,
+      prompt: `${identityHeader}${memoryBlock}\n\n${prompt}`,
       model: resolvedModel && resolvedModel !== 'default' ? resolvedModel : undefined,
       permissionMode: effectiveMode,
       effort: agent.effort,
@@ -133,6 +168,10 @@ async function spawnAgentSession(
       obsidianVaultPaths: agent.obsidianVaultPaths,
       mcpConfigPath,
       skills: agent.skills,
+      // Without this an orchestrator restarted through the API or by another
+      // orchestrator woke up with no orchestration rules and did the work
+      // itself instead of delegating.
+      systemPromptFile: orchestratorInstructionsFile(isSuperAgentApi),
       isSuperAgent: isSuperAgentApi,
       // BUG 5: orchestrator-mode agents cannot edit files directly.
       orchestratorMode: isSuperAgentApi || agent.orchestratorMode,
@@ -239,7 +278,7 @@ async function spawnAgentSession(
   saveAgents();
 
   ptyProcess.onData((data: string) => {
-    agent.output.push(data);
+    appendAgentOutput(agent, data);
     if (agent.output.length > 10000) {
       agent.output = agent.output.slice(-5000);
     }
@@ -308,6 +347,18 @@ function callerProject(req: RouteRequest): string | undefined {
  */
 function assertSameProject(req: RouteRequest, agent: AgentStatus, sendJson: SendJson): boolean {
   const caller = callerProject(req);
+
+  // An agent's MCP always announces itself. If it does so without an identity
+  // its calls cannot be scoped, and defaulting to "allow" would let it drive
+  // every project's agents - which is the confusion this guard exists to stop.
+  if (!caller && req.raw?.headers?.['x-tars-client'] === 'mcp') {
+    sendJson({
+      error: 'This agent has no identity, so its calls cannot be scoped to a project. '
+        + 'Restart the agent from Tars so it is spawned with CLAUDE_AGENT_ID and CLAUDE_PROJECT_PATH.',
+    }, 403);
+    return false;
+  }
+
   if (!caller || agent.projectPath === caller) return true;
   if ((req.body as { allowCrossProject?: boolean } | undefined)?.allowCrossProject === true) return true;
   // DELETE requests have no parsed body — accept the override as a query param.
@@ -340,7 +391,7 @@ export async function performDispatch(
     // typed message is useless and the delayed \r could ACCEPT the pending
     // permission. Refuse and surface the reason instead.
     sendJson({
-      error: `Agent "${agent.name || agent.id}" is blocked on a permission dialog; a typed message cannot answer it. Resolve it in the Dorothy UI, or stop the agent and re-dispatch.`,
+      error: `Agent "${agent.name || agent.id}" is blocked on a permission dialog; a typed message cannot answer it. Resolve it in the Tars UI, or stop the agent and re-dispatch.`,
       waitingReason: 'permission',
     }, 409);
     return;
@@ -496,7 +547,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
                 (a.skills?.length ? `, skills: ${a.skills.join(', ')}` : ''));
 
     const lines = [
-      `# Dorothy agent identity`,
+      `# Tars agent identity`,
       ``,
       `You are "${agent.name || agent.id}" (agent id: ${agent.id}), ${agent.role || 'worker'} of project ${agent.projectPath}.`,
     ];
@@ -672,6 +723,57 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     await performDispatch(agent, { message, model, permissionMode }, ctx, sendJson);
   });
 
+  /**
+   * POST /api/agents/:id/run-task
+   *
+   * Delegation with a receipt. Where /dispatch types a message into the
+   * target's terminal and returns before the agent has even read it, this runs
+   * the task over the Agent Client Protocol and answers with what the agent
+   * actually did: its reply, why the turn ended, which tools it used and what
+   * the turn cost. Works on every CLI with an ACP mode.
+   */
+  app_.post(/^\/api\/agents\/([^/]+)\/run-task$/, async (req, sendJson) => {
+    const agent = agents.get(req.params.id);
+    if (!agent) {
+      sendJson({ error: 'Agent not found' }, 404);
+      return;
+    }
+    if (!assertSameProject(req, agent, sendJson)) return;
+
+    const { task, timeoutSeconds } = req.body as { task?: string; timeoutSeconds?: number };
+    if (!task?.trim()) {
+      sendJson({ error: 'task is required' }, 400);
+      return;
+    }
+
+    if (!canDelegateOverAcp(agent)) {
+      sendJson({ error: `${agent.provider ?? 'this provider'} has no ACP mode; use /dispatch`, retryWithDispatch: true }, 409);
+      return;
+    }
+
+    const wasStatus = agent.status;
+    agent.status = 'running';
+    agent.currentTask = task.slice(0, 100);
+    agent.lastActivity = new Date().toISOString();
+    ctx.agentStatusEmitter.emit('status', { agentId: agent.id, status: 'running' });
+
+    const result = await delegateOverAcp({
+      agent,
+      task,
+      appSettings: ctx.getAppSettings(),
+      isOrchestrator: agent.role === 'orchestrator',
+      timeoutMs: Math.min(Math.max((timeoutSeconds ?? 900) * 1000, 30_000), 3_600_000),
+    });
+
+    agent.status = result.ok ? 'idle' : wasStatus === 'running' ? 'idle' : wasStatus;
+    agent.lastActivity = new Date().toISOString();
+    if (result.text) agent.lastCleanOutput = result.text.slice(-8000);
+    saveAgents();
+    ctx.agentStatusEmitter.emit('status', { agentId: agent.id, status: agent.status });
+
+    sendJson(result, result.ok ? 200 : 502);
+  });
+
   // POST /api/agents/:id/stop
   app_.post(/^\/api\/agents\/([^/]+)\/stop$/, (req, sendJson) => {
     const agent = agents.get(req.params.id);
@@ -729,7 +831,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
         agent.status === 'waiting' && agent.waitingReason === 'permission') {
       // Same guard as /dispatch: never type into a blocking permission dialog.
       sendJson({
-        error: `Agent "${agent.name || agent.id}" is blocked on a permission dialog; a typed message cannot answer it. Resolve it in the Dorothy UI, or stop the agent and re-dispatch.`,
+        error: `Agent "${agent.name || agent.id}" is blocked on a permission dialog; a typed message cannot answer it. Resolve it in the Tars UI, or stop the agent and re-dispatch.`,
         waitingReason: 'permission',
       }, 409);
       return;

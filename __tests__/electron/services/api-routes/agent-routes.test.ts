@@ -431,11 +431,11 @@ describe('agent-routes', () => {
     it('spawn command carries an identity header so agents know who they are', async () => {
       const agent = makeAgent({
         id: 'a1',
-        name: 'Backend-Dorothy',
+        name: 'Backend-Alpha',
         status: 'idle',
         role: 'worker',
-        projectPath: '/proj/dorothy',
-        worktreePath: '/proj/dorothy/.worktrees/feat/backend',
+        projectPath: '/proj/alpha',
+        worktreePath: '/proj/alpha/.worktrees/feat/backend',
         branchName: 'feat/backend',
       });
       agents.set('a1', agent);
@@ -447,8 +447,8 @@ describe('agent-routes', () => {
 
       const pty = await import('node-pty');
       const command = (pty.spawn as any).mock.calls.at(-1)[1][2] as string;
-      expect(command).toContain('you are agent "Backend-Dorothy" (id a1), worker of project /proj/dorothy');
-      expect(command).toContain('worktree /proj/dorothy/.worktrees/feat/backend');
+      expect(command).toContain('you are agent "Backend-Alpha" (id a1), worker of project /proj/alpha');
+      expect(command).toContain('worktree /proj/alpha/.worktrees/feat/backend');
       expect(command).toContain('fix the API');
 
       const spawnEnv = (pty.spawn as any).mock.calls.at(-1)[2].env;
@@ -456,9 +456,9 @@ describe('agent-routes', () => {
     });
 
     it('GET /:id/bootstrap returns identity and same-project roster only', async () => {
-      agents.set('orch', makeAgent({ id: 'orch', name: 'Orchestrator-Dorothy', role: 'orchestrator', projectPath: '/proj/dorothy' }));
-      agents.set('w1', makeAgent({ id: 'w1', name: 'Frontend-Dorothy', role: 'worker', projectPath: '/proj/dorothy', branchName: 'feat/frontend' }));
-      agents.set('w2', makeAgent({ id: 'w2', name: 'Tars-Worker', role: 'worker', projectPath: '/proj/tars' }));
+      agents.set('orch', makeAgent({ id: 'orch', name: 'Orchestrator-Alpha', role: 'orchestrator', projectPath: '/proj/alpha' }));
+      agents.set('w1', makeAgent({ id: 'w1', name: 'Frontend-Alpha', role: 'worker', projectPath: '/proj/alpha', branchName: 'feat/frontend' }));
+      agents.set('w2', makeAgent({ id: 'w2', name: 'Tars-Worker', role: 'worker', projectPath: '/proj/beta' }));
 
       const app = makeRouteApp();
       registerAgentRoutes(app, ctx);
@@ -468,8 +468,8 @@ describe('agent-routes', () => {
       await handler(makeReq({ params: { id: 'orch' }, url: new URL('http://localhost/api/agents/orch/bootstrap') }), sendJson, ctx);
 
       const context = (sendJson.mock.calls[0][0] as { context: string }).context;
-      expect(context).toContain('You are "Orchestrator-Dorothy"');
-      expect(context).toContain('Frontend-Dorothy');
+      expect(context).toContain('You are "Orchestrator-Alpha"');
+      expect(context).toContain('Frontend-Alpha');
       expect(context).not.toContain('Tars-Worker');
       expect(context).toContain('Delegate ONLY to the agents listed above');
     });
@@ -503,39 +503,39 @@ describe('agent-routes', () => {
     }
 
     it('GET /api/agents returns only the caller project agents', async () => {
-      agents.set('a1', makeAgent({ id: 'a1', projectPath: '/proj/dorothy' }));
-      agents.set('a2', makeAgent({ id: 'a2', projectPath: '/proj/tars' }));
-      agents.set('a3', makeAgent({ id: 'a3', projectPath: '/proj/dorothy' }));
+      agents.set('a1', makeAgent({ id: 'a1', projectPath: '/proj/alpha' }));
+      agents.set('a2', makeAgent({ id: 'a2', projectPath: '/proj/beta' }));
+      agents.set('a3', makeAgent({ id: 'a3', projectPath: '/proj/alpha' }));
 
       const app = makeRouteApp();
       registerAgentRoutes(app, ctx);
       const handler = app.routes.find(r => r.method === 'GET' && r.pattern === '/api/agents')!.handler;
 
       const sendJson = vi.fn();
-      await handler(reqFromProject('/proj/dorothy', { url: new URL('http://localhost/api/agents') }), sendJson, ctx);
+      await handler(reqFromProject('/proj/alpha', { url: new URL('http://localhost/api/agents') }), sendJson, ctx);
 
       const result = sendJson.mock.calls[0][0] as { agents: { id: string }[]; scopedToProject?: string };
       expect(result.agents.map(a => a.id).sort()).toEqual(['a1', 'a3']);
-      expect(result.scopedToProject).toBe('/proj/dorothy');
+      expect(result.scopedToProject).toBe('/proj/alpha');
     });
 
     it('GET /api/agents?all=true returns every project', async () => {
-      agents.set('a1', makeAgent({ id: 'a1', projectPath: '/proj/dorothy' }));
-      agents.set('a2', makeAgent({ id: 'a2', projectPath: '/proj/tars' }));
+      agents.set('a1', makeAgent({ id: 'a1', projectPath: '/proj/alpha' }));
+      agents.set('a2', makeAgent({ id: 'a2', projectPath: '/proj/beta' }));
 
       const app = makeRouteApp();
       registerAgentRoutes(app, ctx);
       const handler = app.routes.find(r => r.method === 'GET' && r.pattern === '/api/agents')!.handler;
 
       const sendJson = vi.fn();
-      await handler(reqFromProject('/proj/dorothy', { url: new URL('http://localhost/api/agents?all=true') }), sendJson, ctx);
+      await handler(reqFromProject('/proj/alpha', { url: new URL('http://localhost/api/agents?all=true') }), sendJson, ctx);
 
       const result = sendJson.mock.calls[0][0] as { agents: unknown[] };
       expect(result.agents).toHaveLength(2);
     });
 
     it('rejects dispatch to an agent of another project with 403', async () => {
-      agents.set('a1', makeAgent({ id: 'a1', name: 'Tars-Worker', projectPath: '/proj/tars' }));
+      agents.set('a1', makeAgent({ id: 'a1', name: 'Tars-Worker', projectPath: '/proj/beta' }));
 
       const app = makeRouteApp();
       registerAgentRoutes(app, ctx);
@@ -545,7 +545,7 @@ describe('agent-routes', () => {
       const spawnCallsBefore = (pty.spawn as any).mock.calls.length;
 
       const sendJson = vi.fn();
-      await handler(reqFromProject('/proj/dorothy', { params: { id: 'a1' }, body: { message: 'go' } }), sendJson, ctx);
+      await handler(reqFromProject('/proj/alpha', { params: { id: 'a1' }, body: { message: 'go' } }), sendJson, ctx);
 
       expect(sendJson.mock.calls[0][1]).toBe(403);
       expect(String((sendJson.mock.calls[0][0] as { error: string }).error)).toContain('Cross-project access denied');
@@ -553,7 +553,7 @@ describe('agent-routes', () => {
     });
 
     it('allows cross-project dispatch with allowCrossProject: true', async () => {
-      const agent = makeAgent({ id: 'a1', projectPath: '/proj/tars', status: 'idle' });
+      const agent = makeAgent({ id: 'a1', projectPath: '/proj/beta', status: 'idle' });
       agents.set('a1', agent);
 
       const app = makeRouteApp();
@@ -562,7 +562,7 @@ describe('agent-routes', () => {
 
       const sendJson = vi.fn();
       await handler(
-        reqFromProject('/proj/dorothy', { params: { id: 'a1' }, body: { message: 'go', allowCrossProject: true } }),
+        reqFromProject('/proj/alpha', { params: { id: 'a1' }, body: { message: 'go', allowCrossProject: true } }),
         sendJson,
         ctx
       );
@@ -572,7 +572,7 @@ describe('agent-routes', () => {
     });
 
     it('callers without identity headers (UI) are unrestricted', async () => {
-      const agent = makeAgent({ id: 'a1', projectPath: '/proj/tars', status: 'idle' });
+      const agent = makeAgent({ id: 'a1', projectPath: '/proj/beta', status: 'idle' });
       agents.set('a1', agent);
 
       const app = makeRouteApp();

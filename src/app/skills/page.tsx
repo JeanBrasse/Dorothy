@@ -19,7 +19,12 @@ export default function ExtensionsPage() {
     <div className="flex flex-col h-[calc(100vh-7rem)] lg:h-[calc(100vh-3rem)] pt-4 lg:pt-6 overflow-hidden">
       {/* Header + tab switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3 shrink-0">
-        <h1 className="text-xl lg:text-2xl font-bold tracking-tight">Extensions</h1>
+        <div>
+          <h1 className="text-xl lg:text-2xl font-bold tracking-tight">Extensions</h1>
+          <p className="text-muted-foreground text-xs lg:text-sm mt-1 hidden sm:block">
+            Skills and plugins your agents can use.
+          </p>
+        </div>
         <div className="flex items-center gap-0.5 border border-border bg-card p-0.5">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
@@ -38,7 +43,7 @@ export default function ExtensionsPage() {
         </div>
       </div>
 
-      {/* Active tab — only the selected one mounts, so the inactive tab's
+      {/* Active tab - only the selected one mounts, so the inactive tab's
           marketplace fetch doesn't run until it's opened */}
       <div className="flex-1 min-h-0 overflow-hidden">
         {tab === 'skills' ? <SkillsTab /> : <PluginsTab />}

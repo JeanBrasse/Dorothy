@@ -79,7 +79,7 @@ export function registerAgentTools(server: McpServer): void {
   // Tool: Who am I — identity handshake for orchestrator sessions
   server.tool(
     "whoami",
-    "Get YOUR identity as a Dorothy agent: id, name, project, role, and the roster of your project's agents. Call this first if you are unsure who you are or who you can delegate to.",
+    "Get YOUR identity as a Tars agent: id, name, project, role, and the roster of your project's agents. Call this first if you are unsure who you are or who you can delegate to.",
     {},
     async () => {
       const { agentId, projectPath } = getCallerIdentity();
@@ -88,7 +88,7 @@ export function registerAgentTools(server: McpServer): void {
           content: [
             {
               type: "text",
-              text: "No agent identity found in the environment (CLAUDE_AGENT_ID / CLAUDE_PROJECT_PATH are unset). You are probably running outside a Dorothy-managed session; list_agents will return ALL agents unscoped.",
+              text: "No agent identity found in the environment (CLAUDE_AGENT_ID / CLAUDE_PROJECT_PATH are unset). You are probably running outside a Tars-managed session; list_agents will return ALL agents unscoped.",
             },
           ],
         };
@@ -233,7 +233,7 @@ export function registerAgentTools(server: McpServer): void {
           content: [
             {
               type: "text",
-              text: `Agent "${agentName}" (${data.agent.status}): No clean output captured yet. The agent's terminal output is available in the Dorothy UI. Clean output is captured when the agent pauses or completes.`,
+              text: `Agent "${agentName}" (${data.agent.status}): No clean output captured yet. The agent's terminal output is available in the Tars UI. Clean output is captured when the agent pauses or completes.`,
             },
           ],
         };
@@ -549,7 +549,7 @@ export function registerAgentTools(server: McpServer): void {
 
         if (data.status === "waiting") {
           const reasonInfo = data.waitingReason === "permission"
-            ? " It is blocked on a PERMISSION dialog — send_message cannot answer it; resolve it in the Dorothy UI or stop_agent and re-delegate."
+            ? " It is blocked on a PERMISSION dialog — send_message cannot answer it; resolve it in the Tars UI or stop_agent and re-delegate."
             : " Use send_message to respond, or get_agent_output to see what it's asking.";
           return {
             content: [
@@ -596,6 +596,47 @@ export function registerAgentTools(server: McpServer): void {
     },
     async ({ id, prompt, model, timeoutSeconds = 300, allowCrossProject }) => {
       try {
+        // Preferred path: run the task over the Agent Client Protocol, which
+        // returns the agent's actual answer, why the turn ended and what it
+        // cost. Falls back to the terminal dispatch below for CLIs that have
+        // no ACP mode, or when the run itself could not start.
+        try {
+          const acp = (await apiRequest(
+            `/api/agents/${id}/run-task`,
+            "POST",
+            { task: prompt, timeoutSeconds },
+            (timeoutSeconds + 60) * 1000,
+          )) as {
+            ok?: boolean;
+            stopReason?: string;
+            text?: string;
+            toolCalls?: string[];
+            usage?: { totalTokens?: number };
+            costUSD?: number;
+            error?: string;
+            retryWithDispatch?: boolean;
+          };
+
+          if (acp && !acp.retryWithDispatch && (acp.ok || acp.text)) {
+            const meta = [
+              acp.stopReason ? `ended: ${acp.stopReason}` : "",
+              acp.toolCalls?.length ? `tools: ${acp.toolCalls.slice(0, 8).join(", ")}` : "",
+              acp.usage?.totalTokens ? `${acp.usage.totalTokens} tokens` : "",
+              typeof acp.costUSD === "number" ? `$${acp.costUSD.toFixed(4)}` : "",
+            ].filter(Boolean).join(" | ");
+
+            return {
+              content: [{
+                type: "text",
+                text: `${acp.text || "(the agent produced no text)"}\n\n---\n${meta}`,
+              }],
+              isError: !acp.ok,
+            };
+          }
+        } catch {
+          // ACP unavailable for this agent — the terminal path still works.
+        }
+
         // Atomic dispatch: the server decides message-vs-spawn under its own
         // lock, so a stale status can never route the prompt to a dead PTY.
         const dispatched = await dispatchToAgent(id, prompt, model, allowCrossProject);
@@ -612,7 +653,7 @@ export function registerAgentTools(server: McpServer): void {
               content: [
                 {
                   type: "text",
-                  text: `Agent "${agentName}" is blocked on a PERMISSION dialog and cannot proceed autonomously. Resolve it in the Dorothy UI, or stop_agent and re-delegate.`,
+                  text: `Agent "${agentName}" is blocked on a PERMISSION dialog and cannot proceed autonomously. Resolve it in the Tars UI, or stop_agent and re-delegate.`,
                 },
               ],
               isError: true,
@@ -703,7 +744,7 @@ export function registerAgentTools(server: McpServer): void {
           content: [
             {
               type: "text",
-              text: `Agent "${agentName}" finished (${waitData.status}) but no clean output was captured. Use get_agent_output to retry, or check the agent's terminal in the Dorothy UI.`,
+              text: `Agent "${agentName}" finished (${waitData.status}) but no clean output was captured. Use get_agent_output to retry, or check the agent's terminal in the Tars UI.`,
             },
           ],
         };

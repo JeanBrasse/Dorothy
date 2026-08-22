@@ -10,13 +10,13 @@ const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["nor
 import ClientLayout from "@/components/ClientLayout";
 
 export const metadata: Metadata = {
-  title: "Dorothy | Agent Control Center",
+  title: "Tars | Agent Control Center",
   description: "Manage and monitor your Claude Code agents, projects, and tasks in real-time",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Dorothy",
+    title: "Tars",
   },
   formatDetection: {
     telephone: false,
@@ -44,7 +44,7 @@ export default function RootLayout({
             light palette renders for one frame on every cold load (white flash). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var d=localStorage.getItem('dorothy-dark-mode');var dark=d===null?true:d==='true';var e=document.documentElement;e.classList.toggle('dark',dark);e.style.colorScheme=dark?'dark':'light';}catch(_){}})();`,
+            __html: `(function(){try{var dark=localStorage.getItem('tars-theme')!=='light';var e=document.documentElement;e.classList.toggle('dark',dark);e.style.colorScheme=dark?'dark':'light';}catch(_){}})();`,
           }}
         />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

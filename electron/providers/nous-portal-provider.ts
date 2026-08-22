@@ -10,6 +10,7 @@ import type {
   ProviderModel,
   HookConfig,
 } from './cli-provider';
+import { safeEffort } from './cli-provider';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api'; // claude appends /v1/messages
 
@@ -57,8 +58,8 @@ export class NousPortalProvider implements CLIProvider {
       command += ' --permission-mode bypassPermissions';
     }
 
-    if (params.effort && params.effort !== 'medium') {
-      command += ` --effort ${params.effort}`;
+    if (safeEffort(params.effort) && params.effort !== 'medium') {
+      command += ` --effort ${safeEffort(params.effort)}`;
     }
 
     command += ` --add-dir '${os.homedir()}/.dorothy'`;

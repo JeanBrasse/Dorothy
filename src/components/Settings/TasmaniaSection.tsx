@@ -283,7 +283,7 @@ export const TasmaniaSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
         </div>
       </div>
 
-      {/* Server Status + Model Browser — only rendered when Tasmania is enabled */}
+      {/* Server Status + Model Browser - only rendered when Tasmania is enabled */}
       {appSettings.tasmaniaEnabled && (
         <>
           <div className="border border-border bg-card p-6">

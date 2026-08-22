@@ -228,6 +228,71 @@ export function handleStatusChangeNotification(
   });
 }
 
+/**
+ * On-disk format version. Bumping it lets loadAgents migrate old records
+ * deliberately instead of hoping every field happens to still line up.
+ */
+const AGENTS_SCHEMA_VERSION = 2;
+
+/** Retained terminal chunks per agent: enough to redraw a screen, bounded. */
+const OUTPUT_CHUNK_CAP = 600;
+const OUTPUT_RETAIN = 400;
+
+/**
+ * Appends a terminal chunk and keeps the buffer bounded.
+ *
+ * Five PTY handlers pushed into agent.output and none of them capped it, so a
+ * chatty CLI grew that array for the life of the app, once per agent.
+ */
+export function appendAgentOutput(agent: AgentStatus, chunk: string): void {
+  agent.output.push(chunk);
+  if (agent.output.length > OUTPUT_CHUNK_CAP) {
+    agent.output.splice(0, agent.output.length - OUTPUT_RETAIN);
+  }
+  markAgentsDirty();
+}
+
+interface AgentsFile {
+  version: number;
+  savedAt: string;
+  agents: AgentStatus[];
+}
+
+function backupFile(): string {
+  return path.join(DATA_DIR, 'agents.backup.json');
+}
+
+/** Runtime-only fields, stripped before writing. */
+function persistable(agent: AgentStatus): AgentStatus {
+  return {
+    ...agent,
+    ptyId: undefined,
+    pathMissing: undefined,
+    output: agent.output.slice(-100),
+    status: agent.status === 'running' ? 'idle' : agent.status,
+  } as AgentStatus;
+}
+
+function parseAgentsFile(raw: string): AgentStatus[] | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (Array.isArray(parsed)) return parsed as AgentStatus[];       // v1: bare array
+  const file = parsed as Partial<AgentsFile>;
+  return Array.isArray(file?.agents) ? file.agents : null;
+}
+
+/**
+ * Writes the agent list.
+ *
+ * Atomic: a temp file renamed into place, so a crash mid-write leaves the
+ * previous file intact rather than a truncated one. The backup is taken from
+ * content we have just parsed successfully, so a corrupt current file can no
+ * longer overwrite the last good copy.
+ */
 export function saveAgents() {
   try {
     if (!agentsLoaded) {
@@ -236,27 +301,58 @@ export function saveAgents() {
     }
 
     ensureDataDir();
-    const agentsArray = Array.from(agents.values()).map(agent => ({
-      ...agent,
-      ptyId: undefined,
-      pathMissing: undefined,
-      output: agent.output.slice(-100),
-      status: agent.status === 'running' ? 'idle' : agent.status,
-    }));
+    const payload: AgentsFile = {
+      version: AGENTS_SCHEMA_VERSION,
+      savedAt: new Date().toISOString(),
+      agents: Array.from(agents.values()).map(persistable),
+    };
 
     if (fs.existsSync(AGENTS_FILE)) {
-      const existingContent = fs.readFileSync(AGENTS_FILE, 'utf-8');
-      if (existingContent.trim().length > 2) {
-        const backupFile = path.join(DATA_DIR, 'agents.backup.json');
-        fs.writeFileSync(backupFile, existingContent);
+      try {
+        const existing = fs.readFileSync(AGENTS_FILE, 'utf-8');
+        const existingAgents = parseAgentsFile(existing);
+        if (existingAgents && existingAgents.length > 0) {
+          fs.writeFileSync(backupFile(), existing);
+        }
+      } catch {
+        // An unreadable current file is exactly what the backup protects
+        // against: leave the old backup alone.
       }
     }
 
-    fs.writeFileSync(AGENTS_FILE, JSON.stringify(agentsArray, null, 2));
-    console.log(`Saved ${agentsArray.length} agents to disk`);
+    const tmp = `${AGENTS_FILE}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(payload, null, 2));
+    fs.renameSync(tmp, AGENTS_FILE);
+    agentsDirty = false;
   } catch (err) {
     console.error('Failed to save agents:', err);
   }
+}
+
+/* ── Periodic flush ────────────────────────────────────────
+ * Fields mutated on every PTY chunk (output, statusLine, lastActivity) used
+ * to reach disk only when some other action happened to call saveAgents, so
+ * a crash lost them. markAgentsDirty + this timer bound that loss.
+ */
+let agentsDirty = false;
+let flushTimer: NodeJS.Timeout | null = null;
+const FLUSH_INTERVAL_MS = 30_000;
+
+export function markAgentsDirty(): void {
+  agentsDirty = true;
+}
+
+export function startAgentAutosave(intervalMs = FLUSH_INTERVAL_MS): void {
+  if (flushTimer) return;
+  flushTimer = setInterval(() => {
+    if (agentsDirty) saveAgents();
+  }, intervalMs);
+  flushTimer.unref?.();
+}
+
+export function stopAgentAutosave(): void {
+  if (flushTimer) clearInterval(flushTimer);
+  flushTimer = null;
 }
 
 export function loadAgents() {
@@ -268,24 +364,30 @@ export function loadAgents() {
     }
 
     const data = fs.readFileSync(AGENTS_FILE, 'utf-8');
+    let agentsArray = parseAgentsFile(data);
 
-    if (!data.trim() || data.trim() === '[]') {
-      console.log('Agents file is empty, checking for backup...');
-      const backupFile = path.join(DATA_DIR, 'agents.backup.json');
-      if (fs.existsSync(backupFile)) {
-        const backupData = fs.readFileSync(backupFile, 'utf-8');
-        if (backupData.trim() && backupData.trim() !== '[]') {
-          console.log('Restoring agents from backup...');
-          fs.writeFileSync(AGENTS_FILE, backupData);
-          loadAgents();
-          return;
+    // Unparseable or empty: fall back to the backup rather than carrying on
+    // with an empty map, which the next save would then write over the file.
+    if (!agentsArray || agentsArray.length === 0) {
+      const backup = backupFile();
+      if (fs.existsSync(backup)) {
+        const restored = parseAgentsFile(fs.readFileSync(backup, 'utf-8'));
+        if (restored && restored.length > 0) {
+          console.warn(`agents.json unusable - restoring ${restored.length} agents from backup`);
+          agentsArray = restored;
         }
       }
+    }
+
+    if (!agentsArray) {
+      // Keep the unreadable file for inspection instead of silently replacing it.
+      try {
+        fs.copyFileSync(AGENTS_FILE, `${AGENTS_FILE}.corrupt`);
+      } catch { /* best effort */ }
+      console.error('agents.json could not be parsed; kept a copy at agents.json.corrupt');
       agentsLoaded = true;
       return;
     }
-
-    const agentsArray = JSON.parse(data) as AgentStatus[];
 
     for (const agent of agentsArray) {
       const workingPath = agent.worktreePath || agent.projectPath;
@@ -437,7 +539,7 @@ export async function initAgentPty(
   ptyProcess.onData((data) => {
     const agentData = agents.get(agent.id);
     if (agentData) {
-      agentData.output.push(data);
+      appendAgentOutput(agentData, data);
       agentData.lastActivity = new Date().toISOString();
       agentData.statusLine = extractStatusLine(agentData.output);
 

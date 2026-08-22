@@ -26,7 +26,12 @@ export default function KanbanPage() {
   return (
     <div className="h-[calc(100vh-7rem)] lg:h-[calc(100vh-3rem)] flex flex-col pt-4 lg:pt-6">
       <div className="flex items-center justify-between gap-3 mb-3 shrink-0">
-        <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-foreground">Kanban</h1>
+        <div>
+          <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-foreground">Kanban</h1>
+          <p className="text-muted-foreground text-xs lg:text-sm mt-1 hidden sm:block">
+            Task board. Hermes runs the work; the local board is for projects without a gateway.
+          </p>
+        </div>
         <div className="flex items-center border border-border bg-card">
           {(['hermes', 'local'] as Source[]).map(s => (
             <button

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Session end hook for dorothy
+# Session end hook for tars
 # Sets agent status to "completed" when session terminates and captures final output
 
 # Read JSON input from stdin

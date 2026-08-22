@@ -25,7 +25,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /**
- * The one button. No inline styles, no shadows, no radius overrides — the
+ * The one button. No inline styles, no shadows, no radius overrides - the
  * shape comes from the theme so a future rebrand never has to hunt through
  * component files.
  */

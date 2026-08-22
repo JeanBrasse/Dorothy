@@ -26,7 +26,7 @@ vi.mock('electron', () => ({
 }));
 
 vi.mock('../../electron/constants', () => ({
-  GITHUB_REPO: 'Charlie85270/dorothy',
+  GITHUB_REPO: 'JeanBrasse/Dorothy',
 }));
 
 vi.stubGlobal('fetch', mockFetch);
@@ -174,10 +174,10 @@ describe('update-checker', () => {
         ok: true,
         json: async () => ({
           tag_name: 'v2.0.0',
-          html_url: 'https://github.com/Charlie85270/dorothy/releases/tag/v2.0.0',
+          html_url: 'https://github.com/JeanBrasse/Dorothy/releases/tag/v2.0.0',
           body: 'Release notes here',
           assets: [
-            { name: 'Dorothy-2.0.0.dmg', browser_download_url: 'https://github.com/.../Dorothy-2.0.0.dmg' },
+            { name: 'Tars-2.0.0.dmg', browser_download_url: 'https://github.com/.../Tars-2.0.0.dmg' },
           ],
         }),
       });
@@ -185,7 +185,7 @@ describe('update-checker', () => {
       const result = await checkForUpdates();
       expect(result).toEqual({ devMode: false, fallback: true });
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/Charlie85270/dorothy/releases/latest',
+        'https://api.github.com/repos/JeanBrasse/Dorothy/releases/latest',
         expect.objectContaining({
           headers: expect.objectContaining({
             'Accept': 'application/vnd.github.v3+json',
@@ -204,10 +204,10 @@ describe('update-checker', () => {
         ok: true,
         json: async () => ({
           tag_name: 'v2.0.0',
-          html_url: 'https://github.com/Charlie85270/dorothy/releases/tag/v2.0.0',
+          html_url: 'https://github.com/JeanBrasse/Dorothy/releases/tag/v2.0.0',
           body: 'Big update',
           assets: [
-            { name: 'Dorothy-2.0.0.dmg', browser_download_url: 'https://example.com/Dorothy-2.0.0.dmg' },
+            { name: 'Tars-2.0.0.dmg', browser_download_url: 'https://example.com/Tars-2.0.0.dmg' },
           ],
         }),
       });
@@ -218,8 +218,8 @@ describe('update-checker', () => {
         currentVersion: '1.2.1',
         latestVersion: '2.0.0',
         hasUpdate: true,
-        downloadUrl: 'https://example.com/Dorothy-2.0.0.dmg',
-        releaseUrl: 'https://github.com/Charlie85270/dorothy/releases/tag/v2.0.0',
+        downloadUrl: 'https://example.com/Tars-2.0.0.dmg',
+        releaseUrl: 'https://github.com/JeanBrasse/Dorothy/releases/tag/v2.0.0',
       }));
     });
 
@@ -233,7 +233,7 @@ describe('update-checker', () => {
         ok: true,
         json: async () => ({
           tag_name: 'v1.2.1',
-          html_url: 'https://github.com/Charlie85270/dorothy/releases/tag/v1.2.1',
+          html_url: 'https://github.com/JeanBrasse/Dorothy/releases/tag/v1.2.1',
           body: '',
           assets: [],
         }),
@@ -370,8 +370,8 @@ describe('update-checker', () => {
           html_url: 'https://github.com/releases/v2.0.0',
           body: '',
           assets: [
-            { name: 'Dorothy-2.0.0.zip', browser_download_url: 'https://example.com/Dorothy-2.0.0.zip' },
-            { name: 'Dorothy-2.0.0.dmg', browser_download_url: 'https://example.com/Dorothy-2.0.0.dmg' },
+            { name: 'Tars-2.0.0.zip', browser_download_url: 'https://example.com/Tars-2.0.0.zip' },
+            { name: 'Tars-2.0.0.dmg', browser_download_url: 'https://example.com/Tars-2.0.0.dmg' },
           ],
         }),
       });
@@ -379,7 +379,7 @@ describe('update-checker', () => {
       await checkForUpdates();
 
       expect(win.webContents.send).toHaveBeenCalledWith('app:update-available', expect.objectContaining({
-        downloadUrl: 'https://example.com/Dorothy-2.0.0.dmg',
+        downloadUrl: 'https://example.com/Tars-2.0.0.dmg',
       }));
     });
 
@@ -394,7 +394,7 @@ describe('update-checker', () => {
           html_url: 'https://github.com/releases/v2.0.0',
           body: '',
           assets: [
-            { name: 'Dorothy-2.0.0.zip', browser_download_url: 'https://example.com/Dorothy-2.0.0.zip' },
+            { name: 'Tars-2.0.0.zip', browser_download_url: 'https://example.com/Tars-2.0.0.zip' },
           ],
         }),
       });
@@ -402,7 +402,7 @@ describe('update-checker', () => {
       await checkForUpdates();
 
       expect(win.webContents.send).toHaveBeenCalledWith('app:update-available', expect.objectContaining({
-        downloadUrl: 'https://example.com/Dorothy-2.0.0.zip',
+        downloadUrl: 'https://example.com/Tars-2.0.0.zip',
       }));
     });
 

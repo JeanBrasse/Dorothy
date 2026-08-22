@@ -45,10 +45,10 @@ export interface TemplateStore {
   overrides: Record<string, BuiltinOverride>;
 }
 
-export const TEMPLATE_EXPORT_KIND = 'dorothy.agent-template' as const;
+export const TEMPLATE_EXPORT_KIND = 'tars.agent-template' as const;
 export const TEMPLATE_EXPORT_VERSION = 1 as const;
 
-/** Wire format for sharing templates between Dorothy installs. */
+/** Wire format for sharing templates between Tars installs. */
 export interface TemplateExport {
   version: typeof TEMPLATE_EXPORT_VERSION;
   kind: typeof TEMPLATE_EXPORT_KIND;
