@@ -1,7 +1,7 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
-import { useClaude } from '@/hooks/useClaude';
+import { useElectronAgents } from '@/hooks/useElectron';
 import dynamic from 'next/dynamic';
 
 // Dynamically import TerminalsView to avoid SSR issues with xterm
@@ -18,8 +18,11 @@ const TerminalsView = dynamic(() => import('@/components/TerminalsView'), {
 });
 
 export default function Dashboard() {
-  const { data } = useClaude();
-  const activeSessions = data?.activeSessions || [];
+  // The real signal is Dorothy's own agents — claude-service's activeSessions
+  // is a stub that always returns an empty array.
+  const { agents } = useElectronAgents();
+  const activeCount = agents.filter(a => a.status === 'running' || a.status === 'waiting').length;
+  const runningCount = agents.filter(a => a.status === 'running').length;
 
   return (
     <div className="space-y-4 pt-4 lg:pt-6">
@@ -33,11 +36,8 @@ export default function Dashboard() {
         </div>
         <div className="text-right text-xs text-muted-foreground hidden sm:block">
           <div className="flex items-center gap-2 justify-end">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </span>
-            <span>{activeSessions.length} active session{activeSessions.length !== 1 ? 's' : ''}</span>
+            <span className={`inline-block w-1.5 h-1.5 ${activeCount > 0 ? 'bg-status-running' : 'bg-status-idle'}`} />
+            <span className="font-mono">{activeCount} active · {runningCount} running</span>
           </div>
           <div className="mt-0.5">
             {new Date().toLocaleDateString('en-US', {

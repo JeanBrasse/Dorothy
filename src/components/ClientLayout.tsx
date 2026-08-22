@@ -144,8 +144,10 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
   // Initialize dark mode from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('dorothy-dark-mode');
-    if (saved === 'true') {
-      setDarkMode(true);
+    // Must honour an explicit 'false' too, otherwise picking light mode never
+    // survives a restart (the store defaults to dark).
+    if (saved !== null) {
+      setDarkMode(saved === 'true');
     }
   }, [setDarkMode]);
 

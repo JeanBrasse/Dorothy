@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Terminal,
   FolderOpen,
+  Terminal as TerminalIcon,
   Folder,
   Star,
   Layers,
@@ -864,11 +865,20 @@ export default function ProjectsPage() {
                 {/* Quick Actions */}
                 <div className="flex gap-2">
                   <button
-                    onClick={() => window.open(`cursor://file${selectedProject.path}`, '_blank')}
-                    className="flex-1 px-4 py-2.5 border border-border bg-secondary text-sm flex items-center justify-center gap-2 hover:bg-white/5 transition-colors"
+                    onClick={() => window.electronAPI?.shell?.exec({ command: `open ${JSON.stringify(selectedProject.path)}` })}
+                    className="flex-1 px-4 py-2.5 border border-border bg-secondary text-sm flex items-center justify-center gap-2 hover:bg-accent/50 transition-colors"
+                    title="Reveal this folder in Finder"
                   >
-                    <ExternalLink className="w-4 h-4" />
-                    Open in Cursor
+                    <FolderOpen className="w-4 h-4" />
+                    Reveal in Finder
+                  </button>
+                  <button
+                    onClick={() => window.electronAPI?.shell?.openTerminal({ cwd: selectedProject.path })}
+                    className="flex-1 px-4 py-2.5 border border-border bg-secondary text-sm flex items-center justify-center gap-2 hover:bg-accent/50 transition-colors"
+                    title="Open a terminal in this folder"
+                  >
+                    <TerminalIcon className="w-4 h-4" />
+                    Terminal
                   </button>
                   {hasElectron && (
                     <button

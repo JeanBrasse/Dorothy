@@ -84,4 +84,8 @@ export interface NewChatModalProps {
   initialProjectPath?: string;
   initialStep?: number;
   initialOrchestrator?: boolean;
+  /** Opens the templates manager from inside the creation flow. */
+  onManageTemplates?: () => void;
+  /** The project's existing orchestrator, if any — warns against a second one. */
+  existingSuperAgent?: { id: string; name?: string } | null;
 }

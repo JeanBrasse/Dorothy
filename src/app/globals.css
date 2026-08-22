@@ -223,6 +223,12 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  /* Agent status — semantic, accent-independent */
+  --color-status-running: var(--success);
+  --color-status-waiting: var(--warning);
+  --color-status-error: var(--danger);
+  --color-status-idle: var(--text-muted);
+
   /* Legacy color mappings */
   --color-bg-primary: var(--bg-primary);
   --color-bg-secondary: var(--bg-secondary);
@@ -271,6 +277,13 @@
 @layer base {
   * {
     border-color: var(--border);
+  }
+  html {
+    background: var(--background);
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
   }
   body {
     background: var(--background);

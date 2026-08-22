@@ -41,7 +41,6 @@ export default function AgentsPage() {
 
   // Local state
   const [showNewChatModal, setShowNewChatModal] = useState(false);
-  const [showSuperAgentModal, setShowSuperAgentModal] = useState(false);
   const [showTemplatesDialog, setShowTemplatesDialog] = useState(false);
   const [showDeployTeamDialog, setShowDeployTeamDialog] = useState(false);
   const [viewAgentId, setViewAgentId] = useState<string | null>(null);  // terminal dialog
@@ -53,11 +52,11 @@ export default function AgentsPage() {
 
 
   // Custom hooks
-  const { superAgent, isCreatingSuperAgent, handleSuperAgentClick } = useSuperAgent({
+  const { superAgent } = useSuperAgent({
     agents,
     startAgent,
     onAgentCreated: (id) => setEditAgentId(id),
-    onCreateNew: () => setShowSuperAgentModal(true),
+    onCreateNew: () => setShowNewChatModal(true),
   });
 
   const { filteredAgents, uniqueProjects } = useAgentFiltering({
@@ -220,11 +219,9 @@ export default function AgentsPage() {
   return (
     <div className="h-[calc(100vh-7rem)] lg:h-[calc(100vh-3rem)] flex flex-col pt-4 lg:pt-6">
       <AgentListHeader
-        superAgent={superAgent}
-        isCreatingSuperAgent={isCreatingSuperAgent}
-        onSuperAgentClick={handleSuperAgentClick}
+        totalCount={agents.length}
+        runningCount={runningCount}
         onNewAgentClick={() => setShowNewChatModal(true)}
-        onTemplatesClick={() => setShowTemplatesDialog(true)}
         onDeployTeamClick={() => setShowDeployTeamDialog(true)}
       />
 
@@ -354,19 +351,8 @@ export default function AgentsPage() {
         installedSkills={installedSkills}
         allInstalledSkills={claudeData?.skills || []}
         onRefreshSkills={refreshSkills}
-      />
-
-      {/* Super Agent Create Modal */}
-      <NewChatModal
-        open={showSuperAgentModal}
-        onClose={() => setShowSuperAgentModal(false)}
-        onSubmit={handleCreateAgent}
-        projects={projects.map(p => ({ path: p.path, name: p.name }))}
-        onBrowseFolder={isElectron() ? openFolderDialog : undefined}
-        installedSkills={installedSkills}
-        allInstalledSkills={claudeData?.skills || []}
-        onRefreshSkills={refreshSkills}
-        initialOrchestrator
+        onManageTemplates={() => setShowTemplatesDialog(true)}
+        existingSuperAgent={superAgent}
       />
 
       {/* Edit Modal — reuses NewChatModal pre-filled with agent data */}

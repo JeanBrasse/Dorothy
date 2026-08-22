@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronRight, Play, Check } from 'lucide-react';
+import { X, ChevronRight, Play, Check, Bot, Crown } from 'lucide-react';
 
 import type { NewChatModalProps, AgentPersonaValues } from './types';
 import type { AgentProvider, AgentTemplate } from '@/types/electron';
@@ -92,6 +92,8 @@ export default function NewChatModal({
   initialProjectPath,
   initialStep,
   initialOrchestrator,
+  onManageTemplates,
+  existingSuperAgent,
 }: NewChatModalProps) {
   const isEditMode = !!editAgent;
   // Step navigation
@@ -341,6 +343,12 @@ export default function NewChatModal({
     if (enabled) {
       setPermissionMode('auto');
       agentPersonaRef.current = { ...agentPersonaRef.current, character: 'wizard' };
+    } else {
+      // Switching back must undo what the orchestrator preset forced.
+      setPermissionMode('normal');
+      if (agentPersonaRef.current.character === 'wizard') {
+        agentPersonaRef.current = { ...agentPersonaRef.current, character: 'robot' };
+      }
     }
   }, []);
 
@@ -469,34 +477,90 @@ export default function NewChatModal({
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-5">
-            {step === 1 && !isEditMode && !initialOrchestrator && agentTemplates.length > 0 && (
-              <div className="mb-5">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                  Start from a template <span className="normal-case font-normal">(optional)</span>
-                </p>
-                <div className="flex gap-1.5 overflow-x-auto pb-1">
-                  {agentTemplates.map(t => {
-                    const providerUnavailable = installedProviders[t.provider] === false;
-                    return (
-                      <button
-                        key={t.id}
-                        onClick={() => applyTemplate(t)}
-                        disabled={providerUnavailable}
-                        title={providerUnavailable
-                          ? `${t.displayName}: provider "${t.provider}" is not installed/configured`
-                          : t.description}
-                        className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs whitespace-nowrap border transition-colors ${
-                          appliedTemplateId === t.id
-                            ? 'bg-foreground text-background border-foreground'
-                            : 'bg-secondary border-border text-foreground hover:bg-accent/50'
-                        } disabled:opacity-40 disabled:cursor-not-allowed`}
-                      >
-                        <span>{t.icon}</span>
-                        {t.displayName}
-                      </button>
-                    );
-                  })}
+            {step === 1 && !isEditMode && (
+              <div className="mb-5 space-y-4">
+                {/* What kind of agent — the orchestrator lives here, not in a
+                    competing top-level button */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                    Agent type
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handleOrchestratorToggle(false)}
+                      className={`flex flex-col items-start gap-0.5 px-3 py-2.5 border text-left transition-colors ${
+                        !isOrchestrator
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border bg-secondary hover:bg-accent/50'
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                        <Bot className="w-3.5 h-3.5" /> Agent
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Works on one project</span>
+                    </button>
+                    <button
+                      onClick={() => handleOrchestratorToggle(true)}
+                      className={`flex flex-col items-start gap-0.5 px-3 py-2.5 border text-left transition-colors ${
+                        isOrchestrator
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border bg-secondary hover:bg-accent/50'
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                        <Crown className="w-3.5 h-3.5" /> Orchestrator
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Delegates to the other agents</span>
+                    </button>
+                  </div>
+                  {isOrchestrator && existingSuperAgent && (
+                    <p className="text-[11px] text-status-waiting mt-1.5">
+                      An orchestrator already exists ({existingSuperAgent.name || existingSuperAgent.id.slice(0, 6)}). Creating a second one is allowed but rarely what you want.
+                    </p>
+                  )}
                 </div>
+
+                {/* Templates — the manager is reachable from here */}
+                {agentTemplates.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Start from a template <span className="normal-case font-normal">(optional)</span>
+                      </p>
+                      {onManageTemplates && (
+                        <button
+                          onClick={onManageTemplates}
+                          className="text-[11px] text-primary hover:underline"
+                        >
+                          Manage templates
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex gap-1.5 overflow-x-auto pb-1">
+                      {agentTemplates.map(t => {
+                        const providerUnavailable = installedProviders[t.provider] === false;
+                        return (
+                          <button
+                            key={t.id}
+                            onClick={() => applyTemplate(t)}
+                            disabled={providerUnavailable}
+                            title={providerUnavailable
+                              ? `${t.displayName}: provider "${t.provider}" is not installed/configured`
+                              : t.description}
+                            className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs whitespace-nowrap border transition-colors ${
+                              appliedTemplateId === t.id
+                                ? 'bg-foreground text-background border-foreground'
+                                : 'bg-secondary border-border text-foreground hover:bg-accent/50'
+                            } disabled:opacity-40 disabled:cursor-not-allowed`}
+                          >
+                            <span>{t.icon}</span>
+                            {t.displayName}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
