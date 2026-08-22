@@ -12,7 +12,7 @@ const TONES: Record<Tone, string> = {
   neutral: 'bg-secondary text-muted-foreground border-border',
 };
 
-/** Every success/error/warning pill in the app — one tone table, no raw colors. */
+/** Every success/error/warning pill in the app - one tone table, no raw colors. */
 export function StatusBadge({ tone = 'neutral', children, className = '' }: {
   tone?: Tone;
   children: ReactNode;
@@ -25,7 +25,7 @@ export function StatusBadge({ tone = 'neutral', children, className = '' }: {
   );
 }
 
-/** Small state dot — the only place a fully-round shape is legitimate. */
+/** Small state dot - the only place a fully-round shape is legitimate. */
 export function StatusDot({ tone = 'neutral', className = '' }: { tone?: Tone; className?: string }) {
   const color = tone === 'success' ? 'bg-success'
     : tone === 'warning' ? 'bg-warning'

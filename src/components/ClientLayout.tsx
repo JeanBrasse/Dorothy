@@ -63,7 +63,7 @@ function loadVaultReadDocs(): Set<string> {
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // Tray panel is a standalone Electron popup — render without sidebar/chrome
+  // Tray panel is a standalone Electron popup - render without sidebar/chrome
   if (pathname?.startsWith('/tray-panel')) {
     return <>{children}</>;
   }
@@ -178,7 +178,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
     };
     initUnread();
 
-    // Listen for real-time document creation — increment unread
+    // Listen for real-time document creation - increment unread
     const unsub = window.electronAPI!.vault!.onDocumentCreated(() => {
       setVaultUnreadCount(useStore.getState().vaultUnreadCount + 1);
     });
@@ -264,7 +264,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
                 <div>
                   <h3 className="font-semibold text-foreground">Update Available</h3>
                   <p className="text-sm text-muted-foreground">
-                    Dorothy {updateInfo.latestVersion} is ready
+                    Tars {updateInfo.latestVersion} is ready
                   </p>
                 </div>
               </div>

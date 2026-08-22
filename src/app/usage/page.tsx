@@ -29,7 +29,7 @@ let openRouterPricingCache: { models: Array<{ id: string; name: string; inputPer
 
 /** Per-model pricing defaults for ALL providers (input/output/cache per MTok).
  *  Used by the Pricing Reference table. Users can override via edit mode.
- *  Cache columns only apply to Claude; other providers show "—". */
+ *  Cache columns only apply to Claude; other providers show "-". */
 const ALL_PROVIDER_MODEL_PRICING: Record<string, {
   models: { id: string; name: string; inputPerMTok: number | null; outputPerMTok: number | null; cacheHitsPerMTok?: number; cache5mWritePerMTok?: number }[];
   note?: string;
@@ -61,7 +61,7 @@ const ALL_PROVIDER_MODEL_PRICING: Record<string, {
       { id: 'meta-llama/llama-4-maverick', name: 'Llama 4 Maverick', inputPerMTok: 0.20, outputPerMTok: 0.60 },
       { id: 'qwen/qwen3-235b', name: 'Qwen3 235B', inputPerMTok: 0.80, outputPerMTok: 3.20 },
     ],
-    note: 'Pricing varies per model — see openrouter.ai/models for full catalogue of 300+ models.',
+    note: 'Pricing varies per model - see openrouter.ai/models for full catalogue of 300+ models.',
   },
   deepseek: {
     models: [
@@ -122,7 +122,7 @@ const MODEL_PRICING: Record<string, {
   cache5mWritePerMTok: number;
   cache1hWritePerMTok: number;
 }> = {
-  // Fable 5 — Anthropic's most capable widely released model
+  // Fable 5 - Anthropic's most capable widely released model
   'claude-fable-5': { inputPerMTok: 10, outputPerMTok: 50, cacheHitsPerMTok: 1.00, cache5mWritePerMTok: 12.50, cache1hWritePerMTok: 20 },
   'fable': { inputPerMTok: 10, outputPerMTok: 50, cacheHitsPerMTok: 1.00, cache5mWritePerMTok: 12.50, cache1hWritePerMTok: 20 },
   // Opus 5
@@ -485,7 +485,7 @@ export default function UsagePage() {
   }, [data?.stats?.modelUsage]);
 
   // Latest available date in stats (stats-cache.json is updated by Claude Code on session end,
-  // so it may lag behind real-time — use lastComputedDate instead of today's calendar date)
+  // so it may lag behind real-time - use lastComputedDate instead of today's calendar date)
   const latestDataDate = data?.stats?.lastComputedDate ?? null;
 
   // Get cost data for charts based on time range.
@@ -640,7 +640,7 @@ export default function UsagePage() {
               const remainingH = Math.floor(remainingMin / 60);
               const remainingM = remainingMin % 60;
               const resetLabel = isStale
-                ? 'Window reset — awaiting update'
+                ? 'Window reset - awaiting update'
                 : remainingH > 0
                   ? `Resets in ${remainingH}h ${remainingM}m`
                   : `Resets in ${remainingM}m`;
@@ -682,7 +682,7 @@ export default function UsagePage() {
               const remainingD = Math.floor(remainingH / 24);
               const remainingHMod = remainingH % 24;
               const resetLabel = isStale
-                ? 'Window reset — awaiting update'
+                ? 'Window reset - awaiting update'
                 : remainingD > 0
                   ? `Resets in ${remainingD}d ${remainingHMod}h`
                   : `Resets in ${remainingH}h`;
@@ -820,7 +820,7 @@ export default function UsagePage() {
             return (
               <p className="text-xs text-text-muted">
                 {(inTok / 1000000).toFixed(2)}M in / {(outTok / 1000000).toFixed(2)}M out
-                {dorothyOnly && ' (Dorothy only)'}
+                {dorothyOnly && ' (Tars only)'}
               </p>
             );
           })()}
@@ -1368,7 +1368,7 @@ export default function UsagePage() {
                         <td className="text-right py-2 px-2 tabular-nums">{fmtTokens(totals.in)}</td>
                         <td className="text-right py-2 px-2 tabular-nums">{fmtTokens(totals.out)}</td>
                         <td className="text-right py-2 px-2 tabular-nums text-accent-green">
-                          {totals.cost > 0 ? `$${totals.cost.toFixed(2)}` : '—'}
+                          {totals.cost > 0 ? `$${totals.cost.toFixed(2)}` : '-'}
                         </td>
                       </tr>
                     );
@@ -1380,7 +1380,7 @@ export default function UsagePage() {
         })()}
       </motion.div>
 
-      {/* Pricing Reference — per-provider cards */}
+      {/* Pricing Reference - per-provider cards */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1445,7 +1445,7 @@ export default function UsagePage() {
               </table>
             </div>
 
-            {/* OpenRouter — live from API */}
+            {/* OpenRouter - live from API */}
             <div className="border border-border-primary p-4">
               <h4 className="text-xs font-medium mb-3 flex items-center gap-1.5">
                 {(() => { const def = getProviderDef('openrouter'); return def ? <ProviderIconRenderer icon={def.icon} className="w-3.5 h-3.5" /> : null; })()}
@@ -1484,7 +1484,7 @@ export default function UsagePage() {
               )}
             </div>
 
-            {/* Other providers — hardcoded */}
+            {/* Other providers - hardcoded */}
             {PROVIDER_REGISTRY.filter(p => !p.requiresCli && p.id !== 'openrouter' && ALL_PROVIDER_MODEL_PRICING[p.id]).map((providerDef) => {
               const providerData = ALL_PROVIDER_MODEL_PRICING[providerDef.id];
               return (
@@ -1506,10 +1506,10 @@ export default function UsagePage() {
                         <tr key={model.id} className="border-b border-border-primary/50 hover:bg-bg-tertiary/50">
                           <td className="py-1.5 px-2 font-medium">{model.name}</td>
                           <td className="text-right py-1.5 px-2">
-                            {model.inputPerMTok !== null ? `$${model.inputPerMTok}` : <span className="text-text-muted">—</span>}
+                            {model.inputPerMTok !== null ? `$${model.inputPerMTok}` : <span className="text-text-muted">-</span>}
                           </td>
                           <td className="text-right py-1.5 px-2">
-                            {model.outputPerMTok !== null ? `$${model.outputPerMTok}` : <span className="text-text-muted">—</span>}
+                            {model.outputPerMTok !== null ? `$${model.outputPerMTok}` : <span className="text-text-muted">-</span>}
                           </td>
                         </tr>
                       ))}

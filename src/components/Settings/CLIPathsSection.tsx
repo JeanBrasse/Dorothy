@@ -188,7 +188,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
         )}
       </div>
 
-      {/* Provider Toggles — OpenCode & Pi + status rows for others */}
+      {/* Provider Toggles - OpenCode & Pi + status rows for others */}
       <div className="border border-border bg-card p-6 space-y-0">
         <h3 className="text-md font-medium mb-2">CLI Agent Providers</h3>
         <p className="text-xs text-muted-foreground mb-4">
@@ -234,7 +234,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
           );
         })}
 
-        {/* OpenCode — toggle + test */}
+        {/* OpenCode - toggle + test */}
         <div className="flex items-center justify-between py-3 border-b border-border">
           <div className="flex items-center gap-3">
             <Cpu className="w-4 h-4 text-primary" />
@@ -274,7 +274,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
           </div>
         )}
 
-        {/* Pi — toggle + test */}
+        {/* Pi - toggle + test */}
         <div className="flex items-center justify-between py-3">
           <div className="flex items-center gap-3">
             <Cpu className="w-4 h-4 text-primary" />

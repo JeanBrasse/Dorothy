@@ -10,13 +10,13 @@ const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["nor
 import ClientLayout from "@/components/ClientLayout";
 
 export const metadata: Metadata = {
-  title: "Dorothy | Agent Control Center",
+  title: "Tars | Agent Control Center",
   description: "Manage and monitor your Claude Code agents, projects, and tasks in real-time",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Dorothy",
+    title: "Tars",
   },
   formatDetection: {
     telephone: false,

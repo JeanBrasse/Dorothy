@@ -221,7 +221,7 @@ export default function AgentTerminalDialog({
                   <PanelRight className="w-4 h-4" />
                 </button>
               )}
-              {/* Scroll-to-bottom button — appears when user has scrolled up */}
+              {/* Scroll-to-bottom button - appears when user has scrolled up */}
               {terminalReady && !isAtBottom && (
                 <button
                   onClick={scrollToBottom}
@@ -234,7 +234,7 @@ export default function AgentTerminalDialog({
               )}
             </div>
 
-            {/* Right sidebar — collapsible */}
+            {/* Right sidebar - collapsible */}
             {(sidebarOpen || isSuperAgentMode) && (
               <div className="border-l border-border-primary bg-bg-tertiary/20 flex flex-col overflow-hidden" style={{ width: '480px' }}>
                 {isSuperAgentMode ? (

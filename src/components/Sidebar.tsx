@@ -58,12 +58,12 @@ function useWhatsNewBadge() {
 
 export default function Sidebar({ isMobile = false }: SidebarProps) {
   const pathname = usePathname();
-  const { sidebarCollapsed, toggleSidebar, mobileMenuOpen, setMobileMenuOpen, darkMode, toggleDarkMode, vaultUnreadCount } = useStore();
+  const { mobileMenuOpen, setMobileMenuOpen, darkMode, toggleDarkMode, vaultUnreadCount } = useStore();
   const whatsNewHasNew = useWhatsNewBadge();
 
   // For mobile, sidebar is always expanded (240px) when open
-  const sidebarWidth = isMobile ? 240 : (sidebarCollapsed ? 72 : 240);
-  const showLabels = isMobile || !sidebarCollapsed;
+  const sidebarWidth = 240;
+  const showLabels = true;
 
   // Close mobile menu when navigating
   const handleNavClick = () => {
@@ -81,7 +81,7 @@ export default function Sidebar({ isMobile = false }: SidebarProps) {
         transition={{ duration: 0.2, ease: 'easeInOut' }}
         className="fixed left-0 top-0 h-screen bg-card border-r border-border flex-col z-50 hidden lg:flex"
       >
-        {/* Logo — top area also serves as drag region for macOS traffic lights */}
+        {/* Logo - top area also serves as drag region for macOS traffic lights */}
         <div className="window-drag flex items-center px-4 pt-5 pb-4 border-b border-border shrink-0">
           <Brand showWordmark={showLabels} markClassName="w-2.5 h-2.5" wordmarkClassName="font-serif text-xl text-foreground" />
         </div>
@@ -180,7 +180,7 @@ export default function Sidebar({ isMobile = false }: SidebarProps) {
           )}
         </div>
 
-        {/* Settings & Collapse */}
+        {/* Settings */}
         <div className="border-t border-border">
           <Link
             href="/settings"
@@ -201,19 +201,6 @@ export default function Sidebar({ isMobile = false }: SidebarProps) {
           >
             {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             {showLabels && <span className="text-sm">{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
-          </button>
-          <button
-            onClick={toggleSidebar}
-            className="w-full flex items-center gap-3 px-5 py-3 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer"
-          >
-            {sidebarCollapsed ? (
-              <ChevronRight className="w-5 h-5" />
-            ) : (
-              <>
-                <ChevronLeft className="w-5 h-5" />
-                <span className="text-sm">Collapse</span>
-              </>
-            )}
           </button>
         </div>
       </motion.aside>

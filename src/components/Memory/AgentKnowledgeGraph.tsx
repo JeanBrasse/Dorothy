@@ -12,7 +12,7 @@ type NodeShape = 'circle' | 'tag';
 
 interface NodeMeta {
   filePath?: string;     // for memory / instructions
-  skillPath?: string;    // for skill nodes — path on disk
+  skillPath?: string;    // for skill nodes - path on disk
   description?: string;  // for plugins / skills
   command?: string;      // for mcp nodes
   args?: string;         // for mcp nodes
@@ -162,7 +162,7 @@ type ClaudeDataType = {
   projectMcpServers?: Record<string, McpEntry & { projectPaths: string[] }>;
 };
 
-// { filePath → agentId[] | 'global' }
+// { filePath > agentId[] | 'global' }
 type InstructionFiles = Record<string, string[] | 'global'>;
 
 // ── Build graph ───────────────────────────────────────────────────────────────
@@ -188,7 +188,7 @@ function buildGraph(
   };
 
   const addEdge = (source: string, target: string) => {
-    const key = `${source}→${target}`;
+    const key = `${source}>${target}`;
     if (edgeSet.has(key)) return;
     edgeSet.add(key);
     edges.push({ source, target });
@@ -254,7 +254,7 @@ function buildGraph(
         addEdge(agent.id, memId);
       });
     }
-    // No fallback node — if there's no memory file, don't show one
+    // No fallback node - if there's no memory file, don't show one
   });
 
   // ── Instruction files (CLAUDE.md) ──
@@ -304,7 +304,7 @@ function buildGraph(
     }
   }
 
-  // ── MCP servers from ~/.claude/mcp.json (global — connect to all agents) ──
+  // ── MCP servers from ~/.claude/mcp.json (global - connect to all agents) ──
   const mcpServers = claudeData?.mcpServers;
   if (mcpServers) {
     for (const [mcpName, mcpCfg] of Object.entries(mcpServers).slice(0, 20)) {
@@ -565,7 +565,7 @@ export default function AgentKnowledgeGraph() {
       } catch { /* ignore parse errors */ }
 
       // enrichedClaude is built later after project MCPs are loaded
-      // (placeholder — filled in after CLAUDE.md/MCP discovery below)
+      // (placeholder - filled in after CLAUDE.md/MCP discovery below)
       claudeDataRef.current = null; // reset; will be set after discovery
       memoriesRef.current = memories;
 
@@ -575,7 +575,7 @@ export default function AgentKnowledgeGraph() {
 
       // Only include the CLAUDE.md files that are actually loaded per agent:
       // - ~/.claude/CLAUDE.md  (global Claude config)
-      // - ~/.dorothy/CLAUDE.md (global Dorothy config)
+      // - ~/.dorothy/CLAUDE.md (global Tars config)
       // - {projectPath}/CLAUDE.md and {projectPath}/.claude/CLAUDE.md per agent
       const cmds = [
         `[ -f "$HOME/.claude/CLAUDE.md" ] && echo "$HOME/.claude/CLAUDE.md"`,
@@ -589,7 +589,7 @@ export default function AgentKnowledgeGraph() {
       ].join('; ');
       const claudeMdResult = await window.electronAPI?.shell?.exec({ command: cmds }).catch(() => null);
       const instrFiles: InstructionFiles = {};
-      // shell:exec via PTY may include \r and ANSI codes — strip them
+      // shell:exec via PTY may include \r and ANSI codes - strip them
       const rawOutput = (claudeMdResult as { output?: string; error?: string } | null)?.output
         ?? (claudeMdResult as { output?: string; error?: string } | null)?.error
         ?? '';
@@ -1039,7 +1039,7 @@ export default function AgentKnowledgeGraph() {
             )}
           </div>
 
-          {/* Footer — save button for editable files */}
+          {/* Footer - save button for editable files */}
           {panelNode.meta?.editable && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-border shrink-0">
               {panelDraft !== panelContent && (

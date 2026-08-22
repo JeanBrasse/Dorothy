@@ -205,15 +205,15 @@ export const SlackSection = ({ appSettings, onSaveAppSettings, onUpdateLocalSett
         <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
           <li>Go to <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" className="text-foreground hover:underline">api.slack.com/apps</a> and click &quot;Create New App&quot;</li>
           <li>Choose &quot;From scratch&quot;, name it &quot;Dorothy&quot;, select workspace</li>
-          <li>Go to &quot;Socket Mode&quot; → Enable → Generate App Token with scope &quot;connections:write&quot; (xapp-...)</li>
-          <li>Go to &quot;OAuth & Permissions&quot; → Add Bot Token Scopes:
+          <li>Go to &quot;Socket Mode&quot; Enable Generate App Token with scope &quot;connections:write&quot; (xapp-...)</li>
+          <li>Go to &quot;OAuth & Permissions&quot; Add Bot Token Scopes:
             <ul className="ml-4 mt-1 space-y-0.5">
               <li className="text-xs">• app_mentions:read, chat:write, im:history, im:read, im:write</li>
             </ul>
           </li>
-          <li>Install to Workspace → Copy Bot Token (xoxb-...)</li>
-          <li>Go to &quot;Event Subscriptions&quot; → Enable → Subscribe to: app_mention, message.im</li>
-          <li>Go to &quot;App Home&quot; → Scroll to &quot;Show Tabs&quot;:
+          <li>Install to Workspace Copy Bot Token (xoxb-...)</li>
+          <li>Go to &quot;Event Subscriptions&quot; Enable Subscribe to: app_mention, message.im</li>
+          <li>Go to &quot;App Home&quot; Scroll to &quot;Show Tabs&quot;:
             <ul className="ml-4 mt-1 space-y-0.5">
               <li className="text-xs">• Enable &quot;Messages Tab&quot;</li>
               <li className="text-xs">• Check &quot;Allow users to send Slash commands and messages from the messages tab&quot;</li>

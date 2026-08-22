@@ -106,11 +106,11 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
 
     const membersToDeploy = editedMembers.length > 0 ? editedMembers : selectedTeam.members;
     for (const member of membersToDeploy) {
-      const agentName = `${member.name} — ${projectName}`;
+      const agentName = `${member.name} - ${projectName}`;
       // Re-deploying the same team must not double up agents: two agents with
       // the same name would share one worktree/branch and fight over files.
       if (existingNames.has(agentName)) {
-        issues.push(`${member.name}: already deployed on this project — skipped.`);
+        issues.push(`${member.name}: already deployed on this project - skipped.`);
         continue;
       }
       setProgress(`Creating ${member.name}…`);
@@ -135,9 +135,9 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
         });
         createdIds.push(agent.id);
         // agent:create swallows git-worktree failures and falls back to the
-        // project root — surface that instead of reporting a clean deploy.
+        // project root - surface that instead of reporting a clean deploy.
         if (member.worktreeBranch && !agent.branchName) {
-          issues.push(`${member.name}: worktree "${member.worktreeBranch}" could not be created (not a git repo, or branch busy) — agent works in the project root.`);
+          issues.push(`${member.name}: worktree "${member.worktreeBranch}" could not be created (not a git repo, or branch busy) - agent works in the project root.`);
         }
         if (member.savedPrompt?.trim()) {
           await updateAgent({ id: agent.id, savedPrompt: member.savedPrompt });
@@ -184,9 +184,9 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
 
     if (!projectPath || projectAgents.length === 0) return;
     const projectName = projectPath.split('/').pop() || 'project';
-    // Deployed agents are named "<role> — <project>"; strip the suffix so
-    // save→redeploy cycles don't accrete " — projA — projB" onto member names.
-    const suffix = ` — ${projectName}`;
+    // Deployed agents are named "<role> - <project>"; strip the suffix so
+    // save>redeploy cycles don't accrete " - projA - projB" onto member names.
+    const suffix = ` - ${projectName}`;
 
     const members: Partial<TeamTemplateMember>[] = projectAgents.map(a => {
       const rawName = a.name || `Agent ${a.id.slice(0, 4)}`;
@@ -238,7 +238,7 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
               Deploy a team
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Pick a team and a project — every member is created in one go, each on its own worktree branch.
+              Pick a team and a project - every member is created in one go, each on its own worktree branch.
             </p>
           </div>
           <button onClick={onClose} disabled={deploying} className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-40" title="Close">
@@ -288,12 +288,12 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
             </div>
           </div>
 
-          {/* Member editor — every deploy parameter is tunable per member */}
+          {/* Member editor - every deploy parameter is tunable per member */}
           {selectedTeam && editedMembers.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-medium text-foreground">
-                  Members <span className="text-muted-foreground font-normal">— click a member to edit its model, effort, branch and instructions</span>
+                  Members <span className="text-muted-foreground font-normal">- click a member to edit its model, effort, branch and instructions</span>
                 </label>
                 {membersDirty && <span className="text-[10px] text-primary">edited</span>}
               </div>
@@ -376,7 +376,7 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
                           </div>
                         </div>
                         <div>
-                          <label className="block text-[10px] text-muted-foreground mb-0.5">Instructions (saved prompt — the agent&apos;s role)</label>
+                          <label className="block text-[10px] text-muted-foreground mb-0.5">Instructions (saved prompt - the agent&apos;s role)</label>
                           <textarea
                             value={m.savedPrompt || ''}
                             onChange={e => patchMember(i, { savedPrompt: e.target.value || undefined })}
@@ -423,7 +423,7 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
                     key={p.path}
                     onClick={() => setProjectPath(p.path)}
                     className={`w-full flex flex-col items-start px-3 py-2 text-left text-xs hover:bg-primary/5 transition-colors ${
-                      projectPath === p.path ? 'bg-primary/10 border-l-2 border-l-primary' : ''
+                      projectPath === p.path ? 'bg-primary/10 border-l border-l-primary/60' : ''
                     }`}
                   >
                     <span className="font-medium text-foreground">{p.name}</span>
@@ -486,7 +486,7 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
               disabled={deploying || (membersDirty ? false : (!projectPath || projectAgents.length === 0))}
               title={membersDirty
                 ? 'Save your edited members as a reusable custom team'
-                : (projectPath ? `Save the ${projectAgents.length} agent(s) of this project as a reusable team` : 'Pick a project first — or edit a team\'s members to save a custom team')}
+                : (projectPath ? `Save the ${projectAgents.length} agent(s) of this project as a reusable team` : 'Pick a project first - or edit a team\'s members to save a custom team')}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border bg-card text-foreground hover:bg-accent/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Save className="w-3 h-3" />

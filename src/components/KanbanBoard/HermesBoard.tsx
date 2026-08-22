@@ -5,8 +5,8 @@ import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
 /**
- * Hermes-backed board. The harness — task lifecycle, workers, runs — lives in
- * Hermes; Dorothy only reads the board and moves cards. Columns are Hermes'
+ * Hermes-backed board. The harness - task lifecycle, workers, runs - lives in
+ * Hermes; Tars only reads the board and moves cards. Columns are Hermes'
  * own eight, never projected onto a smaller set (that would be lossy on write).
  */
 
@@ -77,18 +77,17 @@ export default function HermesBoard() {
       <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6">
         <AlertCircle className="w-6 h-6 text-warning" />
         <p className="text-sm text-foreground max-w-md">{error}</p>
-        {needsSignIn ? (
-          <Link href="/settings" className="text-xs text-primary hover:underline">
-            Sign in to your gateway in Settings → Hermes
+        <div className="flex items-center gap-2">
+          <Link
+            href="/settings?section=hermes"
+            className="px-3 py-1.5 text-xs bg-primary text-primary-foreground font-medium hover:bg-primary/90"
+          >
+            {needsSignIn ? 'Sign in to Hermes' : 'Open Hermes settings'}
           </Link>
-        ) : (
-          <Link href="/settings" className="text-xs text-primary hover:underline">
-            Check the connection in Settings → Hermes
-          </Link>
-        )}
-        <button onClick={load} className="px-3 py-1.5 text-xs border border-border bg-card hover:bg-accent/50">
-          Retry
-        </button>
+          <button onClick={load} className="px-3 py-1.5 text-xs border border-border bg-card hover:bg-accent/50">
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -99,7 +98,7 @@ export default function HermesBoard() {
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-1 pb-2 shrink-0">
         <p className="text-xs text-muted-foreground">
-          Board served by your Hermes gateway — tasks, workers and runs are executed there.
+          Board served by your Hermes gateway - tasks, workers and runs are executed there.
         </p>
         <button
           onClick={load}

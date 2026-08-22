@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-/** Styled panel container — border, rounded-lg, bg-card, overflow-hidden. */
+/** Styled panel container - border, rounded-lg, bg-card, overflow-hidden. */
 export function VaultPanel({
   className = '',
   children,

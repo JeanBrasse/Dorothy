@@ -38,7 +38,7 @@ export default function ExtensionsPage() {
         </div>
       </div>
 
-      {/* Active tab — only the selected one mounts, so the inactive tab's
+      {/* Active tab - only the selected one mounts, so the inactive tab's
           marketplace fetch doesn't run until it's opened */}
       <div className="flex-1 min-h-0 overflow-hidden">
         {tab === 'skills' ? <SkillsTab /> : <PluginsTab />}

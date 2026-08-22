@@ -76,7 +76,7 @@ function BackendCard({ title, description, docUrl, enabled, url, urlPlaceholder,
               type="password"
               value={localToken}
               onChange={e => setLocalToken(e.target.value)}
-              placeholder="Optional — sent as Authorization: Bearer …"
+              placeholder="Optional - sent as Authorization: Bearer …"
               className="w-full px-2 py-1.5 bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/40 font-mono"
             />
           </div>
@@ -106,7 +106,7 @@ export const MemorySection = ({ appSettings, onSaveAppSettings }: MemorySectionP
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
           Remote memory servers registered as MCP servers in the claude CLI&apos;s user scope.
-          Every claude-binary agent shares them — the same brain your Hermes instance and
+          Every claude-binary agent shares them - the same brain your Hermes instance and
           claude.ai connectors use. Native CLIs (codex, gemini, grok, opencode, pi) manage
           their own MCP configs and are not covered.
         </p>

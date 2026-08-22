@@ -51,7 +51,7 @@ export default function ProjectTabBar({
             className={`
               flex items-center gap-1.5 px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors shrink-0
               ${isActive(project.path)
-                ? 'bg-primary/15 text-primary border-t-2 border-primary font-semibold'
+                ? 'bg-primary/10 text-primary border-t border-primary/60 font-medium'
                 : 'text-muted-foreground hover:text-foreground hover:bg-primary/5'
               }
             `}

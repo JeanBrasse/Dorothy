@@ -55,7 +55,7 @@ export function ImportDialog({ onClose, onImport }: ImportDialogProps) {
         return;
       }
       if (json.kind !== 'dorothy.agent-template') {
-        setParseError('Not a Dorothy template file (missing kind: "dorothy.agent-template")');
+        setParseError('Not a Tars template file (missing kind: "dorothy.agent-template")');
         setParsed(null);
         setPreview(null);
         return;
@@ -116,7 +116,7 @@ export function ImportDialog({ onClose, onImport }: ImportDialogProps) {
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
           <p className="text-xs text-muted-foreground">
-            Paste a Dorothy template JSON below or upload a <code className="text-foreground bg-secondary px-1">.json</code> file. Imported templates land under <strong>Your templates</strong>.
+            Paste a Tars template JSON below or upload a <code className="text-foreground bg-secondary px-1">.json</code> file. Imported templates land under <strong>Your templates</strong>.
           </p>
 
           <div className="flex items-center gap-2">

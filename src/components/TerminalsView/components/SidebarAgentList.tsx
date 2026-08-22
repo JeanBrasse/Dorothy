@@ -46,8 +46,8 @@ export default function SidebarAgentList({
             className={`
               flex items-center gap-2 px-2.5 py-2 cursor-pointer transition-colors group
               ${isFocused
-                ? 'bg-primary/10 border-l-2 border-primary'
-                : 'hover:bg-primary/5 border-l-2 border-transparent'
+                ? 'bg-primary/10 border-l border-primary/60'
+                : 'hover:bg-primary/5 border-l border-transparent'
               }
             `}
           >

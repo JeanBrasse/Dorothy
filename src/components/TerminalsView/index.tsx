@@ -73,11 +73,11 @@ export default function TerminalsView() {
     });
   }, []);
 
-  // Tab manager — core state for two-tier tab system
+  // Tab manager - core state for two-tier tab system
   const allAgentIds = useMemo(() => agents.map(a => a.id), [agents]);
 
 
-  // Project folders with agents — offered as one-click boards in the tab bar
+  // Project folders with agents - offered as one-click boards in the tab bar
   const projectGroups = useMemo(() => {
     const byPath = new Map<string, string[]>();
     for (const a of agents) {
@@ -148,7 +148,7 @@ export default function TerminalsView() {
   // pendingFocusRef without a circular dep.
   const focusTerminalRef = useRef<((agentId: string) => void) | null>(null);
 
-  // Called when a terminal is fully initialized — fire any deferred agent start
+  // Called when a terminal is fully initialized - fire any deferred agent start
   // and consume any pending Ctrl+Tab focus targeting this agent.
   const handleTerminalReady = useCallback((agentId: string) => {
     const pending = pendingStartRef.current;
@@ -167,7 +167,7 @@ export default function TerminalsView() {
   // Broadcast must be initialized before multiTerminal so we can pass broadcastMode
   const broadcast = useBroadcast();
 
-  // Core hooks — delay terminal init until settings are loaded to avoid wrong font size
+  // Core hooks - delay terminal init until settings are loaded to avoid wrong font size
   const multiTerminal = useMultiTerminal({
     agents: terminalSettingsLoaded ? filteredAgents : [],
     initialFontSize: terminalFontSize,
@@ -278,7 +278,7 @@ export default function TerminalsView() {
     if (targetAgentId) {
       setFocusedPanelId(targetAgentId);
       // Switching tabs re-mounts terminals (registerContainer disposes the old
-      // one and asynchronously inits a new xterm). Stash the focus target —
+      // one and asynchronously inits a new xterm). Stash the focus target -
       // handleTerminalReady will consume it once the new terminal is ready.
       pendingFocusRef.current = targetAgentId;
       // Also try immediately in case the terminal happens to already be live
@@ -380,20 +380,11 @@ export default function TerminalsView() {
     setShowNewChatModal(false);
   }, [createAgent, tabManager]);
 
-  // Auto-start agents that have no PTY (freshly loaded from disk).
-  // Skip agents that already have a live PTY — they're idle but have an
-  // active Claude session waiting for the next prompt.
-  const autoStartedRef = useRef(false);
-  useEffect(() => {
-    if (isLoading || autoStartedRef.current) return;
-    autoStartedRef.current = true;
-    const needsStart = agents.filter(a =>
-      (a.status === 'idle' || a.status === 'completed') && !a.ptyId
-    );
-    for (const agent of needsStart) {
-      startAgent(agent.id, '', { resume: true }).catch(() => { });
-    }
-  }, [isLoading, agents, startAgent]);
+  // Agents are NEVER started by navigation. Opening the dashboard used to
+  // resume every idle agent that had no PTY, which meant leaving the page and
+  // coming back silently spawned sessions the user never asked for (and burned
+  // tokens). Starting is an explicit action: the panel's Start button, Start
+  // All, or a dispatch.
 
   // Exit view fullscreen on Escape
   useEffect(() => {
@@ -444,7 +435,7 @@ export default function TerminalsView() {
           disabledPresets={disabledPresets}
         />
 
-        {/* Project tabs — the board follows your project folders */}
+        {/* Project tabs - the board follows your project folders */}
         <ProjectTabBar
           agents={agents}
           activeTab={tabManager.activeTab}
@@ -468,7 +459,7 @@ export default function TerminalsView() {
           onTogglePanel={() => setPanelOpen(prev => !prev)}
         />
 
-        {/* Terminal grid — takes full space, relative for sidebar panel */}
+        {/* Terminal grid - takes full space, relative for sidebar panel */}
         <div className="flex-1 min-h-0 relative">
           <TerminalGrid
             agents={filteredAgents}
@@ -495,7 +486,7 @@ export default function TerminalsView() {
             onFitAll={multiTerminal.fitAll}
           />
 
-          {/* Sidebar panel — overlays grid from the right */}
+          {/* Sidebar panel - overlays grid from the right */}
           <Sidebar
             open={panelOpen}
             onClose={() => setPanelOpen(false)}

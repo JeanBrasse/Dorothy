@@ -44,9 +44,9 @@ export function AgentManagementCard({ agent, onClick, onEdit, onStart, onStop, o
       onClick={onClick}
       className={`
         group relative cursor-pointer transition-all border border-border bg-card hover:bg-accent/10
-        ${isSuper ? 'border-l-[3px] border-l-amber-500/60' : ''}
-        ${isRunning && !isSuper ? 'border-l-[3px] border-l-primary/60' : ''}
-        ${isError ? 'border-l-[3px] border-l-red-500/60' : ''}
+        ${isSuper ? 'border-l border-l-amber-500/50' : ''}
+        ${isRunning && !isSuper ? 'border-l border-l-primary/50' : ''}
+        ${isError ? 'border-l border-l-red-500/50' : ''}
       `}
     >
       <div className="p-3">
@@ -67,7 +67,7 @@ export function AgentManagementCard({ agent, onClick, onEdit, onStart, onStop, o
             </div>
           </div>
 
-          {/* Status pill — top right */}
+          {/* Status pill - top right */}
           <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium shrink-0 ${
             isSuper && isRunning
               ? 'bg-warning/20 text-warning'

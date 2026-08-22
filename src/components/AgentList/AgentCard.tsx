@@ -36,7 +36,7 @@ function ProviderIcon({ providerId }: { providerId: string }) {
       </span>
     );
   }
-  // SVG provider icons — show provider label as compact badge
+  // SVG provider icons - show provider label as compact badge
   return (
     <span title={label} className="shrink-0 inline-flex font-bold text-[10px] text-text-muted">
       {label.slice(0, 2)}
@@ -64,7 +64,7 @@ export function AgentCard({ agent, isSelected, onSelect, onEdit }: AgentCardProp
       className={`
         p-4 cursor-pointer transition-all relative
         ${isSuper
-          ? 'bg-primary/5 border-l-2 border-l-primary/50 border-b border-primary/20'
+          ? 'bg-primary/5 border-l border-l-primary/40 border-b border-primary/20'
           : 'border-b border-border-primary/50'}
         ${isSelected ? 'bg-accent-blue/10' : isSuper ? '' : 'hover:bg-bg-tertiary/50'}
       `}

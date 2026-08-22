@@ -15,7 +15,7 @@ export function ProviderIconRenderer({ icon, className = 'w-3.5 h-3.5' }: { icon
     );
   }
   if (icon.type === 'svg-grok') {
-    // Official xAI Grok mark — black rounded square with the white glyph.
+    // Official xAI Grok mark - black rounded square with the white glyph.
     return (
       <svg viewBox="0 0 512 509.641" fill="currentColor" className={className}>
         <path d="M115.612 0h280.776C459.975 0 512 52.026 512 115.612v278.416c0 63.587-52.025 115.613-115.612 115.613H115.612C52.026 509.641 0 457.615 0 394.028V115.612C0 52.026 52.026 0 115.612 0z" />

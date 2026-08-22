@@ -440,6 +440,10 @@ export interface ElectronAPI {
   };
 
   // App settings (notifications, etc.)
+  app?: {
+    getVersion: () => Promise<{ version: string }>;
+  };
+
   appSettings?: {
     get: () => Promise<{
       notificationsEnabled: boolean;

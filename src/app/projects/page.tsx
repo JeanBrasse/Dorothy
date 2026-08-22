@@ -300,7 +300,7 @@ export default function ProjectsPage() {
 
   // Segment-boundary matching. The old version used endsWith(), and since
   // normalizing '/' produced an empty string, endsWith('') was true for every
-  // path — one phantom card claimed every agent on the machine.
+  // path - one phantom card claimed every agent on the machine.
   const pathsMatch = (path1: string, path2: string) => {
     const a = normalizePath(path1);
     const b = normalizePath(path2);
@@ -1039,7 +1039,7 @@ export default function ProjectsPage() {
                             <div
                               key={message.uuid}
                               className={`p-3 ${message.type === 'user'
-                                  ? 'bg-white/10 border-l-2 border-white'
+                                  ? 'bg-white/10 border-l border-border-accent'
                                   : 'bg-secondary'
                                 }`}
                             >

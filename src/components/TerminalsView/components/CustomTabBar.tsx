@@ -9,7 +9,7 @@ interface CustomTabBarProps {
   activeTab: ActiveTab;
   onSelectTab: (tabId: string) => void;
   onCreateTab: (name: string) => void;
-  /** Project folders that have agents — offered as one-click boards. */
+  /** Project folders that have agents - offered as one-click boards. */
   projectGroups?: { name: string; path: string; agentIds: string[] }[];
   onCreateFromProject?: (name: string, agentIds: string[]) => void;
   onDeleteTab: (tabId: string) => void;
@@ -146,10 +146,10 @@ export default function CustomTabBar({
           className={`
               flex items-center gap-1.5 px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors shrink-0 cursor-pointer group
               ${isActive(tab.id)
-              ? 'bg-primary/15 text-primary border-b-2 border-primary font-semibold'
+              ? 'bg-primary/10 text-primary border-b border-primary/60 font-medium'
               : 'text-muted-foreground hover:text-foreground hover:bg-primary/5'
             }
-              ${dragOverIdx === idx && dragIdx !== idx ? 'border-l-2 border-l-primary' : ''}
+              ${dragOverIdx === idx && dragIdx !== idx ? 'border-l border-l-primary/60' : ''}
             `}
           onClick={() => onSelectTab(tab.id)}
           onDoubleClick={e => { e.stopPropagation(); startEditing(tab); }}
@@ -200,7 +200,7 @@ export default function CustomTabBar({
           >
             {projectGroups && projectGroups.length > 0 && onCreateFromProject && (
               <div className="mb-3">
-                <p className="text-xs text-muted-foreground mb-1.5">From a project — board named after it, agents included</p>
+                <p className="text-xs text-muted-foreground mb-1.5">From a project - board named after it, agents included</p>
                 <div className="max-h-40 overflow-y-auto space-y-0.5">
                   {projectGroups.map(g => (
                     <button

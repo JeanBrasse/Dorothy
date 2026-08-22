@@ -9,7 +9,7 @@ import { CHARACTER_FACES, STATUS_COLORS, LAYOUT_PRESETS } from '../constants';
 const MAX_BOARD_PANELS = Math.max(...Object.values(LAYOUT_PRESETS).map(p => p.maxPanels));
 
 interface AddAgentDropdownProps {
-  /** Bulk add — every listed agent of a project in one click. */
+  /** Bulk add - every listed agent of a project in one click. */
   onAddAgents?: (agentIds: string[]) => void;
   allAgents: AgentStatus[];
   currentTabAgentIds: string[];
@@ -112,7 +112,7 @@ export default function AddAgentDropdown({
           ) : (
             groups.map(group => (
               <div key={group.projectPath}>
-                {/* Project header — click "Add all" to pull the whole team in */}
+                {/* Project header - click "Add all" to pull the whole team in */}
                 <div className="flex items-center justify-between px-3 py-1.5 bg-primary/5">
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                     {group.projectName}
@@ -132,7 +132,7 @@ export default function AddAgentDropdown({
                         onClick={() => { onAddAgents(group.agents.slice(0, addable).map(a => a.id)); setOpen(false); }}
                         className="text-[10px] font-medium text-primary hover:underline"
                         title={addable < group.agents.length
-                          ? `Board holds ${MAX_BOARD_PANELS} max — adds the first ${addable} of ${group.agents.length}`
+                          ? `Board holds ${MAX_BOARD_PANELS} max - adds the first ${addable} of ${group.agents.length}`
                           : `Add all ${group.agents.length} agents of ${group.projectName}`}
                       >
                         {addable < group.agents.length ? `+ Add first ${addable}` : `+ Add all (${group.agents.length})`}

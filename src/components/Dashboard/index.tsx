@@ -18,7 +18,7 @@ const TerminalsView = dynamic(() => import('@/components/TerminalsView'), {
 });
 
 export default function Dashboard() {
-  // The real signal is Dorothy's own agents — claude-service's activeSessions
+  // The real signal is Tars's own agents - claude-service's activeSessions
   // is a stub that always returns an empty array.
   const { agents } = useElectronAgents();
   const activeCount = agents.filter(a => a.status === 'running' || a.status === 'waiting').length;

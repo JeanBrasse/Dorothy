@@ -20,7 +20,7 @@ import {
 import type { AgentProvider } from '@/types/electron';
 import { PROVIDER_REGISTRY, getProviderDef } from '@/lib/providers';
 
-/** MCP provider ID — extends AgentProvider with qwencode (CLI-only, not an agent provider) */
+/** MCP provider ID - extends AgentProvider with qwencode (CLI-only, not an agent provider) */
 type McpProvider = AgentProvider | 'qwencode';
 
 interface McpServer {
@@ -71,7 +71,7 @@ function ProviderIcon({ provider, className }: { provider: McpProvider; classNam
   if (icon.type === 'text') {
     return <span className={`font-bold text-xs ${className}`}>{icon.content}</span>;
   }
-  // SVG provider icons — show label abbreviation
+  // SVG provider icons - show label abbreviation
   return <span className={`font-bold text-xs ${className}`}>{label.slice(0, 2)}</span>;
 }
 

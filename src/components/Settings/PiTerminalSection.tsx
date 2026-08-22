@@ -46,7 +46,7 @@ export const PiTerminalSection = ({ appSettings, onSaveAppSettings, onUpdateLoca
       <div>
         <h2 className="text-lg font-semibold mb-1">Pi Terminal</h2>
         <p className="text-sm text-muted-foreground">
-          Configure Pi coding agent — a minimal terminal coding harness supporting 15+ AI providers
+          Configure Pi coding agent - a minimal terminal coding harness supporting 15+ AI providers
         </p>
       </div>
 

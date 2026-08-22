@@ -355,7 +355,7 @@ export default function AgentsPage() {
         existingSuperAgent={superAgent}
       />
 
-      {/* Edit Modal — reuses NewChatModal pre-filled with agent data */}
+      {/* Edit Modal - reuses NewChatModal pre-filled with agent data */}
       <NewChatModal
         open={!!editAgentId}
         onClose={() => setEditAgentId(null)}
@@ -370,19 +370,19 @@ export default function AgentsPage() {
         initialStep={1}
       />
 
-      {/* Templates manager — browse, edit, and instantiate agent templates */}
+      {/* Templates manager - browse, edit, and instantiate agent templates */}
       <TemplatesManagerDialog
         open={showTemplatesDialog}
         onClose={() => setShowTemplatesDialog(false)}
       />
 
-      {/* Team deployment — create a whole agent team on a project in one click */}
+      {/* Team deployment - create a whole agent team on a project in one click */}
       <DeployTeamDialog
         open={showDeployTeamDialog}
         onClose={() => setShowDeployTeamDialog(false)}
       />
 
-      {/* Terminal Dialog — click card body to view */}
+      {/* Terminal Dialog - click card body to view */}
       <AgentTerminalDialog
         agent={viewAgentId ? agents.find(a => a.id === viewAgentId) || null : null}
         open={!!viewAgentId}

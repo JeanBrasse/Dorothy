@@ -30,12 +30,12 @@ interface ProviderModel {
   description: string;
 }
 
-/** Model definitions per provider — derived from shared registry */
+/** Model definitions per provider - derived from shared registry */
 const PROVIDER_MODELS: Record<string, ProviderModel[]> = Object.fromEntries(
   PROVIDER_REGISTRY.map((p) => [p.id, p.models]),
 );
 
-/** Default model per provider — derived from shared registry */
+/** Default model per provider - derived from shared registry */
 const PROVIDER_DEFAULT_MODEL: Record<string, string> = Object.fromEntries(
   PROVIDER_REGISTRY.map((p) => [p.id, p.defaultModel]),
 );
@@ -53,7 +53,7 @@ const PROVIDER_API_ENDPOINTS: Record<string, { url: string; keySettingField?: st
   minimax: { url: 'https://api.minimax.chat/v1/models', keySettingField: 'minimaxApiKey' },
 };
 
-/** Module-level cache: provider → { models, timestamp } */
+/** Module-level cache: provider > { models, timestamp } */
 const modelCache = new Map<string, { models: ProviderModel[]; ts: number }>();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
@@ -290,7 +290,7 @@ const StepModel = React.memo(function StepModel({
         </div>
       </div>
 
-      {/* Model Selection — dynamic dropdown based on provider */}
+      {/* Model Selection - dynamic dropdown based on provider */}
       {provider !== 'local' ? (
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -395,7 +395,7 @@ const StepModel = React.memo(function StepModel({
             <option value="">Default (provider default)</option>
             {detectedClis.map((cli) => (
               <option key={cli.key} value={cli.path}>
-                {cli.label} — {cli.path}
+                {cli.label} - {cli.path}
               </option>
             ))}
           </select>

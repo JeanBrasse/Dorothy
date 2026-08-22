@@ -291,13 +291,13 @@ export const GoogleWorkspaceSection = ({ appSettings, onSaveAppSettings }: Googl
           <div className="flex items-center gap-2 text-sm">
             <div className={`w-2 h-2 rounded-full ${mcpConfigured ? 'bg-success' : 'bg-secondary'}`} />
             <span className="text-muted-foreground">
-              MCP: {mcpConfigured ? 'Registered with agents (Drive, Gmail, Calendar, Sheets, Docs)' : 'Not registered — enable the toggle above'}
+              MCP: {mcpConfigured ? 'Registered with agents (Drive, Gmail, Calendar, Sheets, Docs)' : 'Not registered - enable the toggle above'}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Authentication Status — only shown when gws is detected */}
+      {/* Authentication Status - only shown when gws is detected */}
       {gwsPath && (
         <div className="border border-border bg-card p-6">
           <div className="flex items-center justify-between mb-4">
@@ -508,14 +508,14 @@ export const GoogleWorkspaceSection = ({ appSettings, onSaveAppSettings }: Googl
           <li>Click <strong>Auth Login</strong> to authenticate with your Google account</li>
           <li>Click the refresh icon above to verify your connection and see connected services</li>
           <li>Click &quot;Install Skills&quot; to add 100+ agent skills for Google Workspace</li>
-          <li>Enable the toggle to register the MCP server — agents will be able to call Google APIs directly</li>
+          <li>Enable the toggle to register the MCP server - agents will be able to call Google APIs directly</li>
         </ol>
         <p className="text-xs text-muted-foreground mt-4">
           The MCP server (<code className="bg-secondary px-0.5">gws mcp</code>) exposes Google Workspace APIs as tools over stdio. Default services: Drive, Gmail, Calendar, Sheets, Docs. Each service adds 10-80 tools.
         </p>
       </div>
 
-      {/* Install Dialog — reuses TerminalDialog in command mode */}
+      {/* Install Dialog - reuses TerminalDialog in command mode */}
       <TerminalDialog
         open={showInstallTerminal}
         repo=""

@@ -120,7 +120,7 @@ export const SocialDataSection = ({ appSettings, onSaveAppSettings, onUpdateLoca
           <div className="flex items-center gap-3">
             <Twitter className="w-5 h-5 text-muted-foreground" />
             <div>
-              <p className="font-medium">Read — SocialData API</p>
+              <p className="font-medium">Read - SocialData API</p>
               <p className="text-sm text-muted-foreground">
                 {canEnable
                   ? 'Let agents search and analyze Twitter/X data'
@@ -195,7 +195,7 @@ export const SocialDataSection = ({ appSettings, onSaveAppSettings, onUpdateLoca
           <div className="flex items-center gap-3">
             <Send className="w-5 h-5 text-muted-foreground" />
             <div>
-              <p className="font-medium">Post — X API (OAuth 1.0a)</p>
+              <p className="font-medium">Post - X API (OAuth 1.0a)</p>
               <p className="text-sm text-muted-foreground">
                 {canEnableXPosting
                   ? 'Let agents post tweets on your behalf'

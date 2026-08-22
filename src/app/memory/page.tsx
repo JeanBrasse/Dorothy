@@ -300,7 +300,7 @@ function BackendsTab() {
         {
           key: 'native',
           title: 'Native project memory',
-          description: 'Claude Code auto-memory (~/.claude/projects/*/memory/). Always on — injected into every agent at session start, browsable in the Projects tab.',
+          description: 'Claude Code auto-memory (~/.claude/projects/*/memory/). Always on - injected into every agent at session start, browsable in the Projects tab.',
           enabled: true,
           url: '~/.claude/projects/*/memory/',
           hasAuth: false,
@@ -309,7 +309,7 @@ function BackendsTab() {
         {
           key: 'gbrain',
           title: 'gbrain',
-          description: 'Shared semantic memory (vector search + knowledge graph). Registered as an MCP server for every claude-binary agent — the same brain your Hermes instance uses.',
+          description: 'Shared semantic memory (vector search + knowledge graph). Registered as an MCP server for every claude-binary agent - the same brain your Hermes instance uses.',
           enabled: !!(s?.memoryGbrainEnabled && s?.memoryGbrainMcpUrl),
           url: s?.memoryGbrainMcpUrl || '',
           hasAuth: !!s?.memoryGbrainAuthToken,
@@ -368,7 +368,7 @@ function BackendsTab() {
         className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
       >
         <SettingsIcon className="w-3.5 h-3.5" />
-        Configure backends in Settings → Memory Backends
+        Configure backends in Settings Memory Backends
       </Link>
     </div>
   );
@@ -452,7 +452,7 @@ export default function MemoryPage() {
             Brain
           </h1>
           <p className="text-muted-foreground text-xs lg:text-sm mt-1 hidden sm:block">
-            What your agents know — native project memory plus shared backends (gbrain, Honcho)
+            What your agents know - native project memory plus shared backends (gbrain, Honcho)
           </p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
@@ -514,7 +514,7 @@ export default function MemoryPage() {
               <Icon className="w-4 h-4 text-primary/60 shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground truncate">{label}</p>
-                <p className="text-sm font-semibold tabular-nums">{loading ? '—' : value}</p>
+                <p className="text-sm font-semibold tabular-nums">{loading ? '-' : value}</p>
               </div>
             </div>
           ))}

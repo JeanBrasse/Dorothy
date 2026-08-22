@@ -39,7 +39,7 @@ async function getAllSkills(): Promise<MappedSkill[] | null> {
   try {
     const res = await fetch('https://skills.sh/', {
       next: { revalidate: 3600 },
-      headers: { 'User-Agent': 'Dorothy/1.0' },
+      headers: { 'User-Agent': 'Tars/1.0' },
     });
 
     if (!res.ok) return null;
@@ -80,7 +80,7 @@ async function searchSkillsRemote(query: string): Promise<MappedSkill[] | null> 
   try {
     const res = await fetch(
       `https://skills.sh/api/search?q=${encodeURIComponent(query)}`,
-      { headers: { 'User-Agent': 'Dorothy/1.0' } }
+      { headers: { 'User-Agent': 'Tars/1.0' } }
     );
     if (!res.ok) return null;
 

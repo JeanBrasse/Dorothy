@@ -16,7 +16,7 @@ export function isSafeUrl(href: string): string {
       return trimmed;
     }
   } catch {
-    // Not a valid absolute URL — treat as relative (safe)
+    // Not a valid absolute URL - treat as relative (safe)
     return trimmed;
   }
   // Blocked protocol (javascript:, data:, vbscript:, etc.)
@@ -61,7 +61,7 @@ function renderInline(text: string): React.ReactNode {
       continue;
     }
 
-    // Image ![alt](src) — check before links
+    // Image ![alt](src) - check before links
     if (remaining.startsWith('![')) {
       const closeBracket = remaining.indexOf(']', 2);
       if (closeBracket !== -1 && remaining[closeBracket + 1] === '(') {
@@ -97,13 +97,13 @@ function renderInline(text: string): React.ReactNode {
       }
     }
 
-    // Regular text — advance to next special character
+    // Regular text - advance to next special character
     const nextSpecial = remaining.search(/[`*\[!]/);
     if (nextSpecial === -1) {
       parts.push(remaining);
       break;
     } else if (nextSpecial === 0) {
-      // Special char didn't match any pattern above — emit as text
+      // Special char didn't match any pattern above - emit as text
       parts.push(remaining[0]);
       remaining = remaining.slice(1);
     } else {
@@ -221,7 +221,7 @@ export function SimpleMarkdown({ content }: { content: string }) {
     // Blockquote
     if (line.startsWith('> ')) {
       elements.push(
-        <blockquote key={i} className="border-l-2 border-primary/50 pl-3 my-1 text-sm text-muted-foreground italic">
+        <blockquote key={i} className="border-l border-primary/60/50 pl-3 my-1 text-sm text-muted-foreground italic">
           {renderInline(line.slice(2))}
         </blockquote>
       );

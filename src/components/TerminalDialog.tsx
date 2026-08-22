@@ -177,7 +177,7 @@ export default function TerminalDialog({ open, repo, title, onClose, availablePr
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [terminalReady, repo, command]);
 
-  // Listen for PTY data on both channels — ID filtering ensures correctness
+  // Listen for PTY data on both channels - ID filtering ensures correctness
   useEffect(() => {
     if (!isElectron()) return;
 
@@ -322,7 +322,7 @@ export default function TerminalDialog({ open, repo, title, onClose, availablePr
               </button>
             </div>
 
-            {/* Provider Selector — skill mode only */}
+            {/* Provider Selector - skill mode only */}
             {!isCommandMode && nonClaudeProviders.length > 0 && (
               <div className="px-5 py-3 border-b border-border flex items-center gap-3">
                 <span className="text-xs text-muted-foreground">Install to:</span>

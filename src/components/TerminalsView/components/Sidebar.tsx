@@ -47,7 +47,7 @@ export default function Sidebar({
     <AnimatePresence>
       {open && (
         <>
-          {/* Invisible backdrop — closes sidebar on click outside */}
+          {/* Invisible backdrop - closes sidebar on click outside */}
           <div
             className="absolute inset-0 z-40"
             onMouseDown={onClose}
@@ -87,7 +87,7 @@ export default function Sidebar({
                   className={`
                     flex-1 flex items-center justify-center gap-1.5 px-2 py-2 text-[10px] font-medium transition-colors
                     ${tab === t.id
-                      ? 'text-foreground border-b-2 border-primary'
+                      ? 'text-foreground border-b border-primary/60'
                       : 'text-muted-foreground hover:text-foreground'
                     }
                   `}

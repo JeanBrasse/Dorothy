@@ -1485,6 +1485,11 @@ function registerAppSettingsHandlers(deps: IpcHandlerDependencies): void {
   } = deps;
 
   // Get app settings (notifications, etc.)
+  ipcMain.handle('app:getVersion', async () => {
+    const { app } = await import('electron');
+    return { version: app.getVersion() };
+  });
+
   ipcMain.handle('app:getSettings', async () => {
     return getAppSettings();
   });

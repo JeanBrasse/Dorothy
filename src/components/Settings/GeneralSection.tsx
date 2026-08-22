@@ -38,6 +38,11 @@ interface GeneralSectionProps {
 }
 
 export const GeneralSection = ({ info, appSettings, onSaveAppSettings }: GeneralSectionProps) => {
+  const [appVersion, setAppVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    window.electronAPI?.app?.getVersion().then(r => setAppVersion(r?.version ?? null)).catch(() => {});
+  }, []);
   const [updateState, setUpdateState] = useState<UpdateState>('idle');
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
@@ -94,7 +99,7 @@ export const GeneralSection = ({ info, appSettings, onSaveAppSettings }: General
     try {
       const result = await window.electronAPI.updates.check();
       if (result?.devMode) {
-        // Dev mode — electron-updater can't check unpacked apps
+        // Dev mode - electron-updater can't check unpacked apps
         setUpdateState('error');
         setUpdateError('Update check is only available in the production build.');
       }
@@ -165,9 +170,9 @@ export const GeneralSection = ({ info, appSettings, onSaveAppSettings }: General
             <Settings className="w-6 h-6 text-muted-foreground" />
           </div>
           <div>
-            <h3 className="font-medium">Dorothy</h3>
+            <h3 className="font-medium">Tars</h3>
             <p className="text-sm text-muted-foreground">
-              Version {updateInfo?.currentVersion || '1.2.8'}
+              Version {appVersion || updateInfo?.currentVersion || '...'}
             </p>
           </div>
         </div>
@@ -176,7 +181,7 @@ export const GeneralSection = ({ info, appSettings, onSaveAppSettings }: General
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium">Auto-check for updates</p>
-              <p className="text-xs text-muted-foreground">Check for new versions when Dorothy starts</p>
+              <p className="text-xs text-muted-foreground">Check for new versions when Tars starts</p>
             </div>
             <Toggle
               enabled={appSettings.autoCheckUpdates !== false}
@@ -210,7 +215,7 @@ export const GeneralSection = ({ info, appSettings, onSaveAppSettings }: General
             <CheckCircle className="w-5 h-5 text-success shrink-0" />
             <div>
               <p className="text-sm font-medium text-success">You&apos;re up to date!</p>
-              <p className="text-xs text-muted-foreground">Dorothy {updateInfo?.currentVersion} is the latest version.</p>
+              <p className="text-xs text-muted-foreground">Tars {updateInfo?.currentVersion} is the latest version.</p>
             </div>
           </div>
         )}
@@ -221,7 +226,7 @@ export const GeneralSection = ({ info, appSettings, onSaveAppSettings }: General
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <p className="text-sm font-medium text-primary">
-                    Dorothy {updateInfo.latestVersion} is available
+                    Tars {updateInfo.latestVersion} is available
                   </p>
                   <p className="text-xs text-muted-foreground">
                     You&apos;re currently on version {updateInfo.currentVersion}
@@ -331,7 +336,7 @@ export const GeneralSection = ({ info, appSettings, onSaveAppSettings }: General
         </select>
       </div>
 
-      {/* Quick Info removed — duplicate of System section */}
+      {/* Quick Info removed - duplicate of System section */}
     </div>
   );
 };

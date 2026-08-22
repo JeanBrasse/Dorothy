@@ -105,7 +105,7 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
     if (r?.success && r.connection) {
       setConn(r.connection);
       setSavedConn(JSON.stringify(r.connection));
-      setGatewayResult({ success: true, message: `Imported from Hermes Desktop — ${r.baseUrl}` });
+      setGatewayResult({ success: true, message: `Imported from Hermes Desktop - ${r.baseUrl}` });
     } else {
       setGatewayResult({ success: false, message: r?.error || 'Import failed' });
     }
@@ -119,7 +119,7 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
         setNeedsSignIn(false);
         setSignedIn(true);
         setPassword('');
-        setGatewayResult({ success: true, message: `Signed in — Hermes ${r.version ?? ''} ${r.gatewayState ?? ''}`.trim() });
+        setGatewayResult({ success: true, message: `Signed in - Hermes ${r.version ?? ''} ${r.gatewayState ?? ''}`.trim() });
       } else {
         setGatewayResult({ success: false, message: r?.error || 'Sign-in failed' });
       }
@@ -152,7 +152,7 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
         setTestResult({ success: false, message: 'Electron API unavailable' });
       } else if (result.success) {
         const agent = (result.response as { agent?: { name?: string; projectPath?: string } })?.agent;
-        setTestResult({ success: true, message: `OK — auth accepted, agent resolved: ${agent?.name ?? '?'} (${agent?.projectPath ?? '?'})` });
+        setTestResult({ success: true, message: `OK - auth accepted, agent resolved: ${agent?.name ?? '?'} (${agent?.projectPath ?? '?'})` });
       } else {
         const err = (result.response as { error?: string })?.error || result.error || `HTTP ${result.status}`;
         setTestResult({ success: false, message: err });
@@ -169,7 +169,7 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
       const r = await window.electronAPI?.hermes?.testConnection(conn);
       if (!r) { setGatewayResult({ success: false, message: 'Electron API unavailable' }); return; }
       if (!r.success) {
-        setGatewayResult({ success: false, message: `${r.baseUrl || ''} — ${r.error || `HTTP ${r.status}`}` });
+        setGatewayResult({ success: false, message: `${r.baseUrl || ''} - ${r.error || `HTTP ${r.status}`}` });
         return;
       }
       const bits = [`Hermes ${r.version ?? '?'}`];
@@ -197,15 +197,15 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
           Hermes
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Wire your self-hosted Hermes instance to Dorothy. Hermes owns all scheduling —
+          Wire your self-hosted Hermes instance to Dorothy. Hermes owns all scheduling -
           its cron jobs call the webhook below to drive your agents.
         </p>
       </div>
 
-      {/* ── Incoming webhook (Hermes → Dorothy) ── */}
+      {/* ── Incoming webhook (Hermes Dorothy) ── */}
       <div className="bg-card border border-border p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground">Incoming webhook — Hermes → Dorothy</h3>
+          <h3 className="text-sm font-semibold text-foreground">Incoming webhook - Hermes Dorothy</h3>
           <button onClick={refreshInfo} className="p-1.5 text-muted-foreground hover:text-foreground" title="Refresh">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -222,11 +222,11 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
               <p className="text-muted-foreground">
                 Tailscale:{' '}
                 {info.tailscale.running ? (
-                  <span className="text-success">running{info.tailscale.dnsName ? ` — ${info.tailscale.dnsName}` : ''}</span>
+                  <span className="text-success">running{info.tailscale.dnsName ? ` - ${info.tailscale.dnsName}` : ''}</span>
                 ) : info.tailscale.installed ? (
                   <span className="text-warning">installed but not running</span>
                 ) : (
-                  <span className="text-destructive">not found — the VPS needs a tunnel to reach this machine</span>
+                  <span className="text-destructive">not found - the VPS needs a tunnel to reach this machine</span>
                 )}
               </p>
               {info.tailscale.running && !info.tailscale.serveConfigured && (
@@ -236,7 +236,7 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
                 </p>
               )}
               {info.tailscale.serveConfigured && (
-                <p className="text-success">tailscale serve is active — the VPS can reach the webhook.</p>
+                <p className="text-success">tailscale serve is active - the VPS can reach the webhook.</p>
               )}
             </div>
 
@@ -249,14 +249,14 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
 {`curl -X POST ${webhookUrl} \\
   -H "Authorization: Bearer <token>" \\
   -H "Content-Type: application/json" \\
-  -d '{"agent_name": "QA — myproject", "message": "Run the test suite and report"}'`}
+  -d '{"agent_name": "QA - myproject", "message": "Run the test suite and report"}'`}
               </pre>
             </div>
 
             {/* Dry-run test */}
             <div className="border-t border-border pt-3">
               <label className="block text-xs font-medium text-foreground mb-1">
-                Test the webhook (dry run — resolves the agent, dispatches nothing)
+                Test the webhook (dry run - resolves the agent, dispatches nothing)
               </label>
               <div className="flex items-center gap-1.5">
                 <input
@@ -287,11 +287,11 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
         )}
       </div>
 
-      {/* ── Hermes instance (Dorothy → Hermes) ── */}
+      {/* ── Hermes instance (Dorothy Hermes) ── */}
       <div className="bg-card border border-border p-4 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Hermes instance — Dorothy → Hermes</h3>
+            <h3 className="text-sm font-semibold text-foreground">Hermes instance - Dorothy Hermes</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               Same connection modes as Hermes Desktop. Dorothy probes <code className="bg-secondary px-1">/api/status</code> to
               report the version and which sign-in the gateway demands.
@@ -373,7 +373,7 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Dorothy reads the gateway through the tunnel on 127.0.0.1 — open it with your usual
+              Dorothy reads the gateway through the tunnel on 127.0.0.1 - open it with your usual
               <code className="bg-secondary px-1 mx-1">ssh -L</code> command or the Hermes Desktop tunnel.
             </p>
           </div>
@@ -451,7 +451,7 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
                   </button>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Credentials are sent straight to your gateway and never stored — only the session cookie is kept, in the main process.
+                  Credentials are sent straight to your gateway and never stored - only the session cookie is kept, in the main process.
                 </p>
               </>
             )}
