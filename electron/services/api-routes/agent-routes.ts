@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as pty from 'node-pty';
 import { app } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
-import { agents, saveAgents, killStalePty, ensureProjectTrusted } from '../../core/agent-manager';
+import { agents, saveAgents, killStalePty, ensureProjectTrusted, appendAgentOutput } from '../../core/agent-manager';
 import { ptyProcesses, writeProgrammaticInput } from '../../core/pty-manager';
 import { getProvider, isValidProvider } from '../../providers';
 import { buildFullPath } from '../../utils/path-builder';
@@ -278,7 +278,7 @@ async function spawnAgentSession(
   saveAgents();
 
   ptyProcess.onData((data: string) => {
-    agent.output.push(data);
+    appendAgentOutput(agent, data);
     if (agent.output.length > 10000) {
       agent.output = agent.output.slice(-5000);
     }

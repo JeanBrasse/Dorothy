@@ -20,7 +20,7 @@ import { buildFullPath } from '../utils/path-builder';
 import { decodeProjectPath } from '../utils/decode-project-path';
 import { getProvider, getAllProviders } from '../providers';
 import { writeProgrammaticInput } from '../core/pty-manager';
-import { killStalePty, ensureProjectTrusted } from '../core/agent-manager';
+import { killStalePty, ensureProjectTrusted, appendAgentOutput } from '../core/agent-manager';
 import { extractStatusLine } from '../utils/ansi';
 import { scheduleTick } from '../utils/agents-tick';
 import { loadCatalog, modelsForProvider, priceFor, catalogStatus } from '../services/model-catalog';
@@ -423,7 +423,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       const agent = agents.get(id);
       if (!agent || agent.ptyId !== ptyId) return;
 
-      agent.output.push(data);
+      appendAgentOutput(agent, data);
       agent.lastActivity = new Date().toISOString();
       agent.statusLine = extractStatusLine(agent.output);
 
@@ -582,7 +582,7 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       newPty.onData((data) => {
         const agentData = agents.get(id);
         if (agentData) {
-          agentData.output.push(data);
+          appendAgentOutput(agentData, data);
           agentData.lastActivity = new Date().toISOString();
           agentData.statusLine = extractStatusLine(agentData.output);
           if (getSuperAgentTelegramTask() && isSuperAgent(agentData)) {

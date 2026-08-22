@@ -50,6 +50,15 @@ export class OpenCodeProvider implements CLIProvider {
       command += ` --model '${params.model}'`;
     }
 
+    // Reasoning effort is --variant on opencode (provider-specific values
+    // like high/max/minimal), and permissions are --auto.
+    if (params.effort && /^[a-z]+$/.test(params.effort)) {
+      command += ` --variant '${params.effort}'`;
+    }
+    if (params.permissionMode === 'auto' || params.permissionMode === 'bypass') {
+      command += ' --auto';
+    }
+
     // A delegated task arrives as params.prompt. Dropping it launched a bare
     // TUI and reported success while the task went nowhere.
     let finalPrompt = params.prompt;

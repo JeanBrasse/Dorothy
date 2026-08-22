@@ -78,6 +78,7 @@ import {
 } from './services/claude-service';
 import { configureStatusHooks } from './services/hooks-manager';
 import { loadCatalog } from './services/model-catalog';
+import { startAgentAutosave, stopAgentAutosave, appendAgentOutput } from './core/agent-manager';
 import {
   setupMcpOrchestrator,
   setupMemoryBackends,
@@ -343,6 +344,8 @@ app.whenReady().then(async () => {
 
   // Load agents from disk
   loadAgents();
+  // Bound how much a crash can lose: PTY-driven fields reach disk on a timer.
+  startAgentAutosave();
 
   // Setup protocol handler for production
   setupProtocolHandler();
@@ -483,7 +486,7 @@ app.whenReady().then(async () => {
       ptyProcess.onData((data) => {
         const agent = agents.get(id);
         if (agent) {
-          agent.output.push(data);
+          appendAgentOutput(agent, data);
           agent.lastActivity = new Date().toISOString();
           agent.statusLine = extractStatusLine(agent.output);
         }
@@ -636,6 +639,7 @@ app.on('activate', () => {
 app.on('before-quit', () => {
   console.log('App quitting, saving agents and killing all PTY processes...');
   destroyTray();
+  stopAgentAutosave();
   saveAgents();
   killAllPty();
   closeVaultDb();
