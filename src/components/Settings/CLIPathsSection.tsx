@@ -249,7 +249,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
                 setTestingOpencode(true);
                 setOpencodeResult(null);
                 try {
-                  const result = await window.electronAPI?.shell?.exec({ command: 'opencode --version' });
+                  const result = await window.electronAPI?.shell?.version('opencode');
                   setOpencodeResult(result?.success && result.output
                     ? { success: true, message: result.output.trim() }
                     : { success: false, message: 'OpenCode CLI not found' });
@@ -289,9 +289,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
                 setTestingPi(true);
                 setPiResult(null);
                 try {
-                  const result = await window.electronAPI?.shell?.exec?.({
-                    command: `${appSettings.cliPaths?.pi || 'pi'} --version 2>&1 || echo "not found"`,
-                  });
+                  const result = await window.electronAPI?.shell?.version(appSettings.cliPaths?.pi || 'pi');
                   setPiResult(result?.success && result.output && !result.output.includes('not found')
                     ? { success: true, message: `Pi CLI: ${result.output.trim()}` }
                     : { success: false, message: 'Pi CLI not found' });

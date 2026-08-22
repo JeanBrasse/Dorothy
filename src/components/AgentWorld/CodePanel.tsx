@@ -198,36 +198,21 @@ export default function CodePanel({ projectPath, className = '' }: CodePanelProp
 
   // Load file tree from project directory
   const loadFileTree = useCallback(async () => {
-    if (!projectPath || !window.electronAPI?.shell?.exec) return;
+    if (!projectPath || !window.electronAPI?.project?.listFiles) return;
 
     setLoading(true);
 
     try {
-      const result = await window.electronAPI.shell.exec({
-        command: `find . -maxdepth 3 -type f 2>/dev/null | grep -v node_modules | grep -v '/\\.git' | grep -v '/dist/' | grep -v '/\\.next/' | grep -v __pycache__ | sort | head -300`,
-        cwd: projectPath,
-      });
+      const result = await window.electronAPI.project.listFiles(projectPath, 3);
 
-      if (result.success && result.output) {
-        const paths = result.output
-          .split('\n')
-          .map((p) => p.replace(/\r/g, '').trim())
-          .filter((p) => p && p !== '.');
-        const tree = buildFileTree(paths, projectPath);
-        setFileTree(tree);
+      if (result.success && result.files) {
+        setFileTree(buildFileTree(result.files.map(f => `./${f}`), projectPath));
       }
 
-      const gitResult = await window.electronAPI.shell.exec({
-        command: 'git status --porcelain 2>/dev/null || echo ""',
-        cwd: projectPath,
-      });
+      const diff = await window.electronAPI.review?.diff(projectPath);
 
-      if (gitResult.success && gitResult.output) {
-        const modified = gitResult.output
-          .split('\n')
-          .map((l) => l.replace(/\r/g, '').trim())
-          .filter((l) => l)
-          .map((l) => l.slice(3));
+      if (diff?.success && diff.diff) {
+        const modified = diff.diff.files.map(f => f.path);
         setGitStatus(modified);
       }
     } catch (err) {
@@ -239,21 +224,19 @@ export default function CodePanel({ projectPath, className = '' }: CodePanelProp
 
   // Load file content
   const loadFileContent = useCallback(async (filePath: string) => {
-    if (!window.electronAPI?.shell?.exec) return;
+    if (!window.electronAPI?.fs?.readTextFile) return;
 
     const cleanPath = filePath.replace(/\r/g, '').trim();
     setSelectedFile(cleanPath);
     setFileContent('Loading...');
 
     try {
-      const result = await window.electronAPI.shell.exec({
-        command: `cat "${cleanPath}" 2>/dev/null | head -500`,
-      });
+      const result = await window.electronAPI.fs?.readTextFile(cleanPath);
 
-      if (result.success && result.output) {
-        setFileContent(result.output.replace(/\r/g, ''));
+      if (result && !result.error) {
+        setFileContent(result.content.split('\n').slice(0, 500).join('\n'));
       } else {
-        setFileContent(result.error || 'Failed to load file');
+        setFileContent(result?.error || 'Failed to load file');
       }
     } catch (err) {
       setFileContent('Error loading file');
@@ -291,31 +274,24 @@ export default function CodePanel({ projectPath, className = '' }: CodePanelProp
 
   // Search for files or content
   const handleSearch = useCallback(async () => {
-    if (!searchQuery.trim() || !projectPath || !window.electronAPI?.shell?.exec) return;
+    if (!searchQuery.trim() || !projectPath || !window.electronAPI?.project?.searchFiles) return;
 
     setIsSearching(true);
     setSearchResults([]);
 
     try {
       if (searchMode === 'file') {
-        const result = await window.electronAPI.shell.exec({
-          command: `find . -maxdepth 5 -type f -iname "*${searchQuery}*" 2>/dev/null | grep -v node_modules | grep -v '/\\.git' | grep -v '/dist/' | grep -v '/\\.next/' | head -50`,
-          cwd: projectPath,
-        });
+        const result = await window.electronAPI.project.searchFiles(projectPath, searchQuery);
 
-        if (result.success && result.output) {
-          const files = result.output
-            .split('\n')
-            .map((p) => p.replace(/\r/g, '').trim().replace(/^\.\//, ''))
-            .filter((p) => p)
-            .map((p) => ({ path: `${projectPath}/${p}` }));
-          setSearchResults(files);
+        if (result.success && result.files) {
+          setSearchResults(result.files.map(p => ({ path: `${projectPath}/${p}` })));
         }
       } else {
-        const result = await window.electronAPI.shell.exec({
-          command: `grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.json" --include="*.css" --include="*.md" "${searchQuery}" . 2>/dev/null | grep -v node_modules | grep -v '/\\.git' | head -50`,
-          cwd: projectPath,
-        });
+        const found = await window.electronAPI.project.searchContent(projectPath, searchQuery);
+        const result = {
+          success: found.success,
+          output: (found.hits ?? []).map(h => `${h.path}:${h.line}:${h.text}`).join('\n'),
+        };
 
         if (result.success && result.output) {
           const matches = result.output

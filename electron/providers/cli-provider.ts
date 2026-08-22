@@ -157,3 +157,17 @@ export interface CLIProvider {
     skills?: string[];
   }): string;
 }
+
+/**
+ * The reasoning-effort values a CLI accepts.
+ *
+ * This lands unquoted in a command string that is written to a shell, and it
+ * arrives from an IPC message, so it is validated at the point of use rather
+ * than trusted from the caller.
+ */
+const EFFORT_VALUES = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
+
+export function safeEffort(effort: string | undefined): string | undefined {
+  if (!effort) return undefined;
+  return EFFORT_VALUES.has(effort) ? effort : undefined;
+}

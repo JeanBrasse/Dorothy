@@ -1,3 +1,11 @@
+export interface RepoSummary {
+  branch: string;
+  status: { status: string; file: string }[];
+  commits: { hash: string; subject: string; author: string; when: string }[];
+  additions: number;
+  deletions: number;
+}
+
 export interface LogLine {
   agentId: string;
   agentName: string;
@@ -549,12 +557,23 @@ export interface ElectronAPI {
     fleet: () => Promise<{ agents: FleetEntry[] }>;
   };
 
+  /** Browsing a project without a shell: walked and read directly. */
+  project?: {
+    listFiles: (root: string, maxDepth?: number) =>
+      Promise<{ success: boolean; files?: string[]; error?: string }>;
+    searchFiles: (root: string, query: string) =>
+      Promise<{ success: boolean; files?: string[]; error?: string }>;
+    searchContent: (root: string, query: string) =>
+      Promise<{ success: boolean; hits?: { path: string; line: number; text: string }[]; error?: string }>;
+  };
+
   /** What an agent changed: per-file stats plus the actual patch. */
   review?: {
     diff: (repoPath: string, baseBranch?: string) =>
       Promise<{ success: boolean; diff?: ReviewDiff; error?: string }>;
     file: (repoPath: string, file: string, baseBranch?: string) =>
       Promise<{ success: boolean; patch?: string; error?: string }>;
+    repo: (repoPath: string) => Promise<{ success: boolean; summary?: RepoSummary; error?: string }>;
   };
 
   /** Federated memory: every source probed for real, searchable from one place. */
@@ -810,7 +829,12 @@ export interface ElectronAPI {
   // Shell operations
   shell: {
     openTerminal: (params: { cwd: string; command?: string }) => Promise<{ success: boolean }>;
-    exec: (params: { command: string; cwd?: string }) => Promise<{ success: boolean; output?: string; error?: string; code?: number }>;
+    /** A CLI's --version, run through execFile with an argv array. */
+    version: (binary: string) => Promise<{ success: boolean; output?: string; error?: string }>;
+    /** The current branch of a repository. */
+    branch: (cwd: string) => Promise<{ success: boolean; output?: string; error?: string }>;
+    /** Reveal a path in Finder, through Electron's own shell API. */
+    reveal: (path: string) => Promise<{ success: boolean; error?: string }>;
     // Quick terminal PTY
     startPty?: (params: { cwd?: string; cols?: number; rows?: number }) => Promise<string>;
     writePty?: (params: { ptyId: string; data: string }) => Promise<{ success: boolean }>;

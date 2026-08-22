@@ -11,6 +11,7 @@ import type {
   ProviderModel,
   HookConfig,
 } from './cli-provider';
+import { safeEffort } from './cli-provider';
 
 export class ClaudeProvider implements CLIProvider {
   readonly id = 'claude' as const;
@@ -77,8 +78,8 @@ export class ClaudeProvider implements CLIProvider {
     }
 
     // Effort level
-    if (params.effort && params.effort !== 'medium') {
-      command += ` --effort ${params.effort}`;
+    if (safeEffort(params.effort) && params.effort !== 'medium') {
+      command += ` --effort ${safeEffort(params.effort)}`;
     }
 
     // Chrome browser sharing (uses the user's logged-in Chrome via claude-in-chrome extension)

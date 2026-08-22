@@ -37,7 +37,7 @@ interface RemotePlugin {
   marketplace: string;
   marketplaceUrl: string;
   category: string;
-  installCommand: string;
+  installCommand?: string;
   version?: string;
   author?: { name: string; email?: string };
   tags?: string[];
@@ -102,6 +102,21 @@ interface Manifest {
   plugins?: ManifestPlugin[];
 }
 
+/** owner/repo, plugin and marketplace names, as the CLI accepts them. */
+const SAFE_TOKEN = /^[A-Za-z0-9._-]+$/;
+
+/**
+ * The marketplace manifest is fetched from a repository we do not control and
+ * its strings end up in a command. Anything that is not a plain name is
+ * refused rather than escaped, so there is no quoting to get wrong.
+ */
+function safeInstallCommand(repo: string, plugin: string, marketplace: string): string | undefined {
+  const [owner, name, ...rest] = repo.split('/');
+  if (rest.length > 0 || !SAFE_TOKEN.test(owner ?? '') || !SAFE_TOKEN.test(name ?? '')) return undefined;
+  if (!SAFE_TOKEN.test(plugin) || !SAFE_TOKEN.test(marketplace)) return undefined;
+  return `claude plugin marketplace add ${owner}/${name} && claude plugin install ${plugin}@${marketplace} -y`;
+}
+
 function manifestToRemote(manifest: Manifest, repo: string): RemotePlugin[] {
   const marketplace = manifest.name || repo;
   return (manifest.plugins || []).map((p) => ({
@@ -112,8 +127,9 @@ function manifestToRemote(manifest: Manifest, repo: string): RemotePlugin[] {
     marketplace,
     marketplaceUrl: `https://github.com/${repo}`,
     category: p.category || 'community',
-    // Adding the marketplace is idempotent, and it is the step people forget.
-    installCommand: `claude plugin marketplace add ${repo} && claude plugin install ${p.name}@${marketplace} -y`,
+    // Built here from validated parts, never taken from the manifest: this
+    // string is executed, and the manifest is remote data.
+    installCommand: safeInstallCommand(repo, p.name, marketplace),
     version: p.version,
     author:
       typeof p.author === 'string'

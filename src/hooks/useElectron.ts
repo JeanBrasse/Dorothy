@@ -334,16 +334,16 @@ export function useElectronShell() {
     return window.electronAPI!.shell.openTerminal({ cwd, command });
   }, []);
 
-  const exec = useCallback(async (command: string, cwd?: string) => {
-    if (!isElectron()) {
-      throw new Error('Electron API not available');
-    }
-    return window.electronAPI!.shell.exec({ command, cwd });
+  // There is deliberately no general exec: the renderer asks for a CLI's
+  // version, a repository's branch or a path to be revealed, by name.
+  const cliVersion = useCallback(async (binary: string) => {
+    if (!isElectron()) throw new Error('Electron API not available');
+    return window.electronAPI!.shell.version(binary);
   }, []);
 
   return {
     isElectron: isElectron(),
     openTerminal,
-    exec,
+    cliVersion,
   };
 }

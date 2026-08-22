@@ -54,12 +54,12 @@ fi
 # which agents it may delegate to — no manual "say hello to the team" ritual.
 BOOTSTRAP=""
 if [ -n "$CLAUDE_AGENT_ID" ] && [ -n "$API_TOKEN" ]; then
-  BOOTSTRAP=$(curl -s --connect-timeout 2 --max-time 3 -H "Authorization: Bearer $API_TOKEN" \
+  BOOTSTRAP=$(curl -s --connect-timeout 2 --max-time 3 -H @<(printf "Authorization: Bearer %s" "$API_TOKEN") \
     "$API_URL/api/agents/$CLAUDE_AGENT_ID/bootstrap" 2>/dev/null | jq -r '.context // empty' 2>/dev/null)
 fi
 
 # Get memory context for this agent/project
-CONTEXT=$(curl -s --connect-timeout 2 --max-time 3 -H "Authorization: Bearer $API_TOKEN" \
+CONTEXT=$(curl -s --connect-timeout 2 --max-time 3 -H @<(printf "Authorization: Bearer %s" "$API_TOKEN") \
   "$API_URL/api/memory/context?agent_id=$AGENT_ID&project_path=$PROJECT_PATH" 2>/dev/null)
 MEMORY_CONTENT=""
 if [ -n "$CONTEXT" ] && [ "$CONTEXT" != "null" ] && [ "$CONTEXT" != "{}" ]; then

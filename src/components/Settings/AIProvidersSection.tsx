@@ -129,7 +129,7 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
       const results = await Promise.all(
         cliProviders.map(async (cli) => {
           try {
-            const result = await window.electronAPI?.shell?.exec({ command: `${cli.binary} --version 2>&1` });
+            const result = await window.electronAPI?.shell?.version(cli.binary);
             const version = result?.success && result.output && !result.output.includes('not found') && !result.output.includes('command not found')
               ? result.output.trim().split('\n')[0]
               : null;

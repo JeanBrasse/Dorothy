@@ -209,3 +209,57 @@ export async function fileDiff(repoPath: string, file: string, baseBranch?: stri
     return '';
   }
 }
+
+export interface RepoSummary {
+  branch: string;
+  status: { status: string; file: string }[];
+  commits: { hash: string; subject: string; author: string; when: string }[];
+  additions: number;
+  deletions: number;
+}
+
+/**
+ * Everything the Git panel used to gather with four shell pipelines.
+ *
+ * It built `git status --porcelain`, `git diff --stat | tail -20` and a
+ * `--pretty` log as strings and ran them through a login shell; here git runs
+ * with an argv array and the parsing happens once, in one place.
+ */
+export async function repoSummary(repoPath: string): Promise<RepoSummary> {
+  if (!repoPath || !fs.existsSync(repoPath)) throw new Error('no such directory');
+
+  const branch = (await tryGit(repoPath, ['rev-parse', '--abbrev-ref', 'HEAD'])).trim() || 'unknown';
+
+  const status = (await tryGit(repoPath, ['status', '--porcelain', '--untracked-files=all']))
+    .split('\n')
+    .filter(line => line.length >= 3)
+    .map(line => {
+      const code = line.slice(0, 2);
+      const file = line.slice(3).trim();
+      const state = code.includes('?') ? 'new'
+        : code.includes('A') ? 'added'
+        : code.includes('D') ? 'deleted'
+        : code.includes('R') ? 'renamed'
+        : 'modified';
+      return { status: state, file };
+    })
+    .filter(entry => entry.file);
+
+  const commits = (await tryGit(repoPath, ['log', '--pretty=format:%h%x1f%s%x1f%an%x1f%ar', '-10']))
+    .split('\n')
+    .filter(Boolean)
+    .map(line => {
+      const [hash, subject, author, when] = line.split('\x1f');
+      return { hash, subject, author, when };
+    });
+
+  let additions = 0;
+  let deletions = 0;
+  for (const line of (await tryGit(repoPath, ['diff', '--numstat', 'HEAD'])).split('\n')) {
+    const [add, del] = line.split('\t');
+    additions += add === '-' ? 0 : Number(add) || 0;
+    deletions += del === '-' ? 0 : Number(del) || 0;
+  }
+
+  return { branch, status, commits, additions, deletions };
+}

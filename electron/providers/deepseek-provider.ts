@@ -10,7 +10,7 @@ import type {
   ProviderModel,
   HookConfig,
 } from './cli-provider';
-import { readAppSettingsFromDisk } from './cli-provider';
+import { readAppSettingsFromDisk , safeEffort } from './cli-provider';
 
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/anthropic'; // Anthropic-compatible endpoint
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api'; // claude appends /v1/messages
@@ -77,8 +77,8 @@ export class DeepSeekProvider implements CLIProvider {
       command += ' --permission-mode bypassPermissions';
     }
 
-    if (params.effort && params.effort !== 'medium') {
-      command += ` --effort ${params.effort}`;
+    if (safeEffort(params.effort) && params.effort !== 'medium') {
+      command += ` --effort ${safeEffort(params.effort)}`;
     }
 
     command += ` --add-dir '${os.homedir()}/.dorothy'`;

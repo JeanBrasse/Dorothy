@@ -54,7 +54,7 @@ store_observation() {
 
   curl -s --max-time 3 -X POST "$API_URL" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $API_TOKEN" \
+    -H @<(printf "Authorization: Bearer %s" "$API_TOKEN") \
     -d "$payload" \
     > /dev/null 2>&1
 }

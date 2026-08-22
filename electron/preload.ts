@@ -250,6 +250,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('review:diff', { repoPath, baseBranch }),
     file: (repoPath: string, file: string, baseBranch?: string) =>
       ipcRenderer.invoke('review:file', { repoPath, file, baseBranch }),
+    repo: (repoPath: string) =>
+      ipcRenderer.invoke('review:repo', { repoPath }),
   },
 
   memoryHub: {
@@ -369,31 +371,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // Shell operations
+  project: {
+    listFiles: (root: string, maxDepth?: number) =>
+      ipcRenderer.invoke('project:list-files', { root, maxDepth }),
+    searchFiles: (root: string, query: string) =>
+      ipcRenderer.invoke('project:search-files', { root, query }),
+    searchContent: (root: string, query: string) =>
+      ipcRenderer.invoke('project:search-content', { root, query }),
+  },
+
   shell: {
-    openTerminal: (params: { cwd: string; command?: string }) =>
-      ipcRenderer.invoke('shell:open-terminal', params),
-    exec: (params: { command: string; cwd?: string }) =>
-      ipcRenderer.invoke('shell:exec', params),
-    // Quick terminal PTY
-    startPty: (params: { cwd?: string; cols?: number; rows?: number }) =>
-      ipcRenderer.invoke('shell:startPty', params),
-    writePty: (params: { ptyId: string; data: string }) =>
-      ipcRenderer.invoke('shell:writePty', params),
-    resizePty: (params: { ptyId: string; cols: number; rows: number }) =>
-      ipcRenderer.invoke('shell:resizePty', params),
-    killPty: (params: { ptyId: string }) =>
-      ipcRenderer.invoke('shell:killPty', params),
-    // Event listeners for quick terminal
-    onPtyOutput: (callback: (event: { ptyId: string; data: string }) => void) => {
-      const listener = (_: unknown, event: { ptyId: string; data: string }) => callback(event);
-      ipcRenderer.on('shell:ptyOutput', listener);
-      return () => ipcRenderer.removeListener('shell:ptyOutput', listener);
-    },
-    onPtyExit: (callback: (event: { ptyId: string; exitCode: number }) => void) => {
-      const listener = (_: unknown, event: { ptyId: string; exitCode: number }) => callback(event);
-      ipcRenderer.on('shell:ptyExit', listener);
-      return () => ipcRenderer.removeListener('shell:ptyExit', listener);
-    },
+    version: (binary: string) => ipcRenderer.invoke('shell:version', { binary }),
+    branch: (cwd: string) => ipcRenderer.invoke('shell:branch', { cwd }),
+    reveal: (path: string) => ipcRenderer.invoke('shell:reveal', { path }),
   },
 
   // Orchestrator (Super Agent) management

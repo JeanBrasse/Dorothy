@@ -110,17 +110,14 @@ export default function ProjectsPage() {
 
   // Load git branch for selected project
   const loadGitBranch = useCallback(async (projectPath: string) => {
-    if (!projectPath || typeof window === 'undefined' || !window.electronAPI?.shell?.exec) {
+    if (!projectPath || typeof window === 'undefined' || !window.electronAPI?.shell?.branch) {
       setGitBranch(null);
       return;
     }
 
     setGitLoading(true);
     try {
-      const result = await window.electronAPI.shell.exec({
-        command: 'git branch --show-current 2>/dev/null || git rev-parse --abbrev-ref HEAD 2>/dev/null',
-        cwd: projectPath,
-      });
+      const result = await window.electronAPI.shell.branch(projectPath);
 
       if (result.success && result.output) {
         const branch = stripAnsi(result.output).replace(/\r/g, '').trim();
@@ -865,7 +862,7 @@ export default function ProjectsPage() {
                 {/* Quick Actions */}
                 <div className="flex gap-2">
                   <button
-                    onClick={() => window.electronAPI?.shell?.exec({ command: `open ${JSON.stringify(selectedProject.path)}` })}
+                    onClick={() => window.electronAPI?.shell?.reveal(selectedProject.path)}
                     className="flex-1 px-4 py-2.5 border border-border bg-secondary text-sm flex items-center justify-center gap-2 hover:bg-accent/50 transition-colors"
                     title="Reveal this folder in Finder"
                   >

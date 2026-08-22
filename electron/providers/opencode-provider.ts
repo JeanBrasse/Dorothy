@@ -10,6 +10,7 @@ import type {
   ProviderModel,
   HookConfig,
 } from './cli-provider';
+import { safeEffort } from './cli-provider';
 
 export class OpenCodeProvider implements CLIProvider {
   readonly id = 'opencode' as const;
@@ -52,8 +53,8 @@ export class OpenCodeProvider implements CLIProvider {
 
     // Reasoning effort is --variant on opencode (provider-specific values
     // like high/max/minimal), and permissions are --auto.
-    if (params.effort && /^[a-z]+$/.test(params.effort)) {
-      command += ` --variant '${params.effort}'`;
+    if (safeEffort(params.effort)) {
+      command += ` --variant '${safeEffort(params.effort)}'`;
     }
     if (params.permissionMode === 'auto' || params.permissionMode === 'bypass') {
       command += ' --auto';

@@ -1,6 +1,7 @@
-import { BrowserWindow, protocol, app } from 'electron';
+import { BrowserWindow, protocol, app, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 import { getAppBasePath } from '../utils';
 import { MIME_TYPES } from '../constants';
 
@@ -37,8 +38,12 @@ export function createWindow() {
       preload: path.join(__dirname, '..', 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      // No renderer of ours ever needs to reach out on its own.
+      webviewTag: false,
     },
   });
+
+  hardenWindow(mainWindow);
 
   // Load the Next.js app
   const isDev = process.env.NODE_ENV === 'development';
@@ -98,6 +103,58 @@ export function registerProtocolSchemes() {
  * Setup the custom app:// protocol handler for serving static files
  * This should be called after app.whenReady() and before loading the window
  */
+/**
+ * Nothing may navigate this window away from the app, and nothing may open a
+ * second one.
+ *
+ * The renderer holds the whole electronAPI bridge. A link in a vault note, a
+ * redirect from injected content or a window.open would otherwise land remote
+ * content in a renderer that can spawn PTYs and read the filesystem. External
+ * links go to the user's browser, where they belong.
+ */
+export function hardenWindow(window: BrowserWindow): void {
+  const isOurs = (url: string) =>
+    url.startsWith('app://') || url.startsWith('http://localhost:') || url.startsWith('http://127.0.0.1:');
+
+  window.webContents.on('will-navigate', (event, url) => {
+    if (isOurs(url)) return;
+    event.preventDefault();
+    void shell.openExternal(url);
+  });
+
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//.test(url)) void shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  window.webContents.on('will-attach-webview', event => event.preventDefault());
+}
+
+/** Roots local-file:// may read from: the user's own project and app data. */
+function isUnderAllowedRoot(filePath: string): boolean {
+  const roots = [
+    path.join(os.homedir(), '.dorothy'),
+    path.join(os.homedir(), '.claude'),
+    ...listKnownProjectRoots(),
+  ];
+  return roots.some(root => {
+    const resolved = path.resolve(root);
+    return filePath === resolved || filePath.startsWith(resolved + path.sep);
+  });
+}
+
+/** Project folders the user added, read fresh so a new project works at once. */
+function listKnownProjectRoots(): string[] {
+  try {
+    const file = path.join(os.homedir(), '.dorothy', 'projects.json');
+    if (!fs.existsSync(file)) return [];
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf-8'));
+    return Array.isArray(parsed) ? parsed.filter((p): p is string => typeof p === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
 export function setupProtocolHandler() {
   // Serve local files via local-file:// protocol (for vault image previews etc.)
   // URLs are encoded as: local-file://host/path where host is empty
@@ -106,7 +163,15 @@ export function setupProtocolHandler() {
     try {
       // Parse as URL to properly decode path components
       const url = new URL(request.url);
-      const filePath = decodeURIComponent(url.pathname);
+      const filePath = path.resolve(decodeURIComponent(url.pathname));
+
+      // Confined to the directories the app actually shows files from.
+      // Unrestricted, this served ~/.ssh/id_rsa and ~/.aws/credentials to
+      // anything that could put a URL in the renderer.
+      if (!isUnderAllowedRoot(filePath)) {
+        console.error('local-file:// refused, outside the allowed roots:', filePath);
+        return new Response('Forbidden', { status: 403 });
+      }
 
       if (filePath && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
         const ext = path.extname(filePath).toLowerCase();

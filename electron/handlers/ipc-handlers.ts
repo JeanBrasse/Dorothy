@@ -26,7 +26,7 @@ import { scheduleTick } from '../utils/agents-tick';
 import { loadCatalog, modelsForProvider, priceFor, catalogStatus } from '../services/model-catalog';
 import { assembleDigest, needsPromptInjection, wrapDigestForPrompt, searchMemory, memoryStatus } from '../services/memory-hub';
 import { usableHermesConnection } from '../services/hermes-config';
-import { reviewDiff, fileDiff } from '../services/git-review';
+import { reviewDiff, fileDiff, repoSummary } from '../services/git-review';
 import { searchLogs, agentTail, fleetSummary } from '../services/log-search';
 import { providerTotals as ledgerProviderTotals, dailyCost as ledgerDailyCost } from '../services/usage-ledger';
 
@@ -1256,7 +1256,29 @@ function registerPluginHandlers(deps: IpcHandlerDependencies): void {
   // Start plugin installation (creates interactive PTY)
   // Start plugin installation (uses --no-rcs to skip shell rc files that may
   // contain broken completions like compdef from other tools)
+  /**
+   * Installing a plugin or a skill.
+   *
+   * This spawns a PTY, so the user can answer the CLI's prompts. What it will
+   * not do is run an arbitrary string: the command has to be one of the shapes
+   * an install actually takes, built from names the catalogue validated. It
+   * used to accept anything, which made a marketplace entry a one-click way to
+   * run code on this machine.
+   */
+  const INSTALL_SHAPES = [
+    /^claude plugin marketplace add [A-Za-z0-9._-]+\/[A-Za-z0-9._-]+( && claude plugin install [A-Za-z0-9._-]+@[A-Za-z0-9._-]+( -y)?)?$/,
+    /^claude plugin install [A-Za-z0-9._-]+(@[A-Za-z0-9._-]+)?( -y)?$/,
+    /^npx (-y )?skills add [A-Za-z0-9._\/-]+$/,
+    /^\/plugin install [A-Za-z0-9._-]+@[A-Za-z0-9._-]+$/,
+    /^\/skill install [A-Za-z0-9._\/-]+$/,
+  ];
+
   ipcMain.handle('plugin:install-start', async (_event, { command, cols, rows }: { command: string; cols?: number; rows?: number }) => {
+    if (typeof command !== 'string' || !INSTALL_SHAPES.some(shape => shape.test(command.trim()))) {
+      console.error('[plugin] refused an install command that is not an install:', command);
+      return { error: 'That command is not an install and will not be run.' };
+    }
+
     const id = uuidv4();
     const shell = process.env.SHELL || '/bin/zsh';
 
@@ -1587,6 +1609,14 @@ function registerAppSettingsHandlers(deps: IpcHandlerDependencies): void {
     providers: ledgerProviderTotals(sinceDays),
     dailyCost: ledgerDailyCost(sinceDays ?? 30),
   }));
+
+  ipcMain.handle('review:repo', async (_event, { repoPath }: { repoPath: string }) => {
+    try {
+      return { success: true as const, summary: await repoSummary(repoPath) };
+    } catch (err) {
+      return { success: false as const, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
 
   ipcMain.handle('review:file', async (
     _event,
@@ -2356,31 +2386,129 @@ function registerShellHandlers(deps: IpcHandlerDependencies): void {
   });
 
   // Execute arbitrary command (uses PTY)
-  ipcMain.handle('shell:exec', async (_event, { command, cwd }: { command: string; cwd?: string }) => {
-    return new Promise((resolve) => {
-      const shell = process.env.SHELL || '/bin/zsh';
-      const ptyProcess = pty.spawn(shell, ['-l', '-c', command], {
-        name: 'xterm-256color',
-        cols: 80,
-        rows: 24,
-        cwd: cwd || os.homedir(),
-        env: process.env as { [key: string]: string },
-      });
+  /**
+   * The renderer can ask for three things, by name.
+   *
+   * This used to take an arbitrary string and run it through a login shell,
+   * which made every other sandbox in the app decorative: anything that ran in
+   * the renderer had full user-privilege command execution. The three real
+   * uses are asking a CLI its version, reading a repository's branch, and
+   * revealing a path in Finder — so those are what it does now, through
+   * execFile with an argv array, or through Electron's own shell API.
+   */
+  /**
+   * Browsing a project, without a shell.
+   *
+   * The code panel used to build `find`, `cat` and `grep` command strings and
+   * run them through a login shell, so a search query containing a quote was
+   * command execution. These walk and read the tree directly, confined to the
+   * project root.
+   */
+  const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', '.next', '__pycache__', 'out', 'release', '.worktrees']);
 
-      let output = '';
+  function withinRoot(root: string, target: string): boolean {
+    const r = path.resolve(root);
+    const t = path.resolve(target);
+    return t === r || t.startsWith(r + path.sep);
+  }
 
-      ptyProcess.onData((data) => {
-        output += data;
-      });
-
-      ptyProcess.onExit(({ exitCode }) => {
-        if (exitCode === 0) {
-          resolve({ success: true, output });
-        } else {
-          resolve({ success: false, error: output, code: exitCode });
+  function walkProject(root: string, maxDepth: number, limit: number, match?: (name: string) => boolean): string[] {
+    const out: string[] = [];
+    const walk = (dir: string, depth: number) => {
+      if (depth > maxDepth || out.length >= limit) return;
+      let entries: fs.Dirent[];
+      try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+      for (const entry of entries) {
+        if (out.length >= limit) return;
+        if (entry.name.startsWith('.') && entry.name !== '.env.example') continue;
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (IGNORED_DIRS.has(entry.name)) continue;
+          walk(full, depth + 1);
+        } else if (!match || match(entry.name)) {
+          out.push(path.relative(root, full));
         }
+      }
+    };
+    walk(root, 1);
+    return out.sort();
+  }
+
+  ipcMain.handle('project:list-files', async (_event, { root, maxDepth }: { root: string; maxDepth?: number }) => {
+    if (!root || !fs.existsSync(root)) return { success: false as const, error: 'no such directory' };
+    return { success: true as const, files: walkProject(root, Math.min(maxDepth ?? 3, 6), 300) };
+  });
+
+  ipcMain.handle('project:search-files', async (_event, { root, query }: { root: string; query: string }) => {
+    if (!root || !fs.existsSync(root) || !query) return { success: false as const, error: 'root and query are required' };
+    const needle = query.toLowerCase();
+    return { success: true as const, files: walkProject(root, 6, 50, name => name.toLowerCase().includes(needle)) };
+  });
+
+  ipcMain.handle('project:search-content', async (
+    _event,
+    { root, query }: { root: string; query: string },
+  ) => {
+    if (!root || !fs.existsSync(root) || !query) return { success: false as const, error: 'root and query are required' };
+    const exts = new Set(['.ts', '.tsx', '.js', '.jsx', '.json', '.css', '.md']);
+    const needle = query.toLowerCase();
+    const hits: { path: string; line: number; text: string }[] = [];
+
+    for (const rel of walkProject(root, 6, 4000, name => exts.has(path.extname(name)))) {
+      if (hits.length >= 50) break;
+      const full = path.join(root, rel);
+      if (!withinRoot(root, full)) continue;
+      let content: string;
+      try {
+        if (fs.statSync(full).size > 512_000) continue;
+        content = fs.readFileSync(full, 'utf-8');
+      } catch { continue; }
+      if (!content.toLowerCase().includes(needle)) continue;
+      content.split('\n').forEach((text, i) => {
+        if (hits.length >= 50) return;
+        if (text.toLowerCase().includes(needle)) hits.push({ path: rel, line: i + 1, text: text.slice(0, 300) });
       });
-    });
+    }
+    return { success: true as const, hits };
+  });
+
+  ipcMain.handle('shell:version', async (_event, { binary }: { binary: string }) => {
+    // A path from settings or a bare binary name, never an expression.
+    if (!binary || /[;&|`$<>(){}\n\r"']/.test(binary)) {
+      return { success: false, error: 'invalid binary' };
+    }
+    try {
+      const { execFile } = await import('child_process');
+      const { promisify } = await import('util');
+      const { stdout, stderr } = await promisify(execFile)(binary, ['--version'], {
+        timeout: 8000,
+        env: { ...process.env, PATH: buildFullPath() },
+      });
+      return { success: true, output: (stdout || stderr || '').trim() };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('shell:branch', async (_event, { cwd }: { cwd: string }) => {
+    if (!cwd || !fs.existsSync(cwd)) return { success: false, error: 'no such directory' };
+    try {
+      const { execFile } = await import('child_process');
+      const { promisify } = await import('util');
+      const { stdout } = await promisify(execFile)('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+        cwd, timeout: 8000,
+      });
+      return { success: true, output: stdout.trim() };
+    } catch {
+      return { success: false, error: 'not a git repository' };
+    }
+  });
+
+  ipcMain.handle('shell:reveal', async (_event, { path: target }: { path: string }) => {
+    if (!target || !fs.existsSync(target)) return { success: false, error: 'no such path' };
+    const { shell } = await import('electron');
+    const error = await shell.openPath(target);
+    return error ? { success: false, error } : { success: true };
   });
 
   // Start a new quick terminal PTY

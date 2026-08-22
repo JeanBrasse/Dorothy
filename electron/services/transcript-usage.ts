@@ -113,7 +113,10 @@ export function computeTranscriptUsage(homeDir = os.homedir()): TranscriptUsage 
   if (cache && Date.now() - cache.at < CACHE_TTL) return cache.value;
 
   const root = path.join(homeDir, '.claude', 'projects');
-  const modelUsage: Record<string, ModelUsage> = {};
+  // Null-prototype: a transcript's model id is attacker-influenceable, and
+  // `modelUsage[model] ||= …` on a plain object would let "__proto__" write
+  // onto Object.prototype inside the main process.
+  const modelUsage: Record<string, ModelUsage> = Object.create(null);
   const dailyMap = new Map<string, Record<string, number>>();
   let lastComputedDate: string | null = null;
 
@@ -147,6 +150,7 @@ export function computeTranscriptUsage(homeDir = os.homedir()): TranscriptUsage 
 
       const model = typeof message.model === 'string' ? message.model : null;
       if (!model || model === '<synthetic>') continue;
+      if (model === '__proto__' || model === 'constructor' || model === 'prototype') continue;
 
       const key = `${message.id ?? ''}:${entry.requestId ?? ''}`;
       if (key !== ':' && seen.has(key)) continue;
@@ -192,7 +196,7 @@ export function computeTranscriptUsage(homeDir = os.homedir()): TranscriptUsage 
   }
 
   const value: TranscriptUsage = {
-    modelUsage,
+    modelUsage: { ...modelUsage },
     dailyModelTokens: Array.from(dailyMap.entries())
       .map(([date, tokensByModel]) => ({ date, tokensByModel }))
       .sort((a, b) => a.date.localeCompare(b.date)),

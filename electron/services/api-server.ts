@@ -11,6 +11,9 @@ import { API_PORT, API_TOKEN_FILE } from '../constants';
 import { RouteApp, RouteContext, RouteRequest } from './api-routes';
 import { registerAllRoutes } from './api-routes';
 
+/** Enough for a prompt or a webhook payload, far short of a memory attack. */
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
+
 // EventEmitter for agent status changes — used by long-poll wait endpoint
 export const agentStatusEmitter = new EventEmitter();
 agentStatusEmitter.setMaxListeners(50);
@@ -144,13 +147,32 @@ export function startApiServer(
     let body: Record<string, unknown> = {};
     if (req.method === 'POST' || req.method === 'PUT') {
       try {
+        // Bounded: this reads before routing, and on the auth-exempt hook
+        // paths, so an unbounded stream was a way to exhaust the main
+        // process's memory without any credential at all.
         const chunks: Buffer[] = [];
+        let received = 0;
         for await (const chunk of req) {
-          chunks.push(chunk);
+          received += (chunk as Buffer).length;
+          if (received > MAX_BODY_BYTES) {
+            res.writeHead(413, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Request body too large' }));
+            req.destroy();
+            return;
+          }
+          chunks.push(chunk as Buffer);
         }
         const data = Buffer.concat(chunks).toString();
         if (data) {
-          body = JSON.parse(data);
+          const parsed = JSON.parse(data);
+          // Reject the two keys that would let a request write onto
+          // Object.prototype once the body is spread or merged downstream.
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            const clean = parsed as Record<string, unknown>;
+            delete clean['__proto__'];
+            delete clean['constructor'];
+            body = clean;
+          }
         }
       } catch {
         // Ignore parse errors

@@ -11,6 +11,7 @@ import type {
   ProviderModel,
   HookConfig,
 } from './cli-provider';
+import { safeEffort } from './cli-provider';
 
 /**
  * Provider for xAI's Grok CLI ("Grok Build" — https://x.ai/cli).
@@ -72,8 +73,8 @@ export class GrokProvider implements CLIProvider {
     }
 
     // Reasoning effort (Grok accepts low|medium|high|xhigh|max).
-    if (params.effort && params.effort !== 'medium') {
-      command += ` --effort ${params.effort}`;
+    if (safeEffort(params.effort) && params.effort !== 'medium') {
+      command += ` --effort ${safeEffort(params.effort)}`;
     }
 
     // Verbose → debug logging.
