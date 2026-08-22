@@ -9,6 +9,9 @@ import * as http from 'http';
 import * as https from 'https';
 import { DATA_DIR } from '../constants';
 import {
+  fetchHermesCrons,
+  hermesCronAction,
+  deleteHermesCron,
   probeHermes,
   signInHermes,
   clearHermesSession,
@@ -282,6 +285,15 @@ export function registerHermesHandlers(): void {
     clearHermesSession(resolveHermesBaseUrl(connection));
     return { success: true };
   });
+
+  // ── Crons (schedules live in Hermes) ──
+  ipcMain.handle('hermes:crons:list', async () => fetchHermesCrons(readConnection()));
+
+  ipcMain.handle('hermes:crons:action', async (_event, params: { action: 'pause' | 'resume' | 'trigger'; jobId: string; profile?: string }) =>
+    hermesCronAction(readConnection(), params.action, params.jobId, params.profile));
+
+  ipcMain.handle('hermes:crons:delete', async (_event, params: { jobId: string; profile?: string }) =>
+    deleteHermesCron(readConnection(), params.jobId, params.profile));
 
   // ── Kanban (the board lives in Hermes; Dorothy is a client) ──
   ipcMain.handle('hermes:kanban:board', async (_event, params: { board?: string } = {}) => {

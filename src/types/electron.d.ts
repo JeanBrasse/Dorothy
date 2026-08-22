@@ -902,6 +902,9 @@ export interface ElectronAPI {
     }>;
     signIn: (params: { connection: HermesConnection; username: string; password: string; provider?: string }) => Promise<{ success: boolean; version?: string; gatewayState?: string; error?: string }>;
     signOut: (connection: HermesConnection) => Promise<{ success: boolean }>;
+    crons: () => Promise<{ success: boolean; jobs?: unknown; error?: string; needsSignIn?: boolean }>;
+    cronAction: (params: { action: 'pause' | 'resume' | 'trigger'; jobId: string; profile?: string }) => Promise<{ success: boolean; job?: unknown; error?: string }>;
+    cronDelete: (params: { jobId: string; profile?: string }) => Promise<{ success: boolean; error?: string }>;
     kanbanBoard: (params?: { board?: string }) => Promise<{ success: boolean; board?: unknown; error?: string; needsSignIn?: boolean }>;
     kanbanCreateTask: (task: Record<string, unknown>) => Promise<{ success: boolean; task?: unknown; error?: string }>;
     kanbanUpdateTask: (params: { taskId: string; patch: Record<string, unknown> }) => Promise<{ success: boolean; task?: unknown; error?: string }>;

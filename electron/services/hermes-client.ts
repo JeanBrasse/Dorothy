@@ -193,3 +193,41 @@ export async function updateHermesTask(conn: HermesConnection, taskId: string, p
   const { status, body } = await hermesRequest(baseUrl, `${KANBAN}/tasks/${encodeURIComponent(taskId)}`, { method: 'PATCH', body: patch, token: conn.token });
   return status < 300 ? { success: true as const, task: body } : { success: false as const, error: `HTTP ${status}`, body };
 }
+
+// ── Cron / automations ────────────────────────────────────────────────────
+// Schedules live in Hermes (per-profile jobs.json); Dorothy lists and drives
+// them. Unit routes need the job's own `profile`, otherwise the gateway scans
+// every profile to find it.
+
+export async function fetchHermesCrons(conn: HermesConnection) {
+  const baseUrl = resolveHermesBaseUrl(conn);
+  const { status, body } = await hermesRequest(baseUrl, '/api/cron/jobs?profile=all', { token: conn.token });
+  if (status !== 200) {
+    const detail = (body && typeof body === 'object' && 'detail' in body)
+      ? String((body as { detail: unknown }).detail) : `HTTP ${status}`;
+    return { success: false as const, error: detail, needsSignIn: status === 401 || status === 403 };
+  }
+  return { success: true as const, jobs: body };
+}
+
+export async function hermesCronAction(
+  conn: HermesConnection,
+  action: 'pause' | 'resume' | 'trigger',
+  jobId: string,
+  profile?: string,
+) {
+  const baseUrl = resolveHermesBaseUrl(conn);
+  const q = profile ? `?profile=${encodeURIComponent(profile)}` : '';
+  const { status, body } = await hermesRequest(
+    baseUrl, `/api/cron/jobs/${encodeURIComponent(jobId)}/${action}${q}`,
+    { method: 'POST', token: conn.token },
+  );
+  return status < 300 ? { success: true as const, job: body } : { success: false as const, error: `HTTP ${status}` };
+}
+
+export async function deleteHermesCron(conn: HermesConnection, jobId: string, profile?: string) {
+  const baseUrl = resolveHermesBaseUrl(conn);
+  const q = profile ? `?profile=${encodeURIComponent(profile)}` : '';
+  const { status } = await hermesRequest(baseUrl, `/api/cron/jobs/${encodeURIComponent(jobId)}${q}`, { method: 'DELETE', token: conn.token });
+  return status < 300 ? { success: true as const } : { success: false as const, error: `HTTP ${status}` };
+}

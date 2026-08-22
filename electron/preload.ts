@@ -457,6 +457,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('hermes:signIn', params),
     signOut: (connection: Record<string, unknown>) =>
       ipcRenderer.invoke('hermes:signOut', connection),
+    crons: () => ipcRenderer.invoke('hermes:crons:list'),
+    cronAction: (params: { action: 'pause' | 'resume' | 'trigger'; jobId: string; profile?: string }) =>
+      ipcRenderer.invoke('hermes:crons:action', params),
+    cronDelete: (params: { jobId: string; profile?: string }) =>
+      ipcRenderer.invoke('hermes:crons:delete', params),
     kanbanBoard: (params?: { board?: string }) =>
       ipcRenderer.invoke('hermes:kanban:board', params ?? {}),
     kanbanCreateTask: (task: Record<string, unknown>) =>
