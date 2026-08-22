@@ -193,6 +193,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   fs: {
     listProjects: () =>
       ipcRenderer.invoke('fs:list-projects'),
+    readTextFile: (filePath: string) =>
+      ipcRenderer.invoke('fs:read-text-file', filePath),
+    writeTextFile: (params: { filePath: string; content: string }) =>
+      ipcRenderer.invoke('fs:write-text-file', params),
+    readProjectFiles: (params: { paths: string[]; relative: string[] }) =>
+      ipcRenderer.invoke('fs:read-project-files', params),
     addCustomProject: (projectPath: string) =>
       ipcRenderer.invoke('fs:add-custom-project', projectPath),
     removeCustomProject: (projectPath: string) =>

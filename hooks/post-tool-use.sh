@@ -35,6 +35,11 @@ curl -s --connect-timeout 1 --max-time 3 -X POST "$BASE_URL/api/hooks/status" \
 # input routinely contains quotes/newlines/backslashes, and naive string
 # interpolation would produce invalid JSON (observation silently dropped)
 # or let agent-controlled text inject extra JSON fields.
+API_TOKEN=""
+if [ -f "$HOME/.dorothy/api-token" ]; then
+  API_TOKEN=$(cat "$HOME/.dorothy/api-token" 2>/dev/null)
+fi
+
 store_observation() {
   local content="$1"
   local type="$2"
@@ -49,6 +54,7 @@ store_observation() {
 
   curl -s --max-time 3 -X POST "$API_URL" \
     -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $API_TOKEN" \
     -d "$payload" \
     > /dev/null 2>&1
 }

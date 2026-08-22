@@ -62,7 +62,10 @@ function findHandler(app: RouteApp, method: string, pathname: string): RouteHand
 async function call(handler: RouteHandler, req: Partial<RouteRequest>): Promise<{ data: unknown; status: number }> {
   let result: { data: unknown; status: number } = { data: undefined, status: 0 };
   const sendJson: SendJson = (data, status = 200) => { result = { data, status }; };
-  await handler(req as RouteRequest, sendJson, {} as RouteContext);
+  // The webhook reads its bearer from req.raw.headers; no secret file exists
+  // in the sandboxed HOME, so any value passes the (skipped) comparison.
+  const withRaw = { raw: { headers: {} }, ...req } as RouteRequest;
+  await handler(withRaw, sendJson, {} as RouteContext);
   return result;
 }
 

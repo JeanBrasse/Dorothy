@@ -1903,6 +1903,68 @@ function registerFileSystemHandlers(deps: IpcHandlerDependencies): void {
     }
   });
 
+  /**
+   * Reads well-known project files without a shell. The Brain graph used to
+   * build `cat "<projectPath>/..."` command strings and hand them to
+   * shell:exec: a path containing $(...) or a backtick executed arbitrary
+   * code as soon as the page opened.
+   */
+  /** Roots a free-form file path is allowed to live under. */
+  const textFileRoots = () => [
+    path.join(os.homedir(), '.claude'),
+    path.join(os.homedir(), '.codex'),
+    path.join(os.homedir(), '.gemini'),
+    path.join(os.homedir(), '.grok'),
+    DATA_DIR,
+    ...readCustomProjects(),
+  ];
+
+  const isAllowedTextFile = (target: string) => {
+    const resolved = path.resolve(target.replace(/^~/, os.homedir()));
+    return textFileRoots().some(root => resolved === root || resolved.startsWith(root + path.sep));
+  };
+
+  ipcMain.handle('fs:read-text-file', async (_event, filePath: string) => {
+    try {
+      const target = path.resolve(String(filePath || '').replace(/^~/, os.homedir()));
+      if (!isAllowedTextFile(target)) return { content: '', error: 'Path outside allowed roots' };
+      if (!fs.existsSync(target) || !fs.statSync(target).isFile()) return { content: '', error: 'Not found' };
+      return { content: fs.readFileSync(target, 'utf-8') };
+    } catch (err) {
+      return { content: '', error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('fs:write-text-file', async (_event, params: { filePath: string; content: string }) => {
+    try {
+      const target = path.resolve(String(params?.filePath || '').replace(/^~/, os.homedir()));
+      if (!isAllowedTextFile(target)) return { success: false, error: 'Path outside allowed roots' };
+      fs.writeFileSync(target, String(params?.content ?? ''), 'utf-8');
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('fs:read-project-files', async (_event, params: { paths: string[]; relative: string[] }) => {
+    const out: Record<string, string> = {};
+    const paths = Array.isArray(params?.paths) ? params.paths : [];
+    const relative = Array.isArray(params?.relative) ? params.relative : [];
+    for (const base of paths) {
+      if (typeof base !== 'string' || !path.isAbsolute(base)) continue;
+      for (const rel of relative) {
+        if (typeof rel !== 'string' || rel.includes('..')) continue;
+        const target = path.join(base, rel);
+        try {
+          if (fs.existsSync(target) && fs.statSync(target).isFile()) {
+            out[target] = fs.readFileSync(target, 'utf-8');
+          }
+        } catch { /* unreadable, skip */ }
+      }
+    }
+    return { files: out };
+  });
+
   ipcMain.handle('fs:add-custom-project', async (_event, projectPath: string) => {
     try {
       const clean = String(projectPath || '').trim();

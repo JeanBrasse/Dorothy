@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import { execFile } from 'child_process';
+import { randomBytes } from 'crypto';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -151,6 +152,22 @@ async function detectTailscale(): Promise<TailscaleInfo> {
   return { installed: false, running: false, serveConfigured: false };
 }
 
+/** Dedicated secret for the incoming webhook: exposing the master API token
+ *  over the tailnet would hand out full control of every route. */
+function readWebhookSecret(): string {
+  const file = path.join(os.homedir(), '.dorothy', 'hermes-webhook-secret');
+  try {
+    if (fs.existsSync(file)) return fs.readFileSync(file, 'utf-8').trim();
+    const secret = randomBytes(32).toString('hex');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, secret, { mode: 0o600 });
+    return secret;
+  } catch (err) {
+    console.error('[hermes] cannot provision webhook secret:', err);
+    return '';
+  }
+}
+
 function readApiToken(): string {
   try {
     return fs.readFileSync(path.join(os.homedir(), '.dorothy', 'api-token'), 'utf-8').trim();
@@ -192,7 +209,7 @@ function postLocal(pathname: string, token: string, payload: unknown): Promise<{
 
 export function registerHermesHandlers(): void {
   ipcMain.handle('hermes:getConnectionInfo', async () => {
-    const [tailscale, token] = await Promise.all([detectTailscale(), Promise.resolve(readApiToken())]);
+    const [tailscale, token] = await Promise.all([detectTailscale(), Promise.resolve(readWebhookSecret())]);
     const tailnetUrl = tailscale.dnsName ? `https://${tailscale.dnsName}/api/webhooks/hermes` : undefined;
     return {
       apiPort: API_PORT,
@@ -201,7 +218,7 @@ export function registerHermesHandlers(): void {
       webhookTailnetUrl: tailnetUrl,
       apiToken: token,
       tailscale,
-      serveCommand: `tailscale serve --bg ${API_PORT}`,
+      serveCommand: `tailscale serve --bg --set-path /api/webhooks/hermes ${API_PORT}`,
     };
   });
 

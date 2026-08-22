@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { agents } from '../../core/agent-manager';
 import { performDispatch } from './agent-routes';
 import { RouteApp, RouteContext } from './types';
@@ -26,6 +29,26 @@ import { RouteApp, RouteContext } from './types';
  */
 export function registerWebhookRoutes(app: RouteApp, ctx: RouteContext): void {
   app.post('/api/webhooks/hermes', async (req, sendJson) => {
+    // This route is the one thing published over the tailnet, so it carries
+    // its own secret rather than the master API token.
+    const provided = String(req.raw.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    let expected = '';
+    try {
+      const secretFile = path.join(os.homedir(), '.dorothy', 'hermes-webhook-secret');
+      if (fs.existsSync(secretFile)) expected = fs.readFileSync(secretFile, 'utf-8').trim();
+    } catch { /* fall through */ }
+    if (expected && provided !== expected) {
+      const apiToken = (() => {
+        try { return fs.readFileSync(path.join(os.homedir(), '.dorothy', 'api-token'), 'utf-8').trim(); }
+        catch { return ''; }
+      })();
+      // The master token still works so an existing setup keeps running.
+      if (!apiToken || provided !== apiToken) {
+        sendJson({ error: 'Unauthorized' }, 401);
+        return;
+      }
+    }
+
     const body = req.body as {
       agent_id?: string;
       agent_name?: string;

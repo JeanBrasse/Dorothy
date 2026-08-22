@@ -118,8 +118,18 @@ export function startApiServer(
     const authExempt = pathname === '/api/local-file'
       || pathname === '/api/health'
       || pathname.startsWith('/api/hooks/')
-      || pathname === '/api/kanban/complete'
-      || pathname === '/api/memory/remember';
+      || pathname === '/api/kanban/complete';
+
+    // A browser tab on any site can reach 127.0.0.1. CORS hides the response
+    // but not the side effect, so reject cross-origin callers outright: our
+    // own renderer is app://- in production and localhost:3000 in dev, and
+    // the shell hooks send no Origin at all.
+    const origin = req.headers.origin;
+    if (origin && origin !== 'app://-' && origin !== 'http://localhost:3000') {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Forbidden origin' }));
+      return;
+    }
 
     if (!authExempt) {
       const authHeader = req.headers.authorization;

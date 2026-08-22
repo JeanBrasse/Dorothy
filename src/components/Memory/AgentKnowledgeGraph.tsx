@@ -547,7 +547,7 @@ export default function AgentKnowledgeGraph() {
         window.electronAPI?.agent.list().catch(() => []) ?? [],
         window.electronAPI?.claude?.getData().catch(() => null) ?? null,
         window.electronAPI?.memory?.listProjects().catch(() => ({ projects: [], error: null })) ?? { projects: [], error: null },
-        window.electronAPI?.shell?.exec({ command: 'cat ~/.claude/mcp.json' }).catch(() => null) ?? null,
+        window.electronAPI?.fs?.readTextFile('~/.claude/mcp.json').catch(() => null) ?? null,
       ]);
 
       const typedAgents = agentList as AgentStatus[];
@@ -577,17 +577,11 @@ export default function AgentKnowledgeGraph() {
       // - ~/.claude/CLAUDE.md  (global Claude config)
       // - ~/.dorothy/CLAUDE.md (global Tars config)
       // - {projectPath}/CLAUDE.md and {projectPath}/.claude/CLAUDE.md per agent
-      const cmds = [
-        `[ -f "$HOME/.claude/CLAUDE.md" ] && echo "$HOME/.claude/CLAUDE.md"`,
-        `[ -f "$HOME/.dorothy/CLAUDE.md" ] && echo "$HOME/.dorothy/CLAUDE.md"`,
-        ...uniqueProjectPaths.flatMap(p => [
-          `[ -f "${p}/CLAUDE.md" ] && echo "${p}/CLAUDE.md"`,
-          `[ -f "${p}/.claude/CLAUDE.md" ] && echo "${p}/.claude/CLAUDE.md"`,
-        ]),
-        // Ensure exit code 0 so shell:exec puts output in .output not .error
-        `true`,
-      ].join('; ');
-      const claudeMdResult = await window.electronAPI?.shell?.exec({ command: cmds }).catch(() => null);
+      const homeFiles = await window.electronAPI?.fs?.readProjectFiles({
+        paths: uniqueProjectPaths,
+        relative: ['CLAUDE.md', '.claude/CLAUDE.md'],
+      }).catch(() => null);
+      const claudeMdResult = { output: Object.keys(homeFiles?.files ?? {}).join('\n') };
       const instrFiles: InstructionFiles = {};
       // shell:exec via PTY may include \r and ANSI codes - strip them
       const rawOutput = (claudeMdResult as { output?: string; error?: string } | null)?.output
@@ -613,13 +607,15 @@ export default function AgentKnowledgeGraph() {
       instructionsRef.current = instrFiles;
 
       // ── Load per-project MCP servers (.mcp.json / .claude/mcp.json) ──
+      const mcpFiles = await window.electronAPI?.fs?.readProjectFiles({
+        paths: uniqueProjectPaths,
+        relative: ['.mcp.json', '.claude/mcp.json'],
+      }).catch(() => null);
       const projectMcpResults = await Promise.all(
         uniqueProjectPaths.map(async p => {
-          const res = await window.electronAPI?.shell?.exec({
-            command: `cat "${p}/.mcp.json" 2>/dev/null || cat "${p}/.claude/mcp.json" 2>/dev/null || true`,
-          }).catch(() => null);
-          const r = res as { output?: string; error?: string } | null;
-          const output = (r?.output ?? r?.error ?? '').replace(/\r/g, '').trim();
+          const found = Object.entries(mcpFiles?.files ?? {}).find(([k]) => k.startsWith(p + '/'));
+          const output = (found?.[1] ?? '').replace(/\r/g, '').trim();
+
           if (!output) return null;
           try {
             const parsed = JSON.parse(output);
@@ -825,14 +821,14 @@ export default function AgentKnowledgeGraph() {
         content = res?.content ?? '';
       } else if (node.kind === 'instructions' && node.meta?.filePath) {
         const fp = node.meta.filePath.replace(/^~/, '');
-        const res = await window.electronAPI?.shell?.exec({ command: `cat "${fp}" 2>/dev/null || cat "$HOME${fp}" 2>/dev/null` });
-        content = (res as { output?: string } | null)?.output ?? '';
+        const res = await window.electronAPI?.fs?.readTextFile(fp);
+        content = res?.content ?? '';
       } else if (node.kind === 'skill' && node.meta?.skillPath) {
         const p = node.meta.skillPath;
-        const res = await window.electronAPI?.shell?.exec({
-          command: `cat "${p}/AGENTS.md" 2>/dev/null || cat "${p}/SKILL.md" 2>/dev/null || cat "${p}/skills/SKILL.md" 2>/dev/null || cat "${p}/README.md" 2>/dev/null || find "${p}" -maxdepth 2 -name "*.md" 2>/dev/null | head -1 | xargs cat 2>/dev/null || echo "_No documentation found._"`,
-        });
-        content = (res as { output?: string } | null)?.output ?? '';
+        const docs = await window.electronAPI?.fs?.readProjectFiles({
+          paths: [p], relative: ['AGENTS.md', 'SKILL.md', 'skills/SKILL.md', 'README.md'],
+        }).catch(() => null);
+        content = Object.values(docs?.files ?? {})[0] ?? '_No documentation found._';
         setPanelTab('preview');
       } else if (node.kind === 'plugin') {
         content = node.meta?.description
@@ -859,8 +855,7 @@ export default function AgentKnowledgeGraph() {
       await window.electronAPI?.memory?.writeFile(fp, panelDraft);
     } else {
       // For instruction files outside ~/.claude/projects/
-      const safe = panelDraft.replace(/'/g, "'\\''");
-      await window.electronAPI?.shell?.exec({ command: `printf '%s' '${safe}' > '${fp}'` });
+      await window.electronAPI?.fs?.writeTextFile({ filePath: fp, content: panelDraft });
     }
     setPanelContent(panelDraft);
   }, [panelNode, panelDraft]);

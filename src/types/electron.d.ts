@@ -384,6 +384,9 @@ export interface ElectronAPI {
   // File system
   fs: {
     listProjects: () => Promise<{ path: string; name: string; lastModified?: string; custom?: boolean }[]>;
+    readTextFile: (filePath: string) => Promise<{ content: string; error?: string }>;
+    writeTextFile: (params: { filePath: string; content: string }) => Promise<{ success: boolean; error?: string }>;
+    readProjectFiles: (params: { paths: string[]; relative: string[] }) => Promise<{ files: Record<string, string> }>;
     addCustomProject: (projectPath: string) => Promise<{ success: boolean; projects?: string[]; error?: string }>;
     removeCustomProject: (projectPath: string) => Promise<{ success: boolean; projects?: string[]; error?: string }>;
   };
