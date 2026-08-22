@@ -86,12 +86,11 @@ export function KanbanCard({ task, onEdit, onDelete, onStart, onOpenTerminal, is
       {...attributes}
       {...listeners}
       className={`
-        group relative bg-card rounded-xl p-4
-        shadow-sm transition-all duration-200
+        group relative bg-card rounded-xl p-4 transition-all duration-200
         border border-border/50
-        cursor-pointer hover:shadow-md hover:border-border
+        cursor-pointer hover: hover:border-border
         ${isTaskDragging ? 'scale-105 z-50 rotate-2' : ''}
-        ${isAgentWorking ? 'ring-2 ring-green-500/30' : ''}
+        ${isAgentWorking ? 'ring-2 ring-border' : ''}
         ${isDone ? 'opacity-70' : ''}
         ${isBeingDragged ? 'pointer-events-none' : ''}
       `}
@@ -101,10 +100,10 @@ export function KanbanCard({ task, onEdit, onDelete, onStart, onOpenTerminal, is
         <div className="absolute top-2 right-2 z-10">
           <button
             onClick={handleStart}
-            className="p-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 transition-colors opacity-0 group-hover:opacity-100"
+            className="p-1.5 rounded-lg bg-success/10 hover:bg-success/20 transition-colors opacity-0 group-hover:opacity-100"
             title="Start task"
           >
-            <Play className="w-4 h-4 text-green-500 fill-green-500" />
+            <Play className="w-4 h-4 text-success fill-green-500" />
           </button>
         </div>
       )}
@@ -119,10 +118,10 @@ export function KanbanCard({ task, onEdit, onDelete, onStart, onOpenTerminal, is
                 e.stopPropagation();
                 onOpenTerminal(task.assignedAgentId!);
               }}
-              className="p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 transition-colors"
+              className="p-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors"
               title="View terminal"
             >
-              <Terminal className="w-4 h-4 text-cyan-400" />
+              <Terminal className="w-4 h-4 text-primary" />
             </button>
           )}
           {/* Stop button */}
@@ -133,15 +132,15 @@ export function KanbanCard({ task, onEdit, onDelete, onStart, onOpenTerminal, is
                 onDelete?.(task.id);
               }
             }}
-            className="p-1 rounded hover:bg-red-500/20 transition-colors opacity-0 group-hover:opacity-100"
+            className="p-1 rounded hover:bg-danger/20 transition-colors opacity-0 group-hover:opacity-100"
             title="Stop task"
           >
-            <StopCircle className="w-4 h-4 text-red-500" />
+            <StopCircle className="w-4 h-4 text-danger" />
           </button>
           {/* Working indicator */}
           <span className="relative flex h-2.5 w-2.5 ml-1">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+            <span className=" absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-success"></span>
           </span>
         </div>
       )}
@@ -169,7 +168,7 @@ export function KanbanCard({ task, onEdit, onDelete, onStart, onOpenTerminal, is
         <div className="mb-3">
           <div className="h-1 bg-secondary rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-green-500"
+              className="h-full bg-success"
               initial={{ width: 0 }}
               animate={{ width: `${task.progress}%` }}
               transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -205,7 +204,7 @@ export function KanbanCard({ task, onEdit, onDelete, onStart, onOpenTerminal, is
         <div className="flex items-center gap-3 text-muted-foreground">
           {/* Agent indicator */}
           {task.assignedAgentId && (
-            <div className="flex items-center gap-1 text-green-500">
+            <div className="flex items-center gap-1 text-success">
               <Bot className="w-3.5 h-3.5" />
             </div>
           )}
@@ -220,7 +219,7 @@ export function KanbanCard({ task, onEdit, onDelete, onStart, onOpenTerminal, is
 
           {/* Attachments count */}
           {task.attachments && task.attachments.length > 0 && (
-            <div className="flex items-center gap-1 text-xs text-blue-400" title={task.attachments.map(a => a.name).join(', ')}>
+            <div className="flex items-center gap-1 text-xs text-primary" title={task.attachments.map(a => a.name).join(', ')}>
               <Paperclip className="w-3 h-3" />
               <span>{task.attachments.length}</span>
             </div>
@@ -229,7 +228,7 @@ export function KanbanCard({ task, onEdit, onDelete, onStart, onOpenTerminal, is
 
         {/* Done indicator */}
         {isDone && (
-          <div className="flex items-center gap-1 text-green-500 text-xs font-medium">
+          <div className="flex items-center gap-1 text-success text-xs font-medium">
             <CheckCircle2 className="w-3.5 h-3.5" />
             <span>Done</span>
           </div>

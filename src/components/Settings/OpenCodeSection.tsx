@@ -52,7 +52,7 @@ export const OpenCodeSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
       <div className="border border-border bg-card p-6">
         <div className="flex items-center justify-between pb-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <Cpu className="w-5 h-5 text-cyan-500" />
+            <Cpu className="w-5 h-5 text-primary" />
             <div>
               <p className="font-medium">Enable OpenCode</p>
               <p className="text-sm text-muted-foreground">
@@ -81,8 +81,8 @@ export const OpenCodeSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
 
           {testResult && (
             <div className={`p-3 text-sm flex items-center gap-2 ${testResult.success
-              ? 'bg-green-700/10 text-green-700 border border-green-700/20'
-              : 'bg-red-700/10 text-red-700 border border-red-700/20'
+              ? 'bg-success/10 text-success border border-success/20'
+              : 'bg-danger/10 text-danger border border-danger/20'
               }`}>
               {testResult.success ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
               {testResult.message}

@@ -278,12 +278,12 @@ const StepModel = React.memo(function StepModel({
               className={`
                 p-2.5 rounded-lg border transition-all text-center flex items-center justify-center gap-2
                 ${provider === 'local'
-                  ? 'border-amber-500 bg-amber-500/10'
+                  ? 'border-warning bg-warning/10'
                   : 'border-border-primary hover:border-border-accent'
                 }
               `}
             >
-              <Cpu className={`w-4 h-4 ${provider === 'local' ? 'text-amber-500' : 'text-text-muted'}`} />
+              <Cpu className={`w-4 h-4 ${provider === 'local' ? 'text-warning' : 'text-text-muted'}`} />
               <span className="font-medium text-sm">Local</span>
             </button>
           )}
@@ -338,11 +338,11 @@ const StepModel = React.memo(function StepModel({
               <span className="text-sm">Connecting to Tasmania...</span>
             </div>
           ) : tasmaniaStatus?.status !== 'running' ? (
-            <div className="p-4 border border-amber-500/30 bg-amber-500/5 rounded-lg">
+            <div className="p-4 border border-warning/30 bg-warning/5 rounded-lg">
               <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                <AlertCircle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-amber-500">Tasmania not running</p>
+                  <p className="text-sm font-medium text-warning">Tasmania not running</p>
                   <p className="text-xs text-text-muted mt-1">
                     Start Tasmania and load a model first. Go to Settings &gt; Tasmania to configure.
                   </p>

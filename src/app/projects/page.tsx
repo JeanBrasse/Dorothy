@@ -74,11 +74,11 @@ const CHARACTER_EMOJIS: Record<string, string> = {
 
 // Agent status colors
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  running: { bg: 'bg-green-500/20', text: 'text-green-400' },
-  waiting: { bg: 'bg-amber-500/20', text: 'text-amber-400' },
+  running: { bg: 'bg-success/20', text: 'text-success' },
+  waiting: { bg: 'bg-warning/20', text: 'text-warning' },
   idle: { bg: 'bg-white/10', text: 'text-white/60' },
-  completed: { bg: 'bg-blue-500/20', text: 'text-blue-400' },
-  error: { bg: 'bg-red-500/20', text: 'text-red-400' },
+  completed: { bg: 'bg-primary/20', text: 'text-primary' },
+  error: { bg: 'bg-danger/20', text: 'text-danger' },
 };
 
 // Strip ANSI codes from git output
@@ -478,7 +478,7 @@ export default function ProjectsPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-center text-red-400">
+        <div className="text-center text-danger">
           <p className="mb-2">Failed to load projects</p>
           <p className="text-sm text-muted-foreground">{error}</p>
         </div>
@@ -589,7 +589,7 @@ export default function ProjectsPage() {
       {/* Default Project Banner */}
       <div className="border border-border bg-card p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Pin className="w-4 h-4 text-yellow-400 shrink-0" />
+          <Pin className="w-4 h-4 text-warning shrink-0" />
           <div>
             <p className="text-sm font-medium">Default Project</p>
             <p className="text-xs text-muted-foreground">
@@ -631,7 +631,7 @@ export default function ProjectsPage() {
                 className={`
                   relative bg-card border p-4 transition-all h-full
                   ${isSelected
-                    ? 'border-white shadow-lg shadow-white/10'
+                    ? 'border-white '
                     : 'border-border hover:border-white/30'
                   }
                 `}
@@ -688,8 +688,8 @@ export default function ProjectsPage() {
                     className={`
                       p-1.5 transition-all
                       ${isDefaultProject(project.path)
-                        ? 'opacity-100 text-yellow-400'
-                        : 'opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-yellow-400'
+                        ? 'opacity-100 text-warning'
+                        : 'opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-warning'
                       }
                     `}
                     title={isDefaultProject(project.path) ? 'Unpin default' : 'Set as default project'}
@@ -701,8 +701,8 @@ export default function ProjectsPage() {
                     className={`
                       p-1.5 transition-all
                       ${isFavorite(project.path)
-                        ? 'opacity-100 text-yellow-400'
-                        : 'opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-yellow-400'
+                        ? 'opacity-100 text-warning'
+                        : 'opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-warning'
                       }
                     `}
                   >
@@ -729,12 +729,12 @@ export default function ProjectsPage() {
                 {(isDefaultProject(project.path) || isCustomProject(project.path)) && (
                   <div className="flex items-center justify-center gap-1 mt-1">
                     {isDefaultProject(project.path) && (
-                      <span className="text-[9px] px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400">
+                      <span className="text-[9px] px-1.5 py-0.5 bg-warning/20 text-warning">
                         Default
                       </span>
                     )}
                     {isCustomProject(project.path) && (
-                      <span className="text-[9px] px-1.5 py-0.5 bg-purple-500/20 text-purple-400">
+                      <span className="text-[9px] px-1.5 py-0.5 bg-primary/20 text-primary">
                         Custom
                       </span>
                     )}
@@ -832,11 +832,11 @@ export default function ProjectsPage() {
                 {/* Git Branch */}
                 {hasElectron && (
                   <div className="px-4 pb-3 flex items-center gap-2">
-                    <GitBranch className="w-4 h-4 text-orange-400" />
+                    <GitBranch className="w-4 h-4 text-warning" />
                     {gitLoading ? (
                       <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
                     ) : gitBranch ? (
-                      <span className="text-sm px-2 py-0.5 bg-orange-500/15 text-orange-400 font-mono">
+                      <span className="text-sm px-2 py-0.5 bg-warning/15 text-warning font-mono">
                         {gitBranch}
                       </span>
                     ) : (
@@ -889,11 +889,11 @@ export default function ProjectsPage() {
                   onClick={() => handleSetDefault(selectedProject.path)}
                   className={`w-full px-4 py-2 text-sm flex items-center justify-center gap-2 border transition-colors ${
                     isDefaultProject(selectedProject.path)
-                      ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-400'
-                      : 'border-border bg-secondary text-muted-foreground hover:text-foreground hover:border-yellow-500/30'
+                      ? 'border-warning/50 bg-warning/10 text-warning'
+                      : 'border-border bg-secondary text-muted-foreground hover:text-foreground hover:border-warning/30'
                   }`}
                 >
-                  <Pin className={`w-4 h-4 ${isDefaultProject(selectedProject.path) ? 'fill-current text-yellow-400' : ''}`} />
+                  <Pin className={`w-4 h-4 ${isDefaultProject(selectedProject.path) ? 'fill-current text-warning' : ''}`} />
                   {isDefaultProject(selectedProject.path) ? 'Default Project' : 'Pin as Default'}
                 </button>
 
@@ -1074,7 +1074,7 @@ export default function ProjectsPage() {
                 {isCustomProject(selectedProject.path) && (
                   <button
                     onClick={(e) => handleRemoveProject(selectedProject.path, e)}
-                    className="w-full px-4 py-2.5 border border-red-500/30 text-red-400 text-sm flex items-center justify-center gap-2 hover:bg-red-500/10 transition-colors"
+                    className="w-full px-4 py-2.5 border border-danger/30 text-danger text-sm flex items-center justify-center gap-2 hover:bg-danger/10 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                     Remove Project
@@ -1105,7 +1105,7 @@ export default function ProjectsPage() {
             >
               <div className="bg-card border border-border p-6 space-y-4">
                 <div className="flex items-center gap-3">
-                  <Pin className="w-5 h-5 text-yellow-400" />
+                  <Pin className="w-5 h-5 text-warning" />
                   <h3 className="font-medium">Replace Default Project?</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">

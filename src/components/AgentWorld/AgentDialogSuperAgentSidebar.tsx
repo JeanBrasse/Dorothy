@@ -161,11 +161,11 @@ export const AgentDialogSuperAgentSidebar = memo(function AgentDialogSuperAgentS
 
       {/* Orchestrator info */}
       <div className="p-3">
-        <div className="p-3 rounded-none border border-amber-500/30 bg-amber-500/5">
+        <div className="p-3 rounded-none border border-warning/30 bg-warning/5">
           <div className="flex items-start gap-2">
-            <Crown className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <Crown className="w-4 h-4 text-warning shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs font-medium text-amber-400">Orchestrator Mode</p>
+              <p className="text-xs font-medium text-warning">Orchestrator Mode</p>
               <p className="text-[10px] text-text-muted mt-1">
                 Use MCP tools to manage agents: create_agent, start_agent, stop_agent, list_agents, send_prompt
               </p>

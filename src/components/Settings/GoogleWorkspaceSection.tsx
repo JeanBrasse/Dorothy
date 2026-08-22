@@ -243,13 +243,13 @@ export const GoogleWorkspaceSection = ({ appSettings, onSaveAppSettings }: Googl
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             ) : gcloudPath ? (
               <>
-                <div className="w-2 h-2 rounded-full bg-green-500" />
+                <div className="w-2 h-2 rounded-full bg-success" />
                 <span className="text-muted-foreground">gcloud:</span>
                 <span className="font-mono text-xs">{gcloudPath}</span>
               </>
             ) : (
               <>
-                <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                <div className="w-2 h-2 rounded-full bg-warning" />
                 <span className="text-muted-foreground">gcloud: Not installed (required for auth setup)</span>
                 <button
                   onClick={handleInstallGcloud}
@@ -268,13 +268,13 @@ export const GoogleWorkspaceSection = ({ appSettings, onSaveAppSettings }: Googl
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             ) : gwsPath ? (
               <>
-                <div className="w-2 h-2 rounded-full bg-green-500" />
+                <div className="w-2 h-2 rounded-full bg-success" />
                 <span className="text-muted-foreground">gws:</span>
                 <span className="font-mono text-xs">{gwsPath}</span>
               </>
             ) : (
               <>
-                <div className="w-2 h-2 rounded-full bg-zinc-500" />
+                <div className="w-2 h-2 rounded-full bg-secondary" />
                 <span className="text-muted-foreground">gws: Not installed</span>
                 <button
                   onClick={handleInstallCli}
@@ -289,7 +289,7 @@ export const GoogleWorkspaceSection = ({ appSettings, onSaveAppSettings }: Googl
 
           {/* MCP Registration Status */}
           <div className="flex items-center gap-2 text-sm">
-            <div className={`w-2 h-2 rounded-full ${mcpConfigured ? 'bg-green-500' : 'bg-zinc-500'}`} />
+            <div className={`w-2 h-2 rounded-full ${mcpConfigured ? 'bg-success' : 'bg-secondary'}`} />
             <span className="text-muted-foreground">
               MCP: {mcpConfigured ? 'Registered with agents (Drive, Gmail, Calendar, Sheets, Docs)' : 'Not registered — enable the toggle above'}
             </span>
@@ -317,7 +317,7 @@ export const GoogleWorkspaceSection = ({ appSettings, onSaveAppSettings }: Googl
               <div className="flex items-center gap-2 text-sm">
                 {authStatus.authenticated ? (
                   <>
-                    <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+                    <CheckCircle className="w-4 h-4 text-success shrink-0" />
                     <span>Signed in as <span className="font-medium">{authStatus.user || 'unknown'}</span></span>
                     <button
                       onClick={() => {
@@ -334,7 +334,7 @@ export const GoogleWorkspaceSection = ({ appSettings, onSaveAppSettings }: Googl
                   </>
                 ) : (
                   <>
-                    <XCircle className="w-4 h-4 text-zinc-500 shrink-0" />
+                    <XCircle className="w-4 h-4 text-muted-foreground shrink-0" />
                     <span className="text-muted-foreground">Not authenticated</span>
                     <button
                       onClick={handleAuthSetup}
@@ -357,7 +357,7 @@ export const GoogleWorkspaceSection = ({ appSettings, onSaveAppSettings }: Googl
               {authStatus.authenticated && (
                 <>
                   <div className="flex items-center gap-2 text-sm">
-                    <div className={`w-2 h-2 rounded-full ${authStatus.tokenValid ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                    <div className={`w-2 h-2 rounded-full ${authStatus.tokenValid ? 'bg-success' : 'bg-warning'}`} />
                     <span className="text-muted-foreground">
                       Token: {authStatus.tokenValid ? 'Valid' : 'Expired'}
                     </span>
@@ -399,7 +399,7 @@ export const GoogleWorkspaceSection = ({ appSettings, onSaveAppSettings }: Googl
                             {connected && (
                               <span className={`ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded ${
                                 access === 'write'
-                                  ? 'bg-amber-500/15 text-amber-400'
+                                  ? 'bg-warning/15 text-warning'
                                   : 'bg-emerald-500/15 text-emerald-400'
                               }`}>
                                 {access === 'write' ? 'R/W' : 'READ'}
@@ -459,7 +459,7 @@ export const GoogleWorkspaceSection = ({ appSettings, onSaveAppSettings }: Googl
         {gwsSkills.length > 0 ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm">
-              <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+              <CheckCircle className="w-4 h-4 text-success shrink-0" />
               <span>{gwsSkills.length} skill{gwsSkills.length !== 1 ? 's' : ''} installed</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -492,7 +492,7 @@ export const GoogleWorkspaceSection = ({ appSettings, onSaveAppSettings }: Googl
           </div>
         ) : (
           <div className="flex items-center gap-2 text-sm">
-            <div className="w-2 h-2 rounded-full bg-zinc-500" />
+            <div className="w-2 h-2 rounded-full bg-secondary" />
             <span className="text-muted-foreground">No skills installed</span>
           </div>
         )}

@@ -193,15 +193,15 @@ export default function PluginInstallDialog({ open, command, title, onClose }: P
                 <div className={`w-8 h-8 rounded-none flex items-center justify-center ${
                   installComplete
                     ? installExitCode === 0
-                      ? 'bg-green-500/20'
-                      : 'bg-red-500/20'
+                      ? 'bg-success/20'
+                      : 'bg-danger/20'
                     : 'bg-secondary'
                 }`}>
                   {installComplete ? (
                     installExitCode === 0 ? (
-                      <CheckCircle className="w-4 h-4 text-green-400" />
+                      <CheckCircle className="w-4 h-4 text-success" />
                     ) : (
-                      <XCircle className="w-4 h-4 text-red-400" />
+                      <XCircle className="w-4 h-4 text-danger" />
                     )
                   ) : (
                     <Loader2 className="w-4 h-4 text-white animate-spin" />
@@ -248,7 +248,7 @@ export default function PluginInstallDialog({ open, command, title, onClose }: P
                 className={`px-4 py-2 rounded-none font-medium ${
                   installComplete
                     ? 'bg-foreground text-background hover:bg-foreground/90'
-                    : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                    : 'bg-danger/20 text-danger hover:bg-danger/30'
                 }`}
               >
                 {installComplete ? 'Close' : 'Cancel'}

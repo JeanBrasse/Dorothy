@@ -179,8 +179,8 @@ export const SocialDataSection = ({ appSettings, onSaveAppSettings, onUpdateLoca
 
           {testResult && (
             <div className={`p-3 text-sm flex rounded-md items-center gap-2 ${testResult.success
-              ? 'bg-green-700/10 text-green-700 border border-green-700/20'
-              : 'bg-red-700/10 text-red-700 border border-red-700/20'
+              ? 'bg-success/10 text-success border border-success/20'
+              : 'bg-danger/10 text-danger border border-danger/20'
               }`}>
               {testResult.success ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
               {testResult.message}
@@ -302,8 +302,8 @@ export const SocialDataSection = ({ appSettings, onSaveAppSettings, onUpdateLoca
 
           {testXResult && (
             <div className={`p-3 text-sm flex rounded-md items-center gap-2 ${testXResult.success
-              ? 'bg-green-700/10 text-green-700 border border-green-700/20'
-              : 'bg-red-700/10 text-red-700 border border-red-700/20'
+              ? 'bg-success/10 text-success border border-success/20'
+              : 'bg-danger/10 text-danger border border-danger/20'
               }`}>
               {testXResult.success ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
               {testXResult.message}

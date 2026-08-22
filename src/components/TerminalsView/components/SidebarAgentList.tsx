@@ -46,7 +46,7 @@ export default function SidebarAgentList({
             className={`
               flex items-center gap-2 px-2.5 py-2 cursor-pointer transition-colors group
               ${isFocused
-                ? 'bg-primary/10 border-l-2 border-cyan-500'
+                ? 'bg-primary/10 border-l-2 border-primary'
                 : 'hover:bg-primary/5 border-l-2 border-transparent'
               }
             `}
@@ -61,8 +61,8 @@ export default function SidebarAgentList({
               <span className="text-sm">{emoji}</span>
               {agent.status === 'running' ? (
                 <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-600" />
+                  <span className=" absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
                 </span>
               ) : (
                 <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ${status.dot}`} />
@@ -84,8 +84,8 @@ export default function SidebarAgentList({
               className={`
                 p-1 opacity-0 group-hover:opacity-100 transition-all
                 ${isRunning
-                  ? 'text-red-400 hover:bg-red-500/10'
-                  : 'text-green-400 hover:bg-green-500/10'
+                  ? 'text-danger hover:bg-danger/10'
+                  : 'text-success hover:bg-success/10'
                 }
               `}
             >

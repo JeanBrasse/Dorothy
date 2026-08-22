@@ -439,6 +439,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('hermes:connection:import'),
     testConnection: (connection: Record<string, unknown>) =>
       ipcRenderer.invoke('hermes:connection:test', connection),
+    signIn: (params: { connection: Record<string, unknown>; username: string; password: string; provider?: string }) =>
+      ipcRenderer.invoke('hermes:signIn', params),
+    signOut: (connection: Record<string, unknown>) =>
+      ipcRenderer.invoke('hermes:signOut', connection),
+    kanbanBoard: (params?: { board?: string }) =>
+      ipcRenderer.invoke('hermes:kanban:board', params ?? {}),
+    kanbanCreateTask: (task: Record<string, unknown>) =>
+      ipcRenderer.invoke('hermes:kanban:createTask', task),
+    kanbanUpdateTask: (params: { taskId: string; patch: Record<string, unknown> }) =>
+      ipcRenderer.invoke('hermes:kanban:updateTask', params),
     testWebhook: (params: { agentName?: string; agentId?: string; projectPath?: string }) =>
       ipcRenderer.invoke('hermes:testWebhook', params),
     testGateway: (url: string) =>

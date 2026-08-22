@@ -914,7 +914,7 @@ export default function UsagePage() {
                         initial={{ height: 0 }}
                         animate={{ height: `${Math.max(height, item.cost > 0 ? 3 : 0)}%` }}
                         transition={{ delay: 0.05 + i * 0.02, duration: 0.35 }}
-                        className={`w-full bg-gradient-to-t from-accent-green to-accent-cyan rounded-none ${item.cost === 0 ? 'opacity-20' : ''}`}
+                        className={`w-full bg-primary rounded-none ${item.cost === 0 ? 'opacity-20' : ''}`}
                         title={`${item.label}: $${item.cost.toFixed(2)}`}
                       />
                     </div>
@@ -1151,7 +1151,7 @@ export default function UsagePage() {
                         initial={{ height: 0 }}
                         animate={{ height: `${Math.max(height, 4)}%` }}
                         transition={{ delay: 0.3 + i * 0.05, duration: 0.5 }}
-                        className="w-full max-w-8 bg-gradient-to-t from-accent-cyan to-accent-purple rounded-none"
+                        className="w-full max-w-8 bg-primary rounded-none"
                       />
                     </div>
                     <span className="text-[10px] text-text-muted">{dayLabel}</span>

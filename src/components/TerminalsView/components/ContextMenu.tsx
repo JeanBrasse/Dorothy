@@ -64,7 +64,7 @@ export default function ContextMenu({
           className={`
             flex items-center gap-2.5 w-full px-3 py-1.5 text-xs transition-colors
             ${item.danger
-              ? 'text-red-400 hover:bg-red-500/10'
+              ? 'text-danger hover:bg-danger/10'
               : 'text-muted-foreground hover:bg-primary/5 hover:text-foreground'
             }
           `}

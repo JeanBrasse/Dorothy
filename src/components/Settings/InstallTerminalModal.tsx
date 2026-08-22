@@ -188,7 +188,7 @@ export const InstallTerminalModal = ({ show, command, onClose, onComplete }: Ins
         {/* Terminal Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
           <div className="flex items-center gap-3">
-            <TerminalIcon className="w-5 h-5 text-cyan-400" />
+            <TerminalIcon className="w-5 h-5 text-primary" />
             <div>
               <h3 className="font-medium text-sm">Installing Plugin</h3>
               <p className="text-xs text-muted-foreground font-mono">{command}</p>
@@ -198,14 +198,14 @@ export const InstallTerminalModal = ({ show, command, onClose, onComplete }: Ins
             {installComplete && (
               <span className={`text-xs px-2 py-1 ${
                 installExitCode === 0
-                  ? 'bg-green-500/20 text-green-400'
-                  : 'bg-red-500/20 text-red-400'
+                  ? 'bg-success/20 text-success'
+                  : 'bg-danger/20 text-danger'
               }`}>
                 {installExitCode === 0 ? 'Completed' : `Failed (${installExitCode})`}
               </span>
             )}
             {!installComplete && (
-              <span className="text-xs px-2 py-1 bg-cyan-500/20 text-cyan-400 flex items-center gap-1.5">
+              <span className="text-xs px-2 py-1 bg-primary/20 text-primary flex items-center gap-1.5">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 Running
               </span>

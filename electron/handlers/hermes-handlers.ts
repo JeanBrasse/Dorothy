@@ -8,6 +8,14 @@ import * as http from 'http';
 import * as https from 'https';
 import { DATA_DIR } from '../constants';
 import {
+  probeHermes,
+  signInHermes,
+  clearHermesSession,
+  fetchHermesBoard,
+  createHermesTask,
+  updateHermesTask,
+} from '../services/hermes-client';
+import {
   HermesConnection,
   defaultHermesConnection,
   resolveHermesBaseUrl,
@@ -183,6 +191,20 @@ function postLocal(pathname: string, token: string, payload: unknown): Promise<{
 }
 
 export function registerHermesHandlers(): void {
+  ipcMain.handle('hermes:getConnectionInfo', async () => {
+    const [tailscale, token] = await Promise.all([detectTailscale(), Promise.resolve(readApiToken())]);
+    const tailnetUrl = tailscale.dnsName ? `https://${tailscale.dnsName}/api/webhooks/hermes` : undefined;
+    return {
+      apiPort: API_PORT,
+      webhookPath: '/api/webhooks/hermes',
+      webhookLocalUrl: `http://127.0.0.1:${API_PORT}/api/webhooks/hermes`,
+      webhookTailnetUrl: tailnetUrl,
+      apiToken: token,
+      tailscale,
+      serveCommand: `tailscale serve --bg ${API_PORT}`,
+    };
+  });
+
   ipcMain.handle('hermes:connection:get', async () => {
     const connection = readConnection();
     return {
@@ -214,74 +236,47 @@ export function registerHermesHandlers(): void {
    * "unreachable" from "reachable but you still need to sign in".
    */
   ipcMain.handle('hermes:connection:test', async (_event, connection: HermesConnection) => {
-    const baseUrl = resolveHermesBaseUrl(connection);
-    if (!baseUrl) return { success: false, error: 'No gateway URL resolved for this mode.' };
-
-    try {
-      const { status, body } = await hermesGet(baseUrl, '/api/status', connection.token);
-      if (status === 0) return { success: false, baseUrl, error: 'No response from gateway.' };
-
-      const info = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
-      const authRequired = info.auth_required === true;
-      const authFlows = Array.isArray(info.auth_flows) ? info.auth_flows as string[] : [];
-      const authProviders = Array.isArray(info.auth_providers) ? info.auth_providers as string[] : [];
-
-      return {
-        success: status < 400,
-        baseUrl,
-        status,
-        version: typeof info.version === 'string' ? info.version : undefined,
-        gatewayState: typeof info.gateway_state === 'string' ? info.gateway_state : undefined,
-        authRequired,
-        authFlows,
-        authProviders,
-        // A cookie-gated gateway cannot be driven by a static token: say so
-        // instead of reporting a false success.
-        needsSignIn: authRequired && authFlows.includes('cookie'),
-      };
-    } catch (err) {
-      return { success: false, baseUrl, error: err instanceof Error ? err.message : String(err) };
-    }
-  });
-
-
-  ipcMain.handle('hermes:getConnectionInfo', async () => {
-    const [tailscale, token] = await Promise.all([detectTailscale(), Promise.resolve(readApiToken())]);
-
-    const tailnetUrl = tailscale.dnsName
-      ? `https://${tailscale.dnsName}/api/webhooks/hermes`
-      : undefined;
-
+    const probe = await probeHermes(connection);
     return {
-      apiPort: API_PORT,
-      webhookPath: '/api/webhooks/hermes',
-      webhookLocalUrl: `http://127.0.0.1:${API_PORT}/api/webhooks/hermes`,
-      webhookTailnetUrl: tailnetUrl,
-      apiToken: token,
-      tailscale,
-      // tailscale serve terminates HTTPS on the tailnet name and proxies to
-      // the localhost-bound API — no bind change needed.
-      serveCommand: `tailscale serve --bg ${API_PORT}`,
+      success: probe.reachable && (!probe.authRequired || probe.signedIn),
+      baseUrl: probe.baseUrl,
+      status: probe.status,
+      version: probe.version,
+      gatewayState: probe.gatewayState,
+      authRequired: probe.authRequired,
+      authFlows: probe.authFlows,
+      authProviders: probe.authProviders,
+      signedIn: probe.signedIn,
+      needsSignIn: probe.authRequired && !probe.signedIn,
+      error: probe.error,
     };
   });
 
-  // Local dry-run of the incoming webhook: proves auth + agent resolution
-  // end-to-end through the real HTTP stack, without dispatching anything.
-  ipcMain.handle('hermes:testWebhook', async (_event, params: { agentName?: string; agentId?: string; projectPath?: string }) => {
-    try {
-      const token = readApiToken();
-      if (!token) return { success: false, error: 'No API token found (~/.dorothy/api-token)' };
-      const { status, body } = await postLocal('/api/webhooks/hermes', token, {
-        agent_id: params?.agentId || undefined,
-        agent_name: params?.agentName || undefined,
-        project_path: params?.projectPath || undefined,
-        message: 'dry run',
-        dry_run: true,
-      });
-      return { success: status === 200, status, response: body };
-    } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : String(err) };
-    }
+  ipcMain.handle('hermes:signIn', async (_event, params: { connection: HermesConnection; username: string; password: string; provider?: string }) => {
+    const result = await signInHermes(params.connection, {
+      username: params.username, password: params.password, provider: params.provider,
+    });
+    if (!result.success) return result;
+    const probe = await probeHermes(params.connection);
+    return { success: true, version: probe.version, gatewayState: probe.gatewayState };
+  });
+
+  ipcMain.handle('hermes:signOut', async (_event, connection: HermesConnection) => {
+    clearHermesSession(resolveHermesBaseUrl(connection));
+    return { success: true };
+  });
+
+  // ── Kanban (the board lives in Hermes; Dorothy is a client) ──
+  ipcMain.handle('hermes:kanban:board', async (_event, params: { board?: string } = {}) => {
+    return fetchHermesBoard(readConnection(), params?.board);
+  });
+
+  ipcMain.handle('hermes:kanban:createTask', async (_event, task: Record<string, unknown>) => {
+    return createHermesTask(readConnection(), task);
+  });
+
+  ipcMain.handle('hermes:kanban:updateTask', async (_event, params: { taskId: string; patch: Record<string, unknown> }) => {
+    return updateHermesTask(readConnection(), params.taskId, params.patch);
   });
 
   // Reachability check of the remote Hermes gateway (any HTTP response counts —

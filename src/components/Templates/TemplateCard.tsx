@@ -64,7 +64,7 @@ export function TemplateCard({ template, installedSkills, onUse, onEdit, onDupli
                 <button
                   key={skill}
                   onClick={(e) => { e.stopPropagation(); onInstallSkill(skill); }}
-                  className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 border bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50 transition-colors cursor-pointer"
+                  className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 border bg-warning/10 border-warning/30 text-warning dark:text-warning hover:bg-warning/20 hover:border-warning/50 transition-colors cursor-pointer"
                   title={`Install skill "${skill}"`}
                 >
                   <Plus className="w-2.5 h-2.5" />
@@ -75,7 +75,7 @@ export function TemplateCard({ template, installedSkills, onUse, onEdit, onDupli
             return (
               <span
                 key={skill}
-                className="text-[10px] px-1.5 py-0.5 border bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400"
+                className="text-[10px] px-1.5 py-0.5 border bg-warning/10 border-warning/30 text-warning dark:text-warning"
                 title="Skill not installed — visit the Skills page to install"
               >
                 {skill}
@@ -86,7 +86,7 @@ export function TemplateCard({ template, installedSkills, onUse, onEdit, onDupli
       )}
 
       {missingSkills.length > 0 && (
-        <p className="text-[11px] text-amber-700 dark:text-amber-400 mb-3">
+        <p className="text-[11px] text-warning dark:text-warning mb-3">
           {missingSkills.length} skill{missingSkills.length > 1 ? 's' : ''} not installed yet
         </p>
       )}

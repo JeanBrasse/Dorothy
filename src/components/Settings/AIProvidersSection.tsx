@@ -30,7 +30,7 @@ interface ProviderCardProps {
 function ProviderCard({
   title, description, docsUrl, enabled, onToggle,
   apiKey, apiKeyPlaceholder, onApiKeyChange, onApiKeyBlur,
-  badge, badgeColor = 'bg-zinc-700 text-zinc-300', models, routingNote,
+  badge, badgeColor = 'bg-secondary text-muted-foreground', models, routingNote,
 }: ProviderCardProps) {
   const [showKey, setShowKey] = useState(false);
 
@@ -270,12 +270,12 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
                 ) : cli.version ? (
                   <>
-                    <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                    <CheckCircle className="w-3.5 h-3.5 text-success" />
                     <span className="text-xs font-mono text-muted-foreground">{cli.version}</span>
                   </>
                 ) : (
                   <>
-                    <XCircle className="w-3.5 h-3.5 text-red-400" />
+                    <XCircle className="w-3.5 h-3.5 text-danger" />
                     <span className="text-xs text-muted-foreground">Not installed</span>
                   </>
                 )}
@@ -291,7 +291,7 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
         description="Universal gateway — one API key to access 300+ models from all providers."
         docsUrl="https://openrouter.ai/keys"
         badge="Recommended"
-        badgeColor="bg-green-700/20 text-green-400 border border-green-700/30"
+        badgeColor="bg-success/20 text-success border border-success/30"
         enabled={!!appSettings.openRouterEnabled}
         onToggle={() => onSaveAppSettings({ openRouterEnabled: !appSettings.openRouterEnabled })}
         apiKey={appSettings.openRouterApiKey || ''}

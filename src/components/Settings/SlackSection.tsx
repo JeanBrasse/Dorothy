@@ -146,7 +146,7 @@ export const SlackSection = ({ appSettings, onSaveAppSettings, onUpdateLocalSett
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium">Channel ID</label>
               {appSettings.slackChannelId && (
-                <span className="text-xs text-green-400 flex items-center gap-1">
+                <span className="text-xs text-success flex items-center gap-1">
                   <Check className="w-3 h-3" />
                   Connected
                 </span>
@@ -190,8 +190,8 @@ export const SlackSection = ({ appSettings, onSaveAppSettings, onUpdateLocalSett
           {slackTestResult && (
             <div className={`p-3 text-sm ${
               slackTestResult.success
-                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                ? 'bg-success/10 text-success border border-success/20'
+                : 'bg-danger/10 text-danger border border-danger/20'
             }`}>
               {slackTestResult.message}
             </div>

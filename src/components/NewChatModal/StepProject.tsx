@@ -136,9 +136,9 @@ const StepProject = React.memo(function StepProject({
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
                 {defaultProjectPath === project.path ? (
-                  <Pin className="w-4 h-4 text-yellow-400" />
+                  <Pin className="w-4 h-4 text-warning" />
                 ) : isFavorite(project) ? (
-                  <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                  <Star className="w-4 h-4 text-warning fill-current" />
                 ) : (
                   <FolderOpen className="w-4 h-4 text-accent-purple" />
                 )}

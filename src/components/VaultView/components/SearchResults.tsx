@@ -78,7 +78,7 @@ export default function SearchResults({ results, query, onSelectDocument }: Sear
             {/* Snippet with highlighted matches */}
             {doc.snippet && (
               <p
-                className="text-xs text-muted-foreground mt-1 line-clamp-2 [&_mark]:bg-yellow-200 [&_mark]:dark:bg-yellow-800 [&_mark]:px-0.5 [&_mark]:rounded"
+                className="text-xs text-muted-foreground mt-1 line-clamp-2 [&_mark]:bg-warning [&_mark]:dark:bg-warning [&_mark]:px-0.5 [&_mark]:rounded"
                 dangerouslySetInnerHTML={{ __html: sanitizeSnippet(doc.snippet) }}
               />
             )}

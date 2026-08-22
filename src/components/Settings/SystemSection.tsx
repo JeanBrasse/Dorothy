@@ -71,12 +71,12 @@ export const SystemSection = ({ info, appSettings, onSaveAppSettings }: SystemSe
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
                 ) : cli.version ? (
                   <>
-                    <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                    <CheckCircle className="w-3.5 h-3.5 text-success" />
                     <span className="text-sm font-mono">{cli.version}</span>
                   </>
                 ) : (
                   <>
-                    <XCircle className="w-3.5 h-3.5 text-red-400" />
+                    <XCircle className="w-3.5 h-3.5 text-danger" />
                     <span className="text-sm text-muted-foreground">Not installed</span>
                   </>
                 )}

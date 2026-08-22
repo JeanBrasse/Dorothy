@@ -47,7 +47,7 @@ export const AgentDialogHeader = memo(function AgentDialogHeader({
           </h3>
           <div className="flex items-center gap-2 text-xs text-text-muted">
             {isSuperAgentMode ? (
-              <span className="text-amber-400 flex items-center gap-1">
+              <span className="text-warning flex items-center gap-1">
                 <Crown className="w-3 h-3" />
                 Orchestrator
               </span>
@@ -63,7 +63,7 @@ export const AgentDialogHeader = memo(function AgentDialogHeader({
                   </span>
                 )}
                 {hasSecondaryProject && (
-                  <span className="text-amber-400 flex items-center gap-1">
+                  <span className="text-warning flex items-center gap-1">
                     <Layers className="w-3 h-3" />
                     +1 context
                   </span>

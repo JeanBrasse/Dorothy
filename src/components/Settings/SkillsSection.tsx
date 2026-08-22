@@ -88,7 +88,7 @@ export const SkillsSection = ({ skills }: SkillsSectionProps) => {
       {projectSkills.length > 0 && (
         <div className="border border-border bg-card p-6">
           <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-400" />
+            <span className="w-2 h-2 rounded-full bg-success" />
             Project Skills
             <span className="text-muted-foreground">({projectSkills.length})</span>
           </h3>

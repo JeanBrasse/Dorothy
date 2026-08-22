@@ -283,10 +283,10 @@ export function McpSection() {
 
       {/* Error */}
       {error && (
-        <div className="p-3 text-sm flex items-center gap-2 bg-red-700/10 text-red-700 border border-red-700/20 rounded-lg">
+        <div className="p-3 text-sm flex items-center gap-2 bg-danger/10 text-danger border border-danger/20 rounded-lg">
           <AlertCircle className="w-4 h-4 shrink-0" />
           {error}
-          <button onClick={() => setError(null)} className="ml-auto p-1 hover:text-red-500">
+          <button onClick={() => setError(null)} className="ml-auto p-1 hover:text-danger">
             <X className="w-3 h-3" />
           </button>
         </div>
@@ -396,7 +396,7 @@ export function McpSection() {
                             />
                             <button
                               onClick={() => removeArg(server.name, idx)}
-                              className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors"
+                              className="p-1.5 text-muted-foreground hover:text-danger transition-colors"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -448,7 +448,7 @@ export function McpSection() {
                               </div>
                               <button
                                 onClick={() => removeEnvVar(server.name, key)}
-                                className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors"
+                                className="p-1.5 text-muted-foreground hover:text-danger transition-colors"
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -463,7 +463,7 @@ export function McpSection() {
                       <button
                         onClick={() => handleDelete(server.name)}
                         disabled={isDeleting}
-                        className="px-3 py-1.5 bg-red-600/10 text-red-500 hover:bg-red-600/20 border border-red-600/20 transition-colors text-sm flex items-center gap-2 disabled:opacity-50"
+                        className="px-3 py-1.5 bg-danger/10 text-danger hover:bg-danger/20 border border-danger/20 transition-colors text-sm flex items-center gap-2 disabled:opacity-50"
                       >
                         {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                         Delete

@@ -33,15 +33,15 @@ export function KanbanDoneSummary({ task, onClose, onDelete }: KanbanDoneSummary
       >
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-green-500/5">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-success/5">
             <div className="flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 text-green-500" />
-              <span className="text-sm font-medium text-green-500">Completed</span>
+              <CheckCircle2 className="w-5 h-5 text-success" />
+              <span className="text-sm font-medium text-success">Completed</span>
             </div>
             <div className="flex items-center gap-1">
               <button
                 onClick={onDelete}
-                className="p-2 rounded-lg hover:bg-red-500/10 transition-colors text-muted-foreground hover:text-red-500"
+                className="p-2 rounded-lg hover:bg-danger/10 transition-colors text-muted-foreground hover:text-danger"
                 title="Delete task"
               >
                 <Trash2 className="w-4 h-4" />
@@ -105,7 +105,7 @@ export function KanbanDoneSummary({ task, onClose, onDelete }: KanbanDoneSummary
                 <span>Created {new Date(task.createdAt).toLocaleDateString()}</span>
               </div>
               {task.completedAt && (
-                <div className="flex items-center gap-1.5 text-green-500">
+                <div className="flex items-center gap-1.5 text-success">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>Completed {new Date(task.completedAt).toLocaleDateString()}</span>
                 </div>

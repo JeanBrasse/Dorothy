@@ -20,7 +20,7 @@ import { AgentDialogSecondaryProject } from './AgentDialogSecondaryProject';
 const GitPanel = dynamic(() => import('./GitPanel'), {
   loading: () => (
     <div className="flex items-center justify-center h-full">
-      <Loader2 className="w-6 h-6 animate-spin text-orange-400" />
+      <Loader2 className="w-6 h-6 animate-spin text-warning" />
     </div>
   ),
 });
@@ -28,7 +28,7 @@ const GitPanel = dynamic(() => import('./GitPanel'), {
 const CodePanel = dynamic(() => import('./CodePanel'), {
   loading: () => (
     <div className="flex items-center justify-center h-full">
-      <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+      <Loader2 className="w-6 h-6 animate-spin text-primary" />
     </div>
   ),
 });
@@ -110,7 +110,7 @@ export const AgentDialogSidebar = memo(function AgentDialogSidebar({
         <AgentDialogPanelHeader
           icon={Code2}
           title="Code"
-          color="text-purple-400"
+          color="text-primary"
           isExpanded={expandedPanels.has('code')}
           onToggle={() => onTogglePanel('code')}
         />
@@ -124,11 +124,11 @@ export const AgentDialogSidebar = memo(function AgentDialogSidebar({
         <AgentDialogPanelHeader
           icon={GitBranch}
           title="Git"
-          color="text-orange-400"
+          color="text-warning"
           isExpanded={expandedPanels.has('git')}
           badge={
             gitBranch ? (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 font-mono">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-warning/20 text-warning font-mono">
                 {gitBranch}
               </span>
             ) : null
@@ -145,11 +145,11 @@ export const AgentDialogSidebar = memo(function AgentDialogSidebar({
         <AgentDialogPanelHeader
           icon={TerminalSquare}
           title="Shell"
-          color="text-cyan-400"
+          color="text-primary"
           isExpanded={expandedPanels.has('terminal')}
           badge={
             hasActiveTerminal && !expandedPanels.has('terminal') ? (
-              <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+              <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
             ) : null
           }
           onToggle={() => onTogglePanel('terminal')}
@@ -172,7 +172,7 @@ export const AgentDialogSidebar = memo(function AgentDialogSidebar({
           />
           {!quickTerminalReady && expandedPanels.has('terminal') && (
             <div className="absolute inset-0 flex items-center justify-center bg-[#0f0f1a]">
-              <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
             </div>
           )}
         </AccordionPanel>
@@ -183,11 +183,11 @@ export const AgentDialogSidebar = memo(function AgentDialogSidebar({
         <AgentDialogPanelHeader
           icon={Layers}
           title="Context"
-          color="text-amber-400"
+          color="text-warning"
           isExpanded={expandedPanels.has('context')}
           badge={
             hasSecondaryProject ? (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">+1</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-warning/20 text-warning">+1</span>
             ) : null
           }
           onToggle={() => onTogglePanel('context')}
@@ -209,15 +209,15 @@ export const AgentDialogSidebar = memo(function AgentDialogSidebar({
         <AgentDialogPanelHeader
           icon={Settings2}
           title="Settings"
-          color="text-zinc-400"
+          color="text-muted-foreground"
           isExpanded={expandedPanels.has('settings')}
           badge={
             editPermissionMode === 'bypass' ? (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">Bypass</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-danger/20 text-danger">Bypass</span>
             ) : editPermissionMode === 'auto' ? (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">Auto</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-warning/20 text-warning">Auto</span>
             ) : (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">Normal</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/20 text-primary">Normal</span>
             )
           }
           onToggle={() => onTogglePanel('settings')}
@@ -227,9 +227,9 @@ export const AgentDialogSidebar = memo(function AgentDialogSidebar({
             <div className="space-y-1.5">
               <p className="text-xs text-text-muted font-medium mb-2">Permission Mode</p>
               {([
-                { value: 'normal' as const, label: 'Normal', icon: <Shield className="w-3 h-3" />, color: 'text-blue-400', border: 'border-blue-500/40', bg: 'bg-blue-500/10' },
-                { value: 'auto'   as const, label: 'Auto',   icon: <Bot className="w-3 h-3" />,      color: 'text-amber-400', border: 'border-amber-500/40', bg: 'bg-amber-500/10' },
-                { value: 'bypass' as const, label: 'Bypass', icon: <ShieldOff className="w-3 h-3" />, color: 'text-red-400',   border: 'border-red-500/40',   bg: 'bg-red-500/10' },
+                { value: 'normal' as const, label: 'Normal', icon: <Shield className="w-3 h-3" />, color: 'text-primary', border: 'border-primary/40', bg: 'bg-primary/10' },
+                { value: 'auto'   as const, label: 'Auto',   icon: <Bot className="w-3 h-3" />,      color: 'text-warning', border: 'border-warning/40', bg: 'bg-warning/10' },
+                { value: 'bypass' as const, label: 'Bypass', icon: <ShieldOff className="w-3 h-3" />, color: 'text-danger',   border: 'border-danger/40',   bg: 'bg-danger/10' },
               ] as const).map(({ value, label, icon, color, border, bg }) => (
                 <button
                   key={value}

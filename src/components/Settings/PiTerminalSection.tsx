@@ -89,8 +89,8 @@ export const PiTerminalSection = ({ appSettings, onSaveAppSettings, onUpdateLoca
         {testResult && (
           <div className={`p-3 text-sm flex items-start gap-2 ${
             testResult.success
-              ? 'bg-green-500/10 border border-green-500/30 text-green-400'
-              : 'bg-red-500/10 border border-red-500/30 text-red-400'
+              ? 'bg-success/10 border border-success/30 text-success'
+              : 'bg-danger/10 border border-danger/30 text-danger'
           }`}>
             {testResult.success ? (
               <CheckCircle className="w-4 h-4 mt-0.5 shrink-0" />
@@ -141,23 +141,23 @@ export const PiTerminalSection = ({ appSettings, onSaveAppSettings, onUpdateLoca
         <h3 className="text-md font-medium mb-3">Features</h3>
         <ul className="space-y-2 text-sm text-muted-foreground">
           <li className="flex items-start gap-2">
-            <span className="text-green-400 mt-0.5">•</span>
+            <span className="text-success mt-0.5">•</span>
             <span>15+ AI providers (Anthropic, OpenAI, Google, Azure, Bedrock, Mistral, Groq...)</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-green-400 mt-0.5">•</span>
+            <span className="text-success mt-0.5">•</span>
             <span>Switch models mid-session with <code>/model</code> or Ctrl+P</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-green-400 mt-0.5">•</span>
+            <span className="text-success mt-0.5">•</span>
             <span>Tree-structured session history with export & sharing</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-green-400 mt-0.5">•</span>
+            <span className="text-success mt-0.5">•</span>
             <span>Extensible via TypeScript extensions (tools, commands, keyboard shortcuts)</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-green-400 mt-0.5">•</span>
+            <span className="text-success mt-0.5">•</span>
             <span>MIT Licensed, open source</span>
           </li>
         </ul>

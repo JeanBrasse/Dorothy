@@ -189,7 +189,7 @@ function SettingsPageInner() {
   if (error && !settings) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-center text-red-400">
+        <div className="text-center text-danger">
           <AlertCircle className="w-8 h-8 mx-auto mb-4" />
           <p className="mb-2">Failed to load settings</p>
           <p className="text-sm text-muted-foreground">{error}</p>
@@ -240,7 +240,7 @@ function SettingsPageInner() {
 
       {/* Error message */}
       {error && settings && (
-        <div className="p-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm mb-4 shrink-0">
+        <div className="p-4 bg-danger/10 border border-danger/30 text-danger text-sm mb-4 shrink-0">
           {error}
         </div>
       )}

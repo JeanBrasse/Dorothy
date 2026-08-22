@@ -79,7 +79,7 @@ export default function TerminalPanelHeader({
 
       {/* Broadcast indicator */}
       {isBroadcasting && (
-        <span className="text-[10px] px-1.5 py-0.5 bg-cyan-500/20 text-cyan-400 font-medium animate-pulse">
+        <span className="text-[10px] px-1.5 py-0.5 bg-primary/20 text-primary font-medium animate-pulse">
           BROADCAST
         </span>
       )}
@@ -87,24 +87,24 @@ export default function TerminalPanelHeader({
       {/* Permission mode indicator */}
       {(agent.permissionMode === 'auto' || (!agent.permissionMode && agent.skipPermissions)) && (
         <span title="Auto mode — runs autonomously">
-          <Bot className="w-3 h-3 text-amber-400" />
+          <Bot className="w-3 h-3 text-warning" />
         </span>
       )}
       {agent.permissionMode === 'bypass' && (
         <span title="Bypass mode — all permissions skipped">
-          <ShieldOff className="w-3 h-3 text-red-400" />
+          <ShieldOff className="w-3 h-3 text-danger" />
         </span>
       )}
       {agent.permissionMode === 'normal' && (
         <span title="Normal mode — asks for permissions">
-          <Shield className="w-3 h-3 text-blue-400" />
+          <Shield className="w-3 h-3 text-primary" />
         </span>
       )}
 
       {/* Effort indicator */}
       {agent.effort === 'high' && (
         <span title="High effort — extended thinking">
-          <Gauge className="w-3 h-3 text-purple-400" />
+          <Gauge className="w-3 h-3 text-primary" />
         </span>
       )}
 
@@ -121,7 +121,7 @@ export default function TerminalPanelHeader({
         {agent.status === 'running' || agent.status === 'waiting' ? (
           <button
             onClick={onStop}
-            className="p-1 hover:bg-primary/10 transition-colors text-red-400 hover:text-red-300"
+            className="p-1 hover:bg-primary/10 transition-colors text-danger hover:text-danger"
             title="Stop agent"
           >
             <Square className="w-3 h-3" />
@@ -129,7 +129,7 @@ export default function TerminalPanelHeader({
         ) : (
           <button
             onClick={onStart}
-            className="p-1 hover:bg-primary/10 transition-colors text-green-400 hover:text-green-300"
+            className="p-1 hover:bg-primary/10 transition-colors text-success hover:text-success"
             title="Start agent"
           >
             <Play className="w-3 h-3" />
@@ -156,7 +156,7 @@ export default function TerminalPanelHeader({
         {showRemoveButton && !isFullscreen && (
           <button
             onClick={onRemove}
-            className="p-1 hover:bg-primary/10 transition-colors text-muted-foreground hover:text-red-400"
+            className="p-1 hover:bg-primary/10 transition-colors text-muted-foreground hover:text-danger"
             title="Remove from tab"
           >
             <X className="w-3 h-3" />

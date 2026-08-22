@@ -195,7 +195,7 @@ export function TemplateFormDialog({ initialTemplate, installedSkills, onClose, 
                           ? 'bg-primary/15 border-primary/40 text-primary'
                           : installed
                             ? 'bg-secondary border-border text-muted-foreground hover:text-foreground'
-                            : 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400'
+                            : 'bg-warning/10 border-warning/30 text-warning dark:text-warning'
                       }`}
                       title={installed ? '' : 'Skill not installed'}
                     >

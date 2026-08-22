@@ -888,8 +888,14 @@ export interface ElectronAPI {
       authFlows?: string[];
       authProviders?: string[];
       needsSignIn?: boolean;
+      signedIn?: boolean;
       error?: string;
     }>;
+    signIn: (params: { connection: HermesConnection; username: string; password: string; provider?: string }) => Promise<{ success: boolean; version?: string; gatewayState?: string; error?: string }>;
+    signOut: (connection: HermesConnection) => Promise<{ success: boolean }>;
+    kanbanBoard: (params?: { board?: string }) => Promise<{ success: boolean; board?: unknown; error?: string; needsSignIn?: boolean }>;
+    kanbanCreateTask: (task: Record<string, unknown>) => Promise<{ success: boolean; task?: unknown; error?: string }>;
+    kanbanUpdateTask: (params: { taskId: string; patch: Record<string, unknown> }) => Promise<{ success: boolean; task?: unknown; error?: string }>;
     getConnectionInfo: () => Promise<{
       apiPort: number;
       webhookPath: string;

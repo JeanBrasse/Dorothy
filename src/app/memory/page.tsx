@@ -52,7 +52,7 @@ function FileEditor({
         <span className="text-xs font-mono text-muted-foreground flex items-center gap-2">
           <Edit3 className="w-3 h-3" />
           Editing {file.name}
-          {dirty && <span className="text-amber-500">•</span>}
+          {dirty && <span className="text-warning">•</span>}
         </span>
         <div className="flex gap-2">
           <button
@@ -118,7 +118,7 @@ function FileViewer({
           {!file.isEntrypoint && (
             <button
               onClick={onDelete}
-              className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
+              className="p-1.5 text-muted-foreground hover:text-danger hover:bg-danger/10 transition-colors"
               title="Delete file"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -176,10 +176,10 @@ function ProjectCard({
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {activeAgents > 0 && (
-            <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-green-500/15 text-green-600 dark:text-green-400 font-medium">
+            <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-success/15 text-success dark:text-success font-medium">
               <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+                <span className=" absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-success" />
               </span>
               {activeAgents}
             </span>
@@ -239,7 +239,7 @@ function NewFileModal({
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-card border border-border p-6 w-80 shadow-xl"
+        className="bg-card border border-border p-6 w-80"
         onClick={e => e.stopPropagation()}
       >
         <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
@@ -349,7 +349,7 @@ function BackendsTab() {
               </a>
             </h3>
             <span className={`text-[10px] font-medium px-1.5 py-0.5 ${
-              b.enabled ? 'bg-green-500/15 text-green-600' : 'bg-secondary text-muted-foreground'
+              b.enabled ? 'bg-success/15 text-success' : 'bg-secondary text-muted-foreground'
             }`}>
               {b.enabled ? 'Connected' : 'Not configured'}
             </span>
@@ -522,7 +522,7 @@ export default function MemoryPage() {
 
         {/* ── Error ── */}
         {error && (
-          <div className="mb-3 p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2 shrink-0">
+          <div className="mb-3 p-3 bg-danger/10 border border-danger/30 text-danger text-xs flex items-center gap-2 shrink-0">
             <AlertCircle className="w-4 h-4 shrink-0" />
             {error}
           </div>

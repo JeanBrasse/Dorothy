@@ -20,7 +20,7 @@ export const AgentDialogFooter = memo(function AgentDialogFooter({
   return (
     <div className="px-5 py-3 border-t border-border-primary bg-bg-tertiary/30">
       {agent.pathMissing && (
-        <div className="flex items-center gap-2 px-3 py-2 mb-3 bg-amber-500/10 border border-amber-500/30 rounded-none text-amber-400 text-sm">
+        <div className="flex items-center gap-2 px-3 py-2 mb-3 bg-warning/10 border border-warning/30 rounded-none text-warning text-sm">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span>
             Project path no longer exists: <code className="font-mono text-xs">{agent.projectPath}</code>

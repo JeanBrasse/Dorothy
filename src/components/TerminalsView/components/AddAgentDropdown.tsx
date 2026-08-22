@@ -165,16 +165,6 @@ export default function AddAgentDropdown({
             ))
           )}
 
-          {/* Create new agent entry */}
-          <div className="border-t border-border">
-            <button
-              onClick={() => { setOpen(false); onCreateAgent(); }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-muted-foreground hover:bg-primary/5 hover:text-foreground transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Create a new agent</span>
-            </button>
-          </div>
         </div>
       )}
     </div>

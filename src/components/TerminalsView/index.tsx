@@ -16,7 +16,6 @@ import { LAYOUT_PRESETS } from './constants';
 import type { LayoutPreset } from './types';
 import GlobalToolbar from './components/GlobalToolbar';
 import TerminalGrid from './components/TerminalGrid';
-import CustomTabBar from './components/CustomTabBar';
 import ProjectTabBar from './components/ProjectTabBar';
 import Sidebar from './components/Sidebar';
 import StatusBar from './components/StatusBar';
@@ -77,6 +76,7 @@ export default function TerminalsView() {
   // Tab manager — core state for two-tier tab system
   const allAgentIds = useMemo(() => agents.map(a => a.id), [agents]);
 
+
   // Project folders with agents — offered as one-click boards in the tab bar
   const projectGroups = useMemo(() => {
     const byPath = new Map<string, string[]>();
@@ -91,6 +91,19 @@ export default function TerminalsView() {
     }));
   }, [agents]);
   const tabManager = useTabManager({ existingAgentIds: allAgentIds, isLoading });
+
+  // The board is project-driven: land on a real project instead of an empty
+  // custom tab, and follow along when the current project loses its agents.
+  useEffect(() => {
+    if (isLoading || agents.length === 0) return;
+    const paths = Array.from(new Set(agents.map(a => a.projectPath).filter(Boolean)));
+    if (paths.length === 0) return;
+    const current = tabManager.activeTab;
+    const stillValid = current.type === 'project' && paths.includes(current.projectPath);
+    if (!stillValid) {
+      tabManager.setActiveTab({ type: 'project', projectPath: paths[0] });
+    }
+  }, [agents, isLoading, tabManager]);
 
   // Derive agents for current active tab
   const filteredAgents = useMemo(() => {
@@ -431,17 +444,28 @@ export default function TerminalsView() {
           disabledPresets={disabledPresets}
         />
 
-        {/* Custom tab bar — top */}
-        <CustomTabBar
-          tabs={tabManager.customTabs}
+        {/* Project tabs — the board follows your project folders */}
+        <ProjectTabBar
+          agents={agents}
           activeTab={tabManager.activeTab}
-          onSelectTab={(tabId) => tabManager.setActiveTab({ type: 'custom', tabId })}
-          onCreateTab={tabManager.createTab}
-          projectGroups={projectGroups}
-          onCreateFromProject={tabManager.createTabFromProject}
-          onDeleteTab={tabManager.deleteTab}
-          onRenameTab={tabManager.renameTab}
-          onReorderTabs={tabManager.reorderTabs}
+          onSelectProject={(path) => {
+            if (tabManager.activeTab.type === 'project' && tabManager.activeTab.projectPath === path) {
+              // Toggle off: restore last custom tab, or fallback to first
+              const restore = lastCustomTabRef.current;
+              const target = restore && tabManager.customTabs.find(t => t.id === restore.tabId)
+                ? restore
+                : tabManager.customTabs[0] ? { type: 'custom' as const, tabId: tabManager.customTabs[0].id } : null;
+              if (target) tabManager.setActiveTab(target);
+            } else {
+              // Save current custom tab before switching to project view
+              if (tabManager.activeTab.type === 'custom') {
+                lastCustomTabRef.current = { type: 'custom', tabId: tabManager.activeTab.tabId };
+              }
+              tabManager.setActiveTab({ type: 'project', projectPath: path });
+            }
+          }}
+          panelOpen={panelOpen}
+          onTogglePanel={() => setPanelOpen(prev => !prev)}
         />
 
         {/* Terminal grid — takes full space, relative for sidebar panel */}
@@ -483,30 +507,6 @@ export default function TerminalsView() {
             installedSkills={installedSkills}
           />
         </div>
-
-        {/* Project tab bar — bottom */}
-        <ProjectTabBar
-          agents={agents}
-          activeTab={tabManager.activeTab}
-          onSelectProject={(path) => {
-            if (tabManager.activeTab.type === 'project' && tabManager.activeTab.projectPath === path) {
-              // Toggle off: restore last custom tab, or fallback to first
-              const restore = lastCustomTabRef.current;
-              const target = restore && tabManager.customTabs.find(t => t.id === restore.tabId)
-                ? restore
-                : tabManager.customTabs[0] ? { type: 'custom' as const, tabId: tabManager.customTabs[0].id } : null;
-              if (target) tabManager.setActiveTab(target);
-            } else {
-              // Save current custom tab before switching to project view
-              if (tabManager.activeTab.type === 'custom') {
-                lastCustomTabRef.current = { type: 'custom', tabId: tabManager.activeTab.tabId };
-              }
-              tabManager.setActiveTab({ type: 'project', projectPath: path });
-            }
-          }}
-          panelOpen={panelOpen}
-          onTogglePanel={() => setPanelOpen(prev => !prev)}
-        />
 
         {/* Status bar */}
         <StatusBar agents={filteredAgents} />

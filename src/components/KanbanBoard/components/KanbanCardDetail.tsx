@@ -101,7 +101,7 @@ export function KanbanCardDetail({ task, onClose, onUpdate, onDelete }: KanbanCa
             <div className="flex items-center gap-1">
               <button
                 onClick={onDelete}
-                className="p-2 rounded-lg hover:bg-red-500/10 transition-colors text-muted-foreground hover:text-red-500"
+                className="p-2 rounded-lg hover:bg-danger/10 transition-colors text-muted-foreground hover:text-danger"
                 title="Delete task"
               >
                 <Trash2 className="w-4 h-4" />
@@ -154,10 +154,10 @@ export function KanbanCardDetail({ task, onClose, onUpdate, onDelete }: KanbanCa
                       flex-1 px-3 py-2 text-sm rounded-lg border-2 transition-all font-medium
                       ${priority === p
                         ? p === 'high'
-                          ? 'bg-red-500/10 border-red-500/50 text-red-500'
+                          ? 'bg-danger/10 border-danger/50 text-danger'
                           : p === 'medium'
-                          ? 'bg-amber-500/10 border-amber-500/50 text-amber-500'
-                          : 'bg-zinc-500/10 border-zinc-500/50 text-zinc-500'
+                          ? 'bg-warning/10 border-warning/50 text-warning'
+                          : 'bg-secondary border-border text-muted-foreground'
                         : 'bg-transparent border-border/50 text-muted-foreground hover:border-border'
                       }
                     `}
@@ -251,7 +251,7 @@ export function KanbanCardDetail({ task, onClose, onUpdate, onDelete }: KanbanCa
                 {requiredSkills.map((skill) => (
                   <span
                     key={skill}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-blue-500/10 text-blue-500 rounded-full text-xs font-medium"
+                    className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium"
                   >
                     {skill}
                     <button
@@ -272,7 +272,7 @@ export function KanbanCardDetail({ task, onClose, onUpdate, onDelete }: KanbanCa
             {/* Meta info */}
             <div className="flex items-center gap-4 pt-4 border-t border-border/50 text-xs text-muted-foreground">
               {task.assignedAgentId && (
-                <div className="flex items-center gap-1.5 text-green-500">
+                <div className="flex items-center gap-1.5 text-success">
                   <Bot className="w-3.5 h-3.5" />
                   <span>Agent assigned</span>
                 </div>

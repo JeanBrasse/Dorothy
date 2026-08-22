@@ -38,11 +38,11 @@ function getFileType(path: string): TaskAttachment['type'] {
 function FileTypeIcon({ type }: { type: TaskAttachment['type'] }) {
   switch (type) {
     case 'image':
-      return <FileImage className="w-4 h-4 text-blue-400" />;
+      return <FileImage className="w-4 h-4 text-primary" />;
     case 'pdf':
-      return <FileText className="w-4 h-4 text-red-400" />;
+      return <FileText className="w-4 h-4 text-danger" />;
     case 'document':
-      return <FileText className="w-4 h-4 text-green-400" />;
+      return <FileText className="w-4 h-4 text-success" />;
     default:
       return <File className="w-4 h-4 text-muted-foreground" />;
   }
@@ -379,7 +379,7 @@ export function NewTaskModal({ onClose, onCreate }: NewTaskModalProps) {
                 <button
                   onClick={handleGenerateTask}
                   disabled={!quickPrompt.trim() || isGenerating}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-medium rounded-md hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isGenerating ? (
                     <>
@@ -445,10 +445,10 @@ export function NewTaskModal({ onClose, onCreate }: NewTaskModalProps) {
                           onClick={() => setGeneratedTask({ ...generatedTask, priority: p })}
                           className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${generatedTask.priority === p
                               ? p === 'high'
-                                ? 'bg-red-900/50 text-red-400'
+                                ? 'bg-danger/50 text-danger'
                                 : p === 'medium'
-                                  ? 'bg-yellow-900/50 text-yellow-400'
-                                  : 'bg-zinc-700 text-zinc-300'
+                                  ? 'bg-warning/50 text-warning'
+                                  : 'bg-secondary text-muted-foreground'
                               : 'bg-background text-muted-foreground hover:bg-secondary'
                             }`}
                         >
@@ -465,7 +465,7 @@ export function NewTaskModal({ onClose, onCreate }: NewTaskModalProps) {
                         {generatedTask.labels.map((label) => (
                           <span
                             key={label}
-                            className="px-2 py-0.5 bg-purple-900/30 text-purple-400 text-xs rounded-full"
+                            className="px-2 py-0.5 bg-primary/30 text-primary text-xs rounded-full"
                           >
                             {label}
                           </span>
@@ -500,7 +500,7 @@ export function NewTaskModal({ onClose, onCreate }: NewTaskModalProps) {
               {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Title <span className="text-red-400">*</span>
+                  Title <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
@@ -529,7 +529,7 @@ export function NewTaskModal({ onClose, onCreate }: NewTaskModalProps) {
               {/* Project */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Project <span className="text-red-400">*</span>
+                  Project <span className="text-danger">*</span>
                 </label>
 
                 {/* Favorite project quick-select badges */}
@@ -544,11 +544,11 @@ export function NewTaskModal({ onClose, onCreate }: NewTaskModalProps) {
                           onClick={() => setSelectedProjectPath(p.path)}
                           className={`flex items-center gap-1 px-2 py-1 text-xs rounded-md border transition-colors ${
                             selectedProjectPath === p.path
-                              ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-300'
-                              : 'border-border bg-secondary text-muted-foreground hover:text-foreground hover:border-yellow-500/30'
+                              ? 'border-warning/50 bg-warning/10 text-warning'
+                              : 'border-border bg-secondary text-muted-foreground hover:text-foreground hover:border-warning/30'
                           }`}
                         >
-                          <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                          <Star className="w-3 h-3 text-warning fill-current" />
                           {p.name}
                         </button>
                       ))}
@@ -596,10 +596,10 @@ export function NewTaskModal({ onClose, onCreate }: NewTaskModalProps) {
                         flex-1 px-3 py-1.5 text-sm rounded-md border transition-colors
                         ${priority === p
                           ? p === 'high'
-                            ? 'bg-red-900/30 border-red-500/50 text-red-400'
+                            ? 'bg-danger/30 border-danger/50 text-danger'
                             : p === 'medium'
-                              ? 'bg-yellow-900/30 border-yellow-500/50 text-yellow-400'
-                              : 'bg-zinc-700/50 border-zinc-500/50 text-zinc-400'
+                              ? 'bg-warning/30 border-warning/50 text-warning'
+                              : 'bg-secondary border-border text-muted-foreground'
                           : 'bg-secondary border-border text-muted-foreground hover:bg-secondary/80'
                         }
                       `}
@@ -642,7 +642,7 @@ export function NewTaskModal({ onClose, onCreate }: NewTaskModalProps) {
                     {requiredSkills.map((skill) => (
                       <span
                         key={skill}
-                        className="flex items-center gap-1 px-2 py-0.5 bg-blue-900/30 text-blue-400 text-xs rounded-full"
+                        className="flex items-center gap-1 px-2 py-0.5 bg-primary/30 text-primary text-xs rounded-full"
                       >
                         {skill}
                         <button type="button" onClick={() => handleRemoveSkill(skill)}>

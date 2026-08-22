@@ -234,7 +234,7 @@ export default function SkillsTab() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-center text-red-400">
+        <div className="text-center text-danger">
           <p className="mb-2">Failed to load skills</p>
           <p className="text-sm text-muted-foreground">{error}</p>
         </div>
@@ -266,7 +266,7 @@ export default function SkillsTab() {
         {/* Badges row - below on mobile */}
         <div className="flex flex-wrap items-center gap-2">
           {!hasElectron && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-yellow-500/10 text-yellow-400 text-xs">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-warning/10 text-warning text-xs">
               <MonitorDown className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Desktop app for direct install</span>
               <span className="sm:hidden">Desktop only</span>
@@ -299,7 +299,7 @@ export default function SkillsTab() {
             className={`p-4 border flex items-center justify-between ${showToast.type === 'success'
               ? 'bg-primary/10 border-primary/30 text-primary'
               : showToast.type === 'error'
-                ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                ? 'bg-danger/10 border-danger/30 text-danger'
                 : 'bg-white/10 border-white/30 text-white'
               }`}
           >

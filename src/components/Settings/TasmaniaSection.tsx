@@ -194,10 +194,10 @@ export const TasmaniaSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
   };
 
   const statusColor = serverStatus?.status === 'running'
-    ? 'bg-green-500'
+    ? 'bg-success'
     : serverStatus?.status === 'starting'
-      ? 'bg-yellow-500'
-      : 'bg-zinc-500';
+      ? 'bg-warning'
+      : 'bg-secondary';
 
   const statusText = serverStatus?.status === 'running'
     ? 'Running'
@@ -265,8 +265,8 @@ export const TasmaniaSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
 
           {testResult && (
             <div className={`p-3 text-sm flex items-center gap-2 ${testResult.success
-              ? 'bg-green-700/10 text-green-700 border border-green-700/20'
-              : 'bg-red-700/10 text-red-700 border border-red-700/20'
+              ? 'bg-success/10 text-success border border-success/20'
+              : 'bg-danger/10 text-danger border border-danger/20'
               }`}>
               {testResult.success ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
               {testResult.message}
@@ -275,7 +275,7 @@ export const TasmaniaSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
 
           {/* MCP Registration Status */}
           <div className="flex items-center gap-2 text-sm">
-            <div className={`w-2 h-2 rounded-full ${mcpConfigured ? 'bg-green-500' : 'bg-zinc-500'}`} />
+            <div className={`w-2 h-2 rounded-full ${mcpConfigured ? 'bg-success' : 'bg-secondary'}`} />
             <span className="text-muted-foreground">
               MCP: {mcpConfigured ? 'Registered with Claude Code' : 'Not registered'}
             </span>
@@ -331,7 +331,7 @@ export const TasmaniaSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
                   <button
                     onClick={handleStopModel}
                     disabled={stoppingModel}
-                    className="mt-2 px-3 py-1.5 bg-red-600/10 text-red-500 hover:bg-red-600/20 border border-red-600/20 transition-colors text-sm flex items-center gap-2"
+                    className="mt-2 px-3 py-1.5 bg-danger/10 text-danger hover:bg-danger/20 border border-danger/20 transition-colors text-sm flex items-center gap-2"
                   >
                     {stoppingModel ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Square className="w-3.5 h-3.5" />}
                     Stop Model
@@ -370,7 +370,7 @@ export const TasmaniaSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
                     <div
                       key={model.path}
                       className={`flex items-center justify-between p-3 border transition-colors ${
-                        isLoaded ? 'border-green-600/30 bg-green-600/5' : 'border-border'
+                        isLoaded ? 'border-success/30 bg-success/5' : 'border-border'
                       }`}
                     >
                       <div className="flex-1 min-w-0 mr-3">
@@ -378,7 +378,7 @@ export const TasmaniaSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
                           <Cpu className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                           <span className="font-medium text-sm truncate">{model.name}</span>
                           {isLoaded && (
-                            <span className="text-xs bg-green-600/20 text-green-500 px-1.5 py-0.5 shrink-0">Active</span>
+                            <span className="text-xs bg-success/20 text-success px-1.5 py-0.5 shrink-0">Active</span>
                           )}
                         </div>
                         <div className="flex gap-3 mt-1 text-xs text-muted-foreground">

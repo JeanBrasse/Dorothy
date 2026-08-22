@@ -293,7 +293,7 @@ export default function KanbanBoard() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
-        <p className="text-red-400">{error}</p>
+        <p className="text-danger">{error}</p>
         <button
           onClick={handleRefresh}
           className="flex items-center gap-2 px-3 py-2 bg-secondary rounded-md hover:bg-secondary/80 transition-colors"

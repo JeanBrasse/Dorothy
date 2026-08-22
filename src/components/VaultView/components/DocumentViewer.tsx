@@ -82,7 +82,7 @@ export default function DocumentViewer({ document, attachments, onBack, onEdit, 
             <div className="flex items-center gap-1">
               <button
                 onClick={() => onDelete(document.id)}
-                className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                className="px-2 py-1 text-xs bg-danger text-white rounded hover:bg-danger"
               >
                 Confirm
               </button>
@@ -96,7 +96,7 @@ export default function DocumentViewer({ document, attachments, onBack, onEdit, 
           ) : (
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="p-2 text-muted-foreground hover:text-red-500 hover:bg-secondary rounded transition-colors"
+              className="p-2 text-muted-foreground hover:text-danger hover:bg-secondary rounded transition-colors"
               title="Delete"
             >
               <Trash2 className="w-4 h-4" />

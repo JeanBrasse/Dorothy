@@ -53,14 +53,14 @@ export function AgentManagementCard({ agent, onClick, onEdit, onStart, onStop, o
         {/* Row 1: Avatar + Name + Status (top-right) */}
         <div className="flex items-center gap-2.5">
           <div className={`w-8 h-8 flex items-center justify-center shrink-0 text-base ${
-            isSuper ? 'bg-gradient-to-br from-amber-500/30 to-yellow-600/20' : statusConfig.bg
+            isSuper ? 'bg-primary/20' : statusConfig.bg
           }`}>
             {isSuper ? '👑' : agent.character ? (CHARACTER_FACES[agent.character] || '🤖') : '🤖'}
           </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              {isSuper && <Crown className="w-3 h-3 text-amber-600 shrink-0" />}
+              {isSuper && <Crown className="w-3 h-3 text-warning shrink-0" />}
               <span className="font-medium text-sm truncate text-foreground">
                 {agent.name || 'Unnamed Agent'}
               </span>
@@ -70,7 +70,7 @@ export function AgentManagementCard({ agent, onClick, onEdit, onStart, onStop, o
           {/* Status pill — top right */}
           <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium shrink-0 ${
             isSuper && isRunning
-              ? 'bg-amber-500/20 text-amber-400'
+              ? 'bg-warning/20 text-warning'
               : `${statusConfig.bg} ${statusConfig.text}`
           }`}>
             {STATUS_LABELS[agent.status]}
@@ -84,7 +84,7 @@ export function AgentManagementCard({ agent, onClick, onEdit, onStart, onStop, o
 
         {/* Row 3: Last user prompt */}
         {agent.pathMissing ? (
-          <p className="text-xs text-amber-500 flex items-center gap-1 mt-1.5">
+          <p className="text-xs text-warning flex items-center gap-1 mt-1.5">
             <AlertTriangle className="w-3 h-3 shrink-0" />
             Path not found
           </p>
@@ -123,10 +123,10 @@ export function AgentManagementCard({ agent, onClick, onEdit, onStart, onStop, o
           {isRunning ? (
             <button
               onClick={onStop}
-              className="p-1.5 hover:bg-red-500/10 rounded transition-colors"
+              className="p-1.5 hover:bg-danger/10 rounded transition-colors"
               title="Stop agent"
             >
-              <Square className="w-3.5 h-3.5 text-red-400" />
+              <Square className="w-3.5 h-3.5 text-danger" />
             </button>
           ) : (
             <button
@@ -156,10 +156,10 @@ export function AgentManagementCard({ agent, onClick, onEdit, onStart, onStop, o
           )}
           <button
             onClick={onRemove}
-            className="p-1.5 hover:bg-red-500/10 rounded transition-colors"
+            className="p-1.5 hover:bg-danger/10 rounded transition-colors"
             title="Remove agent"
           >
-            <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-red-400" />
+            <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-danger" />
           </button>
         </div>
       </div>

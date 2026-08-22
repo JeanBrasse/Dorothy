@@ -142,20 +142,20 @@ export default function Sidebar({ isMobile = false }: SidebarProps) {
                 <div className="relative">
                   <Gift className="w-5 h-5" />
                   {whatsNewHasNew && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-danger rounded-full" />
                   )}
                 </div>
                 <span className="text-sm flex-1">What&apos;s New</span>
                 {whatsNewHasNew && (
-                  <span className="min-w-[20px] h-[20px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                  <span className="min-w-[20px] h-[20px] flex items-center justify-center text-[10px] font-bold bg-danger text-white rounded-full px-1">
                     1
                   </span>
                 )}
               </Link>
               <div className="flex items-center gap-3 px-5 py-3 border-t border-border text-muted-foreground text-sm">
                 <span className="relative flex w-5 h-5 items-center justify-center">
-                  <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-green-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  <span className=" absolute inline-flex h-2 w-2 rounded-full bg-success opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
                 </span>
                 <span>Connected</span>
               </div>
@@ -173,7 +173,7 @@ export default function Sidebar({ isMobile = false }: SidebarProps) {
               <div className="relative">
                 <Gift className="w-5 h-5" />
                 {whatsNewHasNew && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-danger rounded-full" />
                 )}
               </div>
             </Link>
@@ -286,12 +286,12 @@ export default function Sidebar({ isMobile = false }: SidebarProps) {
               <div className="relative">
                 <Gift className="w-5 h-5" />
                 {whatsNewHasNew && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-danger rounded-full" />
                 )}
               </div>
               <span className="text-sm flex-1">What&apos;s New</span>
               {whatsNewHasNew && (
-                <span className="min-w-[20px] h-[20px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                <span className="min-w-[20px] h-[20px] flex items-center justify-center text-[10px] font-bold bg-danger text-white rounded-full px-1">
                   1
                 </span>
               )}
@@ -299,8 +299,8 @@ export default function Sidebar({ isMobile = false }: SidebarProps) {
             <div className="px-4 py-3 border-t border-border">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  <span className=" absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
                 </span>
                 <span>Connected</span>
               </div>

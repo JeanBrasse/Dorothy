@@ -183,8 +183,8 @@ export const TelegramSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
           {telegramTestResult && (
             <div className={`p-3 text-sm ${
               telegramTestResult.success
-                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                ? 'bg-success/10 text-success border border-success/20'
+                : 'bg-danger/10 text-danger border border-danger/20'
             }`}>
               {telegramTestResult.message}
             </div>
@@ -232,7 +232,7 @@ export const TelegramSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
                 className="px-3 py-2 bg-secondary text-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                 title="Copy token"
               >
-                {copiedToken ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                {copiedToken ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
               </button>
               <button
                 onClick={handleGenerateAuthToken}
@@ -253,12 +253,12 @@ export const TelegramSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
                 : 'Auth token is required to enable Telegram. Generate one to get started.'}
             </p>
             {!appSettings.telegramAuthToken && (
-              <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs">
+              <div className="mt-2 p-2 bg-primary/10 border border-primary/20 text-primary text-xs">
                 Auth token required: Generate a token to enable Telegram bot functionality.
               </div>
             )}
             {tokenGenerated && (
-              <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs">
+              <div className="mt-2 p-2 bg-warning/10 border border-warning/20 text-warning text-xs">
                 Restart the app to apply the new token.
               </div>
             )}
@@ -281,14 +281,14 @@ export const TelegramSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
                     <div
                       key={chatId}
                       className={`flex items-center justify-between px-3 py-2 bg-secondary border transition-colors ${
-                        isDefault ? 'border-green-500/50' : 'border-border'
+                        isDefault ? 'border-success/50' : 'border-border'
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <Check className={`w-4 h-4 ${isDefault ? 'text-green-400' : 'text-muted-foreground/40'}`} />
+                        <Check className={`w-4 h-4 ${isDefault ? 'text-success' : 'text-muted-foreground/40'}`} />
                         <code className="text-sm font-mono">{chatId}</code>
                         {isDefault && (
-                          <span className="px-1.5 py-0.5 bg-green-500/10 text-green-500 rounded text-[10px] font-medium">
+                          <span className="px-1.5 py-0.5 bg-success/10 text-success rounded text-[10px] font-medium">
                             DEFAULT
                           </span>
                         )}
@@ -305,7 +305,7 @@ export const TelegramSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
                         )}
                         <button
                           onClick={() => handleRemoveChatId(chatId)}
-                          className="p-1 text-muted-foreground hover:text-red-400 transition-colors"
+                          className="p-1 text-muted-foreground hover:text-danger transition-colors"
                           title="Remove authorization"
                         >
                           <Trash2 className="w-4 h-4" />

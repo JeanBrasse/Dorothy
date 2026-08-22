@@ -22,7 +22,7 @@ export const PermissionsSection = ({ settings }: PermissionsSectionProps) => {
                   {settings.permissions.allow.map((perm, i) => (
                     <span
                       key={i}
-                      className="px-2 py-1 bg-green-500/20 text-green-400 text-xs font-mono"
+                      className="px-2 py-1 bg-success/20 text-success text-xs font-mono"
                     >
                       {perm}
                     </span>
@@ -42,7 +42,7 @@ export const PermissionsSection = ({ settings }: PermissionsSectionProps) => {
                   {settings.permissions.deny.map((perm, i) => (
                     <span
                       key={i}
-                      className="px-2 py-1 bg-red-500/20 text-red-400 text-xs font-mono"
+                      className="px-2 py-1 bg-danger/20 text-danger text-xs font-mono"
                     >
                       {perm}
                     </span>

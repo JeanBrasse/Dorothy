@@ -25,7 +25,7 @@ function ProviderIcon({ providerId }: { providerId: string }) {
   if (icon.type === 'cpu') {
     return (
       <span title={label} className="shrink-0 inline-flex">
-        <Cpu className="w-4 h-4 text-cyan-500" />
+        <Cpu className="w-4 h-4 text-primary" />
       </span>
     );
   }
@@ -64,19 +64,19 @@ export function AgentCard({ agent, isSelected, onSelect, onEdit }: AgentCardProp
       className={`
         p-4 cursor-pointer transition-all relative
         ${isSuper
-          ? 'bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-transparent border-l-2 border-l-amber-500/50 border-b border-amber-500/20'
+          ? 'bg-primary/5 border-l-2 border-l-primary/50 border-b border-primary/20'
           : 'border-b border-border-primary/50'}
         ${isSelected ? 'bg-accent-blue/10' : isSuper ? '' : 'hover:bg-bg-tertiary/50'}
       `}
     >
       {/* Subtle gold shimmer for Super Agent */}
       {isSuper && (
-        <div className="absolute inset-0 bg-gradient-to-r from-amber-400/5 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-primary/5 pointer-events-none" />
       )}
       <div className="flex items-start gap-3 relative">
         <div className={`w-10 h-10 rounded-none flex items-center justify-center shrink-0 relative ${
           isSuper
-            ? 'bg-gradient-to-br from-amber-500/30 to-yellow-600/20 ring-1 ring-amber-500/30'
+            ? 'bg-primary/20 ring-1 ring-primary/30'
             : agent.name?.toLowerCase() === 'bitwonka'
               ? 'bg-accent-green/20'
               : statusConfig.bg
@@ -93,13 +93,13 @@ export function AgentCard({ agent, isSelected, onSelect, onEdit }: AgentCardProp
             <StatusIcon className={`w-5 h-5 ${statusConfig.text}`} />
           )}
           {agent.status === 'running' && (agent.character || agent.name?.toLowerCase() === 'bitwonka' || isSuper) && (
-            <span className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full animate-pulse ${isSuper ? 'bg-amber-400' : 'bg-accent-blue'}`} />
+            <span className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full animate-pulse ${isSuper ? 'bg-warning' : 'bg-accent-blue'}`} />
           )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <h4 className={`font-medium text-sm truncate flex items-center gap-1.5 font-sans ${isSuper ? 'text-foreground' : ''}`}>
-              {isSuper && <Crown className="w-3.5 h-3.5 text-amber-600" />}
+              {isSuper && <Crown className="w-3.5 h-3.5 text-warning" />}
               {agent.name || 'Unnamed Agent'}
               <ProviderIcon providerId={
                 agent.provider && agent.provider !== 'local' ? agent.provider : 'claude'
@@ -118,7 +118,7 @@ export function AgentCard({ agent, isSelected, onSelect, onEdit }: AgentCardProp
               </button>
               <span className={`text-xs px-2 py-0.5 rounded-full ${
                 isSuper && agent.status === 'running'
-                  ? 'bg-amber-500/20 text-amber-400'
+                  ? 'bg-warning/20 text-warning'
                   : `${statusConfig.bg} ${statusConfig.text}`
               }`}>
                 {STATUS_LABELS[agent.status]}

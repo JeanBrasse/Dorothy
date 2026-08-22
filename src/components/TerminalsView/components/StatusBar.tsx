@@ -27,25 +27,25 @@ export default function StatusBar({ agents }: StatusBarProps) {
       <div className="flex items-center gap-3">
         {running > 0 && (
           <span className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+            <span className="w-1.5 h-1.5 rounded-full bg-success" />
             {running} running
           </span>
         )}
         {waiting > 0 && (
           <span className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
+            <span className="w-1.5 h-1.5 rounded-full bg-warning" />
             {waiting} waiting
           </span>
         )}
         {idle > 0 && (
           <span className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+            <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
             {idle} idle
           </span>
         )}
         {error > 0 && (
           <span className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+            <span className="w-1.5 h-1.5 rounded-full bg-danger" />
             {error} error
           </span>
         )}

@@ -78,7 +78,7 @@ export default function TerminalPanelInput({
 
   return (
     <div className={`flex items-start gap-2 px-3 py-1.5 bg-secondary border-t border-border ${isBroadcasting ? 'ring-1 ring-primary/50' : ''}`}>
-      <span className={`text-xs font-mono mt-1.5 ${isBroadcasting ? 'text-cyan-400' : 'text-muted-foreground'}`}>
+      <span className={`text-xs font-mono mt-1.5 ${isBroadcasting ? 'text-primary' : 'text-muted-foreground'}`}>
         {isBroadcasting ? '>' : '>'}
       </span>
       <textarea

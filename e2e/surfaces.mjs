@@ -31,7 +31,7 @@ export const PAGES = [
 
 // Les 18 sections de Settings, chacune un clic dans la sidebar de la page.
 export const SETTINGS_SECTIONS = [
-  'Terminal', 'AI Providers', 'CLI Paths', 'Obsidian', 'Git', 'Notifications',
+  'Terminal', 'AI Providers', 'CLI Paths', 'Git', 'Notifications',
   'Telegram', 'Slack', 'X (Twitter)', 'Tasmania', 'Google Workspace',
   'Permissions', 'Skills & Plugins', 'Hermes', 'Memory Backends', 'Custom MCP', 'System',
 ].map(label => ({

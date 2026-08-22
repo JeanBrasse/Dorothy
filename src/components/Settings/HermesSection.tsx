@@ -53,7 +53,7 @@ function CopyField({ label, value, secret = false }: { label: string; value: str
           className="p-1.5 border border-border text-muted-foreground hover:text-foreground"
           title="Copy"
         >
-          {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+          {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
         </button>
       </div>
     </div>
@@ -73,6 +73,11 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
   const [desktopAvailable, setDesktopAvailable] = useState(false);
   const [gatewayTesting, setGatewayTesting] = useState(false);
   const [gatewayResult, setGatewayResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [signingIn, setSigningIn] = useState(false);
   const connDirty = JSON.stringify(conn) !== savedConn;
   const inputCls = "w-full px-2 py-1.5 bg-secondary border border-border text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/40 font-mono";
 
@@ -103,6 +108,23 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
       setGatewayResult({ success: true, message: `Imported from Hermes Desktop — ${r.baseUrl}` });
     } else {
       setGatewayResult({ success: false, message: r?.error || 'Import failed' });
+    }
+  }
+
+  async function handleSignIn() {
+    setSigningIn(true);
+    try {
+      const r = await window.electronAPI?.hermes?.signIn({ connection: conn, username, password });
+      if (r?.success) {
+        setNeedsSignIn(false);
+        setSignedIn(true);
+        setPassword('');
+        setGatewayResult({ success: true, message: `Signed in — Hermes ${r.version ?? ''} ${r.gatewayState ?? ''}`.trim() });
+      } else {
+        setGatewayResult({ success: false, message: r?.error || 'Sign-in failed' });
+      }
+    } finally {
+      setSigningIn(false);
     }
   }
 
@@ -152,13 +174,11 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
       }
       const bits = [`Hermes ${r.version ?? '?'}`];
       if (r.gatewayState) bits.push(r.gatewayState);
-      if (r.needsSignIn) {
-        bits.push(`sign-in required (${(r.authProviders || []).join(', ') || 'cookie'}) — a static token will not authenticate this gateway`);
-      } else if (r.authRequired) {
-        bits.push('auth required');
-      } else {
-        bits.push('open');
-      }
+      setNeedsSignIn(!!r.needsSignIn);
+      setSignedIn(!!r.signedIn);
+      if (r.needsSignIn) bits.push(`sign-in required (${(r.authProviders || []).join(', ') || 'cookie'})`);
+      else if (r.authRequired) bits.push('signed in');
+      else bits.push('open');
       setGatewayResult({ success: !r.needsSignIn, message: `${r.baseUrl} · ${bits.join(' · ')}` });
     } finally {
       setGatewayTesting(false);
@@ -202,21 +222,21 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
               <p className="text-muted-foreground">
                 Tailscale:{' '}
                 {info.tailscale.running ? (
-                  <span className="text-green-600">running{info.tailscale.dnsName ? ` — ${info.tailscale.dnsName}` : ''}</span>
+                  <span className="text-success">running{info.tailscale.dnsName ? ` — ${info.tailscale.dnsName}` : ''}</span>
                 ) : info.tailscale.installed ? (
-                  <span className="text-amber-600">installed but not running</span>
+                  <span className="text-warning">installed but not running</span>
                 ) : (
                   <span className="text-destructive">not found — the VPS needs a tunnel to reach this machine</span>
                 )}
               </p>
               {info.tailscale.running && !info.tailscale.serveConfigured && (
-                <p className="text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-1.5">
+                <p className="text-warning dark:text-warning bg-warning/10 border border-warning/30 px-2 py-1.5">
                   The API only listens on localhost. Expose it to your tailnet once with:{' '}
                   <code className="bg-secondary px-1 font-mono">{info.serveCommand}</code>
                 </p>
               )}
               {info.tailscale.serveConfigured && (
-                <p className="text-green-600">tailscale serve is active — the VPS can reach the webhook.</p>
+                <p className="text-success">tailscale serve is active — the VPS can reach the webhook.</p>
               )}
             </div>
 
@@ -257,7 +277,7 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
               </div>
               {testResult && (
                 <p className={`text-xs mt-1.5 px-2 py-1.5 border ${testResult.success
-                  ? 'text-green-700 dark:text-green-400 bg-green-500/10 border-green-500/30'
+                  ? 'text-success dark:text-success bg-success/10 border-success/30'
                   : 'text-destructive bg-destructive/10 border-destructive/30'}`}>
                   {testResult.message}
                 </p>
@@ -394,6 +414,55 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
                 <input type="password" value={conn.token || ''} onChange={e => patchConn({ token: e.target.value })} placeholder="X-Hermes-Session-Token" className={inputCls} />
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Cookie-gated gateways need a real sign-in; the session lives in the
+            main process and is reused for every Hermes call (kanban included). */}
+        {(needsSignIn || signedIn) && (
+          <div className="border border-border bg-secondary/40 p-3 space-y-2">
+            <p className="text-xs font-medium text-foreground">
+              {signedIn ? 'Signed in to this gateway' : 'This gateway requires a sign-in'}
+            </p>
+            {!signedIn && (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    placeholder="Username"
+                    className={inputCls}
+                  />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSignIn(); }}
+                    placeholder="Password"
+                    className={inputCls}
+                  />
+                  <button
+                    onClick={handleSignIn}
+                    disabled={signingIn || !username.trim() || !password}
+                    className="shrink-0 px-3 py-1.5 text-xs bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-40"
+                  >
+                    {signingIn ? 'Signing in…' : 'Sign in'}
+                  </button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Credentials are sent straight to your gateway and never stored — only the session cookie is kept, in the main process.
+                </p>
+              </>
+            )}
+            {signedIn && (
+              <button
+                onClick={async () => { await window.electronAPI?.hermes?.signOut(conn); setSignedIn(false); setNeedsSignIn(true); }}
+                className="px-3 py-1.5 text-xs border border-border bg-card text-foreground hover:bg-accent/50"
+              >
+                Sign out
+              </button>
+            )}
           </div>
         )}
 

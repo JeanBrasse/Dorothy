@@ -113,7 +113,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
             <p className="text-xs text-muted-foreground">{description}</p>
           </div>
           {detected && (
-            <span className="text-xs text-green-400 flex items-center gap-1">
+            <span className="text-xs text-success flex items-center gap-1">
               <Check className="w-3 h-3" />
               Detected: {detected}
             </span>
@@ -162,7 +162,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
         </div>
 
         {detectedPaths && (
-          <div className="p-3 bg-green-500/10 border border-green-500/30 text-green-400 text-sm">
+          <div className="p-3 bg-success/10 border border-success/30 text-success text-sm">
             <div className="flex items-center gap-2 mb-2">
               <Check className="w-4 h-4" />
               <span className="font-medium">Paths detected successfully</span>
@@ -181,7 +181,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
               {detectedPaths.node && <li>Node.js: {detectedPaths.node}</li>}
               {detectedPaths.minimax && <li>MiniMax: {detectedPaths.minimax}</li>}
               {!detectedPaths.claude && !detectedPaths.codex && !detectedPaths.gemini && !detectedPaths.grok && !detectedPaths.qwencode && !detectedPaths.opencode && !detectedPaths.pi && !detectedPaths.gws && !detectedPaths.gcloud && !detectedPaths.gh && !detectedPaths.node && !detectedPaths.minimax && (
-                <li className="text-yellow-400">No CLI tools found in common locations</li>
+                <li className="text-warning">No CLI tools found in common locations</li>
               )}
             </ul>
           </div>
@@ -218,7 +218,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
                 ) : detected ? (
                   <>
-                    <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                    <CheckCircle className="w-3.5 h-3.5 text-success" />
                     <span className="text-xs font-mono text-muted-foreground">{detected}</span>
                   </>
                 ) : detectedPaths ? (
@@ -237,7 +237,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
         {/* OpenCode — toggle + test */}
         <div className="flex items-center justify-between py-3 border-b border-border">
           <div className="flex items-center gap-3">
-            <Cpu className="w-4 h-4 text-cyan-500" />
+            <Cpu className="w-4 h-4 text-primary" />
             <div>
               <p className="text-sm font-medium">OpenCode</p>
               <p className="text-xs text-muted-foreground">75+ LLM providers via opencode.ai</p>
@@ -268,7 +268,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
           </div>
         </div>
         {opencodeResult && (
-          <div className={`flex items-center gap-2 text-xs p-2 ${opencodeResult.success ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'} border ${opencodeResult.success ? 'border-green-500/30' : 'border-red-500/30'}`}>
+          <div className={`flex items-center gap-2 text-xs p-2 ${opencodeResult.success ? 'text-success bg-success/10' : 'text-danger bg-danger/10'} border ${opencodeResult.success ? 'border-success/30' : 'border-danger/30'}`}>
             {opencodeResult.success ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
             {opencodeResult.message}
           </div>
@@ -277,7 +277,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
         {/* Pi — toggle + test */}
         <div className="flex items-center justify-between py-3">
           <div className="flex items-center gap-3">
-            <Cpu className="w-4 h-4 text-cyan-500" />
+            <Cpu className="w-4 h-4 text-primary" />
             <div>
               <p className="text-sm font-medium">Pi Terminal</p>
               <p className="text-xs text-muted-foreground">15+ AI providers via shittycodingagent.ai</p>
@@ -314,7 +314,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
           </div>
         </div>
         {piResult && (
-          <div className={`flex items-center gap-2 text-xs p-2 ${piResult.success ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'} border ${piResult.success ? 'border-green-500/30' : 'border-red-500/30'}`}>
+          <div className={`flex items-center gap-2 text-xs p-2 ${piResult.success ? 'text-success bg-success/10' : 'text-danger bg-danger/10'} border ${piResult.success ? 'border-success/30' : 'border-danger/30'}`}>
             {piResult.success ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
             {piResult.message}
           </div>
@@ -428,7 +428,7 @@ export const CLIPathsSection = ({ appSettings, onSaveAppSettings, onUpdateLocalS
               </div>
               <button
                 onClick={() => handleRemoveAdditionalPath(path)}
-                className="p-2 text-muted-foreground hover:text-red-400 transition-colors"
+                className="p-2 text-muted-foreground hover:text-danger transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>

@@ -83,7 +83,7 @@ export default function GlobalToolbar({
         <button
           onClick={onStartAll}
           disabled={runningCount === totalCount || totalCount === 0}
-          className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-green-600 hover:text-green-800 hover:bg-green-500/40 transition-colors disabled:opacity-30"
+          className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-success hover:text-success hover:bg-success/40 transition-colors disabled:opacity-30"
           title="Start all idle agents"
         >
           <Play className="w-3 h-3" />
@@ -93,7 +93,7 @@ export default function GlobalToolbar({
         <button
           onClick={onStopAll}
           disabled={runningCount === 0}
-          className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30"
+          className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-danger hover:bg-danger/10 transition-colors disabled:opacity-30"
           title="Stop all running agents"
         >
           <Square className="w-3 h-3" />
@@ -146,7 +146,7 @@ export default function GlobalToolbar({
           className={`
             flex items-center gap-1.5 px-2 py-1.5 text-xs transition-colors
             ${broadcastMode
-              ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+              ? 'bg-primary/20 text-primary border border-primary/30'
               : 'text-muted-foreground hover:text-foreground hover:bg-primary/5'
             }
           `}
@@ -169,15 +169,6 @@ export default function GlobalToolbar({
           title={isViewFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen'}
         >
           {isViewFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
-        </button>
-
-        {/* New Agent button — always visible */}
-        <button
-          onClick={onNewAgent}
-          className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-primary/5 transition-colors"
-        >
-          <Plus className="w-3 h-3" />
-          <span className="hidden sm:inline">New Agent</span>
         </button>
 
         {/* Add agent to board dropdown — custom tabs only */}

@@ -149,7 +149,7 @@ export function ImportDialog({ onClose, onImport }: ImportDialogProps) {
           />
 
           {parseError && (
-            <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-1.5">{parseError}</p>
+            <p className="text-xs text-warning dark:text-warning bg-warning/10 border border-warning/30 px-2 py-1.5">{parseError}</p>
           )}
 
           {preview && (

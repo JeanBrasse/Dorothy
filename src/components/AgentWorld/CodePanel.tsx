@@ -54,7 +54,7 @@ const FileTreeNode = memo(function FileTreeNode({
             <div
               className={`
                 flex items-center gap-1 px-2 py-0.5 rounded cursor-pointer text-xs group
-                ${isSelected ? 'bg-purple-500/20 text-purple-300' : 'hover:bg-bg-tertiary text-text-secondary'}
+                ${isSelected ? 'bg-primary/20 text-primary' : 'hover:bg-bg-tertiary text-text-secondary'}
               `}
               style={{ paddingLeft: `${depth * 12 + 8}px` }}
               onClick={() => {
@@ -72,7 +72,7 @@ const FileTreeNode = memo(function FileTreeNode({
                   ) : (
                     <ChevronRight className="w-3 h-3 text-text-muted shrink-0" />
                   )}
-                  <Folder className="w-3 h-3 text-amber-400 shrink-0" />
+                  <Folder className="w-3 h-3 text-warning shrink-0" />
                 </>
               ) : (
                 <>
@@ -80,8 +80,8 @@ const FileTreeNode = memo(function FileTreeNode({
                   <FileText className="w-3 h-3 text-text-muted shrink-0" />
                 </>
               )}
-              <span className={`truncate ${isModified ? 'text-amber-400' : ''}`}>{node.name}</span>
-              {isModified && <GitBranch className="w-2.5 h-2.5 text-amber-400 shrink-0" />}
+              <span className={`truncate ${isModified ? 'text-warning' : ''}`}>{node.name}</span>
+              {isModified && <GitBranch className="w-2.5 h-2.5 text-warning shrink-0" />}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -91,7 +91,7 @@ const FileTreeNode = memo(function FileTreeNode({
                 title="Copy path"
               >
                 {copiedPath === node.path ? (
-                  <Check className="w-2.5 h-2.5 text-green-400" />
+                  <Check className="w-2.5 h-2.5 text-success" />
                 ) : (
                   <Copy className="w-2.5 h-2.5 text-text-muted" />
                 )}
@@ -399,7 +399,7 @@ export default function CodePanel({ projectPath, className = '' }: CodePanelProp
             onClick={() => setSearchMode(searchMode === 'file' ? 'content' : 'file')}
             className={`p-1.5 rounded transition-colors ${
               searchMode === 'content'
-                ? 'bg-purple-500/20 text-purple-400'
+                ? 'bg-primary/20 text-primary'
                 : 'hover:bg-bg-tertiary text-text-muted'
             }`}
             title={searchMode === 'file' ? 'Switch to search in files' : 'Switch to search files'}
@@ -431,14 +431,14 @@ export default function CodePanel({ projectPath, className = '' }: CodePanelProp
                   onClick={() => loadFileContent(result.path)}
                   className={`
                     flex flex-col gap-0.5 px-2 py-1 rounded cursor-pointer text-xs
-                    ${selectedFile === result.path ? 'bg-purple-500/20 text-purple-300' : 'hover:bg-bg-tertiary text-text-secondary'}
+                    ${selectedFile === result.path ? 'bg-primary/20 text-primary' : 'hover:bg-bg-tertiary text-text-secondary'}
                   `}
                 >
                   <div className="flex items-center gap-1">
                     <FileText className="w-3 h-3 text-text-muted shrink-0" />
                     <span className="truncate">{result.path.split('/').pop()}</span>
                     {result.line && (
-                      <span className="text-[10px] text-cyan-400 shrink-0">:{result.line}</span>
+                      <span className="text-[10px] text-primary shrink-0">:{result.line}</span>
                     )}
                   </div>
                   {result.match && (
@@ -494,7 +494,7 @@ export default function CodePanel({ projectPath, className = '' }: CodePanelProp
                     title="Copy code with file path"
                   >
                     {copiedCode ? (
-                      <Check className="w-3 h-3 text-green-400" />
+                      <Check className="w-3 h-3 text-success" />
                     ) : (
                       <>
                         <Code2 className="w-3 h-3 text-text-muted" />
@@ -508,7 +508,7 @@ export default function CodePanel({ projectPath, className = '' }: CodePanelProp
                     title="Copy path"
                   >
                     {copiedPath === selectedFile ? (
-                      <Check className="w-3 h-3 text-green-400" />
+                      <Check className="w-3 h-3 text-success" />
                     ) : (
                       <Copy className="w-3 h-3 text-text-muted" />
                     )}

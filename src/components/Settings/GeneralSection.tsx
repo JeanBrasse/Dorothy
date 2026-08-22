@@ -206,10 +206,10 @@ export const GeneralSection = ({ info, appSettings, onSaveAppSettings }: General
         </div>
 
         {updateState === 'up-to-date' && (
-          <div className="flex items-center rounded-md gap-3 p-3 bg-green-700/10 border border-green-700/20">
-            <CheckCircle className="w-5 h-5 text-green-700 shrink-0" />
+          <div className="flex items-center rounded-md gap-3 p-3 bg-success/10 border border-success/20">
+            <CheckCircle className="w-5 h-5 text-success shrink-0" />
             <div>
-              <p className="text-sm font-medium text-green-700">You&apos;re up to date!</p>
+              <p className="text-sm font-medium text-success">You&apos;re up to date!</p>
               <p className="text-xs text-muted-foreground">Dorothy {updateInfo?.currentVersion} is the latest version.</p>
             </div>
           </div>
@@ -217,10 +217,10 @@ export const GeneralSection = ({ info, appSettings, onSaveAppSettings }: General
 
         {(updateState === 'update-available' || updateState === 'downloading' || updateState === 'downloaded') && updateInfo && (
           <div className="space-y-3">
-            <div className="p-4 rounded-md bg-blue-500/10 border border-blue-500/20">
+            <div className="p-4 rounded-md bg-primary/10 border border-primary/20">
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <p className="text-sm font-medium text-blue-400">
+                  <p className="text-sm font-medium text-primary">
                     Dorothy {updateInfo.latestVersion} is available
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -230,7 +230,7 @@ export const GeneralSection = ({ info, appSettings, onSaveAppSettings }: General
               </div>
 
               {updateInfo.releaseNotes && (
-                <div className="mt-3 pt-3 border-t border-blue-500/20">
+                <div className="mt-3 pt-3 border-t border-primary/20">
                   <p className="text-xs text-muted-foreground mb-1">Release notes:</p>
                   <p className="text-xs text-foreground/80 whitespace-pre-wrap line-clamp-4">
                     {stripHtml(updateInfo.releaseNotes).slice(0, 300)}
@@ -247,7 +247,7 @@ export const GeneralSection = ({ info, appSettings, onSaveAppSettings }: General
                   </div>
                   <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-blue-400 rounded-full transition-all duration-300"
+                      className="h-full bg-primary rounded-full transition-all duration-300"
                       style={{ width: `${downloadPercent}%` }}
                     />
                   </div>
@@ -278,7 +278,7 @@ export const GeneralSection = ({ info, appSettings, onSaveAppSettings }: General
                 {updateState === 'downloaded' && (
                   <button
                     onClick={handleQuitAndInstall}
-                    className="px-3 py-1.5 text-sm bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center gap-2"
+                    className="px-3 py-1.5 text-sm bg-success text-white hover:bg-success transition-colors flex items-center gap-2"
                   >
                     <RotateCw className="w-3.5 h-3.5" />
                     Restart to Apply
@@ -290,10 +290,10 @@ export const GeneralSection = ({ info, appSettings, onSaveAppSettings }: General
         )}
 
         {updateState === 'error' && (
-          <div className="flex items-center rounded-lg gap-3 p-3 bg-red-500/10 border border-red-500/20">
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+          <div className="flex items-center rounded-lg gap-3 p-3 bg-danger/10 border border-danger/20">
+            <AlertCircle className="w-5 h-5 text-danger shrink-0" />
             <div>
-              <p className="text-sm font-medium text-red-400">Failed to check for updates</p>
+              <p className="text-sm font-medium text-danger">Failed to check for updates</p>
               <p className="text-xs text-muted-foreground">{updateError}</p>
             </div>
           </div>

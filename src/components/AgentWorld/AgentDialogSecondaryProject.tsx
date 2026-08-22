@@ -29,7 +29,7 @@ export const AgentDialogSecondaryProject = memo(function AgentDialogSecondaryPro
           <p className="text-[10px] text-text-muted mb-1.5 uppercase tracking-wide">Active Context</p>
           <button
             onClick={() => onSetSecondaryProject(null)}
-            className="w-full text-left px-2 py-1.5 rounded-none text-xs transition-colors flex items-center justify-between bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30"
+            className="w-full text-left px-2 py-1.5 rounded-none text-xs transition-colors flex items-center justify-between bg-warning/20 text-warning border border-warning/30 hover:bg-warning/30"
           >
             <div className="flex items-center gap-2 min-w-0">
               <FolderPlus className="w-3 h-3 shrink-0" />
@@ -59,7 +59,7 @@ export const AgentDialogSecondaryProject = memo(function AgentDialogSecondaryPro
                     e.stopPropagation();
                     onSetSecondaryProject(project.path);
                   }}
-                  className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-medium hover:bg-amber-500/30 shrink-0"
+                  className="px-2 py-0.5 rounded bg-warning/20 text-warning text-[10px] font-medium hover:bg-warning/30 shrink-0"
                 >
                   Add
                 </button>
@@ -77,7 +77,7 @@ export const AgentDialogSecondaryProject = memo(function AgentDialogSecondaryPro
             value={customSecondaryPath}
             onChange={(e) => onCustomPathChange(e.target.value)}
             placeholder="/path/to/project..."
-            className="flex-1 px-2 py-1 rounded text-xs bg-bg-primary border border-border-primary focus:border-amber-500 focus:outline-none font-mono"
+            className="flex-1 px-2 py-1 rounded text-xs bg-bg-primary border border-border-primary focus:border-warning focus:outline-none font-mono"
           />
           {onBrowseFolder && (
             <button
@@ -85,16 +85,16 @@ export const AgentDialogSecondaryProject = memo(function AgentDialogSecondaryPro
                 const path = await onBrowseFolder();
                 if (path) onCustomPathChange(path);
               }}
-              className="p-1 rounded bg-bg-tertiary border border-border-primary hover:border-amber-500/50"
+              className="p-1 rounded bg-bg-tertiary border border-border-primary hover:border-warning/50"
               title="Browse"
             >
-              <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
+              <FolderOpen className="w-3.5 h-3.5 text-warning" />
             </button>
           )}
           <button
             onClick={() => customSecondaryPath.trim() && onSetSecondaryProject(customSecondaryPath.trim())}
             disabled={!customSecondaryPath.trim()}
-            className="px-2 py-1 rounded bg-amber-500/20 text-amber-400 text-xs font-medium hover:bg-amber-500/30 disabled:opacity-50"
+            className="px-2 py-1 rounded bg-warning/20 text-warning text-xs font-medium hover:bg-warning/30 disabled:opacity-50"
           >
             Add
           </button>

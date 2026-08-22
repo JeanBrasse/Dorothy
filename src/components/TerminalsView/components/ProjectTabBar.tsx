@@ -61,7 +61,7 @@ export default function ProjectTabBar({
             <span className="flex items-center gap-1 text-[10px] opacity-60">
               {project.total}
               {project.running > 0 && (
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+                <span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />
               )}
             </span>
           </button>
@@ -86,7 +86,7 @@ export default function ProjectTabBar({
       >
         <List className="w-3.5 h-3.5" />
         {running > 0 && (
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
         )}
       </button>
     </div>

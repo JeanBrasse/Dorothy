@@ -115,7 +115,7 @@ export default function ProviderBadge({ provider, className = '' }: ProviderBadg
     >
       <ProviderIconRenderer icon={def.icon} />
       <svg
-        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 text-green-500"
+        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 text-success"
         viewBox="0 0 16 16"
         fill="none"
       >

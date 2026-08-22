@@ -147,7 +147,7 @@ function FolderNode({ folder, childFolders, allFolders, documents, selectedFolde
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDeleteFolder(folder.id); }}
-            className="p-0.5 hover:text-red-500 transition-opacity"
+            className="p-0.5 hover:text-danger transition-opacity"
             title="Delete folder"
           >
             <Trash2 className="w-3 h-3" />

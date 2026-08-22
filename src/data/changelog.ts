@@ -7,6 +7,25 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    id: 13,
+    version: '1.3.0',
+    date: '2026-08-22',
+    updates: [
+      'Hermes integration — connect Dorothy to your self-hosted Hermes gateway with the same four modes as Hermes Desktop (local, SSH, remote gateway, cloud), including one-click "Import from Desktop" and sign-in for cookie-gated gateways',
+      'Kanban now reads the Hermes board — tasks, workers and runs stay in Hermes (its harness owns them); Dorothy shows the native eight columns, with the local board still one click away',
+      'Incoming webhook (POST /api/webhooks/hermes) so Hermes cron jobs can drive your agents — resolve by agent name or id, with a dry-run mode for wiring it up',
+      'Shared memory backends — point Dorothy at gbrain and Honcho and every claude-binary agent gets the same brain as Hermes; the Brain page browses native project memory alongside them',
+      'Memory really is injected now: agents wake up with the project MEMORY.md plus recent cross-session activity (the endpoints the hooks called never existed)',
+      'Cooperlabs redesign — tangerine on near-black, Roboto Condensed/Mono, hard corners, flat surfaces, dark by default',
+      'White flash on navigation fixed at the root: RSC payloads were served with the wrong MIME type, forcing a full document reload on every first visit to a page',
+      'Fonts are bundled — no more render-blocking request to Google, and the app looks right offline',
+      'Agent creation is one flow: pick Agent or Orchestrator, start from a template, all in "+ Agent"; team deployment moved to "+ Team" with a per-member editor (model, effort, branch, permissions, instructions)',
+      'Dashboard boards follow your project folders — custom boards removed, project tabs promoted to the top',
+      'Removed for good: ClaudeMon, Support, the 3D view, Obsidian, and the unused Automations/Scheduled Tasks subsystems (~18k lines)',
+      'Electron 43, Next 16.3, Node 20+ — plus a Playwright suite that drives the real app and screenshots all 33 surfaces on every change',
+    ],
+  },
+  {
     id: 12,
     version: '1.2.9',
     date: '2026-07-07',
