@@ -7,6 +7,25 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    id: 15,
+    version: '1.5.0',
+    date: '2026-08-22',
+    updates: [
+      'Delegation over the Agent Client Protocol — a delegated task now returns: the agent\'s answer, why the turn ended, which tools it used and what it cost. Typing a task into a terminal never told you any of that. Works on Claude Code, Codex, Gemini, Grok, opencode and pi through the same conversation',
+      'Tool denial for every agent, not just Claude — risky calls arrive as a permission request Tars answers itself, so an orchestrator that must not edit files is stopped by the protocol rather than by a flag one CLI happens to support',
+      'Memory reaches every CLI. Hermes\' own MEMORY.md and USER.md, full-text search over its past sessions, gbrain and Honcho are real sources now, contacted for real: the Brain page says "reachable" only when something answered, and lists the tools each backend offers',
+      'A bundled memory MCP server (search, read, write, sources) is registered with every provider, and the CLIs with no session-start hook get the project\'s memory injected into their prompt so they cannot start blind',
+      'Prices and model lists come from a live catalogue instead of a table baked into the release. A model shipped today appears today; a price change lands without an update. The old table had already drifted - Gemini 3 Pro was listed at a sixth of its real output price',
+      'Review page — what each agent actually changed: the files, the line counts and the patch, compared against the branch it was cut from, with untracked files included instead of invisible',
+      'Logs page — one search across every agent\'s output, with regex, instead of opening each terminal in turn',
+      'Schedules, Review and Logs all reachable from the sidebar, and the Cmd+digit shortcuts printed next to each entry finally do something',
+      'Your agent list can no longer be lost: the file is written atomically, a corrupt copy can no longer overwrite the backup, a parse failure is preserved instead of silently replaced, and terminal activity is flushed on a timer rather than only at quit',
+      'Statusline costs half what it did (115ms to 49ms per render): it spawned 32 subprocesses per turn, per agent, one per field read',
+      'Agents stopped re-registering their MCP servers on every boot — the check looked in the wrong file and always answered "not registered"',
+      'A new icon, and the app finally packages itself as Tars rather than Dorothy',
+    ],
+  },
+  {
     id: 14,
     version: '1.4.0',
     date: '2026-08-22',
