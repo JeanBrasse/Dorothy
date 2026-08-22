@@ -10,9 +10,10 @@ export const size = {
 export const contentType = 'image/png'
 
 export default async function Icon() {
-  const iconData = await readFile(join(process.cwd(), 'public', 'dorothy-without-text.png'))
+  const iconData = await readFile(join(process.cwd(), 'public', 'icon-192.png'))
   const base64 = iconData.toString('base64')
 
+  // Square, not a circle: the mark has hard corners like everything else.
   return new ImageResponse(
     (
       <div
@@ -22,7 +23,6 @@ export default async function Icon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          borderRadius: '50%',
           overflow: 'hidden',
         }}
       >

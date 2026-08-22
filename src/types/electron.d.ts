@@ -1,3 +1,22 @@
+export interface ModelCost {
+  /** USD per million tokens */
+  input?: number;
+  output?: number;
+  cache_read?: number;
+  cache_write?: number;
+}
+
+export interface CatalogModel {
+  id: string;
+  name: string;
+  contextWindow?: number;
+  maxOutput?: number;
+  reasoning?: boolean;
+  effortValues?: string[];
+  cost?: ModelCost;
+  releaseDate?: string;
+}
+
 export type DisplayStatus = 'working' | 'waiting' | 'done' | 'ready' | 'stopped' | 'error';
 
 export interface AgentTickItem {
@@ -447,6 +466,14 @@ export interface ElectronAPI {
   // App settings (notifications, etc.)
   app?: {
     getVersion: () => Promise<{ version: string }>;
+  };
+
+  /** Live model + price catalogue, refreshed from models.dev. */
+  models?: {
+    list: (provider: string) => Promise<{ models: CatalogModel[] }>;
+    price: (modelId: string, provider?: string) => Promise<{ price: ModelCost | null }>;
+    catalogStatus: () => Promise<{ loaded: boolean; fetchedAt: number | null; providers: number; models: number }>;
+    refresh: () => Promise<{ loaded: boolean; fetchedAt: number | null; providers: number; models: number }>;
   };
 
   appSettings?: {

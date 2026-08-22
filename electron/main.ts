@@ -77,6 +77,7 @@ import {
   getClaudeHistory,
 } from './services/claude-service';
 import { configureStatusHooks } from './services/hooks-manager';
+import { loadCatalog } from './services/model-catalog';
 import {
   setupMcpOrchestrator,
   setupMemoryBackends,
@@ -592,6 +593,10 @@ app.whenReady().then(async () => {
   initApiServer();
 
   // Setup MCP orchestrator and hooks
+  // Warm the model/price catalogue without blocking the window: a stale disk
+  // copy answers immediately, the network refresh lands whenever it lands.
+  loadCatalog().catch(() => { /* cached or floor prices carry the app */ });
+
   await setupMcpOrchestrator(appSettings);
   setupMemoryBackends(appSettings);
   await configureStatusHooks();

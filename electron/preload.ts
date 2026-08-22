@@ -232,6 +232,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
   },
 
+  models: {
+    list: (provider: string) =>
+      ipcRenderer.invoke('models:list', { provider }),
+    price: (modelId: string, provider?: string) =>
+      ipcRenderer.invoke('models:price', { modelId, provider }),
+    catalogStatus: () =>
+      ipcRenderer.invoke('models:catalog-status'),
+    refresh: () =>
+      ipcRenderer.invoke('models:refresh'),
+  },
+
   appSettings: {
     get: () =>
       ipcRenderer.invoke('app:getSettings'),

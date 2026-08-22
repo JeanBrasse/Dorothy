@@ -23,6 +23,7 @@ import { writeProgrammaticInput } from '../core/pty-manager';
 import { killStalePty, ensureProjectTrusted } from '../core/agent-manager';
 import { extractStatusLine } from '../utils/ansi';
 import { scheduleTick } from '../utils/agents-tick';
+import { loadCatalog, modelsForProvider, priceFor, catalogStatus } from '../services/model-catalog';
 
 /**
  * Normalize a JIRA domain value to a full hostname.
@@ -1516,6 +1517,25 @@ function registerAppSettingsHandlers(deps: IpcHandlerDependencies): void {
 
   ipcMain.handle('app:getSettings', async () => {
     return getAppSettings();
+  });
+
+  // Live model + price catalogue. A new model or a price change lands here
+  // without a release; the renderer never has to know where it came from.
+  ipcMain.handle('models:list', async (_event, { provider }: { provider: string }) => {
+    await loadCatalog();
+    return { models: modelsForProvider(provider) };
+  });
+
+  ipcMain.handle('models:price', async (_event, { modelId, provider }: { modelId: string; provider?: string }) => {
+    await loadCatalog();
+    return { price: priceFor(modelId, provider) };
+  });
+
+  ipcMain.handle('models:catalog-status', async () => catalogStatus());
+
+  ipcMain.handle('models:refresh', async () => {
+    await loadCatalog(true);
+    return catalogStatus();
   });
 
   // Save app settings

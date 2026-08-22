@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { priceFor } from './model-catalog';
 
 /**
  * Token usage read from the Claude Code transcripts themselves.
@@ -38,8 +39,8 @@ interface Pricing {
   cache1h: number;
 }
 
-/** USD per million tokens. Anthropic list prices. */
-const PRICING: Record<string, Pricing> = {
+/** Used only when the live catalogue has never been reachable. */
+const FALLBACK: Record<string, Pricing> = {
   fable: { input: 10, output: 50, cacheRead: 1, cache5m: 12.5, cache1h: 20 },
   mythos: { input: 10, output: 50, cacheRead: 1, cache5m: 12.5, cache1h: 20 },
   opus: { input: 5, output: 25, cacheRead: 0.5, cache5m: 6.25, cache1h: 10 },
@@ -47,12 +48,28 @@ const PRICING: Record<string, Pricing> = {
   haiku: { input: 1, output: 5, cacheRead: 0.1, cache5m: 1.25, cache1h: 2 },
 };
 
+/**
+ * Live price for a model. models.dev publishes input/output/cache_read and the
+ * 5m cache_write; the 1h write is 2x base where the 5m one is 1.25x, which is
+ * how Anthropic prices both, so it is derived rather than guessed.
+ */
 function pricingFor(modelId: string): Pricing {
-  const id = modelId.toLowerCase();
-  for (const key of Object.keys(PRICING)) {
-    if (id.includes(key)) return PRICING[key];
+  const live = priceFor(modelId, 'claude');
+  if (live && typeof live.input === 'number' && typeof live.output === 'number') {
+    const input = live.input;
+    return {
+      input,
+      output: live.output,
+      cacheRead: live.cache_read ?? input * 0.1,
+      cache5m: live.cache_write ?? input * 1.25,
+      cache1h: input * 2,
+    };
   }
-  return PRICING.sonnet;
+  const id = modelId.toLowerCase();
+  for (const key of Object.keys(FALLBACK)) {
+    if (id.includes(key)) return FALLBACK[key];
+  }
+  return FALLBACK.sonnet;
 }
 
 function emptyUsage(): ModelUsage {

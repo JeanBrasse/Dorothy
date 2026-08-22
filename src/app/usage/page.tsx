@@ -24,96 +24,6 @@ import { useClaude } from '@/hooks/useClaude';
 import { getProviderDef, PROVIDER_REGISTRY } from '@/lib/providers';
 import { ProviderIconRenderer } from '@/components/ProviderBadge';
 
-/** Session-level cache for OpenRouter live pricing */
-let openRouterPricingCache: { models: Array<{ id: string; name: string; inputPerMTok: number; outputPerMTok: number }> } | null = null;
-
-/** Per-model pricing defaults for ALL providers (input/output/cache per MTok).
- *  Used by the Pricing Reference table. Users can override via edit mode.
- *  Cache columns only apply to Claude; other providers show "-". */
-const ALL_PROVIDER_MODEL_PRICING: Record<string, {
-  models: { id: string; name: string; inputPerMTok: number | null; outputPerMTok: number | null; cacheHitsPerMTok?: number; cache5mWritePerMTok?: number }[];
-  note?: string;
-}> = {
-  codex: {
-    models: [
-      { id: 'gpt-5.3-codex', name: 'GPT-5.3 Codex', inputPerMTok: 2.50, outputPerMTok: 10 },
-      { id: 'gpt-5.2-codex', name: 'GPT-5.2 Codex', inputPerMTok: 2, outputPerMTok: 8 },
-      { id: 'gpt-5.1-codex', name: 'GPT-5.1 Codex', inputPerMTok: 2, outputPerMTok: 8 },
-      { id: 'gpt-5-codex-mini', name: 'GPT-5 Codex Mini', inputPerMTok: 0.30, outputPerMTok: 1.20 },
-    ],
-  },
-  gemini: {
-    models: [
-      { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro', inputPerMTok: 1.25, outputPerMTok: 10 },
-      { id: 'gemini-3-pro', name: 'Gemini 3 Pro', inputPerMTok: 1.25, outputPerMTok: 10 },
-      { id: 'gemini-3-flash', name: 'Gemini 3 Flash', inputPerMTok: 0.15, outputPerMTok: 0.60 },
-      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', inputPerMTok: 1.25, outputPerMTok: 10 },
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', inputPerMTok: 0.15, outputPerMTok: 0.60 },
-    ],
-  },
-  openrouter: {
-    models: [
-      { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', inputPerMTok: 0.55, outputPerMTok: 2.19 },
-      { id: 'moonshotai/kimi-k2', name: 'Kimi K2', inputPerMTok: null, outputPerMTok: null },
-      { id: 'openai/gpt-4.1', name: 'GPT-4.1', inputPerMTok: 2, outputPerMTok: 8 },
-      { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', inputPerMTok: 1.25, outputPerMTok: 10 },
-      { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', inputPerMTok: 3, outputPerMTok: 15 },
-      { id: 'meta-llama/llama-4-maverick', name: 'Llama 4 Maverick', inputPerMTok: 0.20, outputPerMTok: 0.60 },
-      { id: 'qwen/qwen3-235b', name: 'Qwen3 235B', inputPerMTok: 0.80, outputPerMTok: 3.20 },
-    ],
-    note: 'Pricing varies per model - see openrouter.ai/models for full catalogue of 300+ models.',
-  },
-  deepseek: {
-    models: [
-      { id: 'deepseek-r1', name: 'DeepSeek R1', inputPerMTok: 0.55, outputPerMTok: 2.19 },
-      { id: 'deepseek-chat', name: 'DeepSeek V3', inputPerMTok: 0.27, outputPerMTok: 1.10 },
-      { id: 'deepseek-r1-distill-70b', name: 'R1 Distill 70B', inputPerMTok: 0.55, outputPerMTok: 2.19 },
-    ],
-  },
-  moonshot: {
-    models: [
-      { id: 'kimi-k2.5', name: 'Kimi K2.5', inputPerMTok: null, outputPerMTok: null },
-      { id: 'kimi-k2', name: 'Kimi K2', inputPerMTok: null, outputPerMTok: null },
-      { id: 'moonlight-16k', name: 'Moonlight 16K', inputPerMTok: null, outputPerMTok: null },
-    ],
-    note: 'Pricing not yet published. Check platform.moonshot.cn for current rates.',
-  },
-  mimo: {
-    models: [
-      { id: 'mimo-v2-pro', name: 'MiMo V2 Pro', inputPerMTok: 1, outputPerMTok: 4 },
-      { id: 'mimo-v2-flash', name: 'MiMo V2 Flash', inputPerMTok: 0.25, outputPerMTok: 1 },
-      { id: 'mimo-v2-omni', name: 'MiMo V2 Omni', inputPerMTok: 1, outputPerMTok: 4 },
-    ],
-  },
-  qwen: {
-    models: [
-      { id: 'qwen3.6-72b', name: 'Qwen 3.6 72B', inputPerMTok: 0.40, outputPerMTok: 1.60 },
-      { id: 'qwq-32b', name: 'QwQ 32B', inputPerMTok: 0.30, outputPerMTok: 1.20 },
-      { id: 'qwen3-235b', name: 'Qwen3 235B', inputPerMTok: 0.80, outputPerMTok: 3.20 },
-      { id: 'qwen-2.5-72b', name: 'Qwen 2.5 72B', inputPerMTok: 0.30, outputPerMTok: 1.20 },
-      { id: 'qwen-coder-32b', name: 'Qwen Coder', inputPerMTok: 0.30, outputPerMTok: 1.20 },
-    ],
-  },
-  zhipu: {
-    models: [
-      { id: 'glm-5.1', name: 'GLM-5.1', inputPerMTok: 0.80, outputPerMTok: 3.20 },
-      { id: 'glm-5', name: 'GLM-5', inputPerMTok: 0.70, outputPerMTok: 2.80 },
-      { id: 'glm-4.6', name: 'GLM-4.6', inputPerMTok: 0.70, outputPerMTok: 2.80 },
-      { id: 'glm-4.5', name: 'GLM-4.5', inputPerMTok: 0.70, outputPerMTok: 2.80 },
-      { id: 'glm-4-plus', name: 'GLM-4 Plus', inputPerMTok: 0.50, outputPerMTok: 2 },
-      { id: 'glm-4-air', name: 'GLM-4 Air', inputPerMTok: 0.07, outputPerMTok: 0.07 },
-      { id: 'glm-4-flash', name: 'GLM-4 Flash', inputPerMTok: 0.01, outputPerMTok: 0.01 },
-    ],
-  },
-  minimax: {
-    models: [
-      { id: 'abab7', name: 'ABAB 7', inputPerMTok: 0.70, outputPerMTok: 2.80 },
-      { id: 'abab6.5s', name: 'ABAB 6.5s', inputPerMTok: 0.30, outputPerMTok: 1.20 },
-      { id: 'abab5.5', name: 'ABAB 5.5', inputPerMTok: 0.15, outputPerMTok: 0.60 },
-    ],
-  },
-};
-
 // Token pricing per million tokens (MTok)
 const MODEL_PRICING: Record<string, {
   inputPerMTok: number;
@@ -168,7 +78,42 @@ const MODEL_PRICING: Record<string, {
 };
 
 // Get pricing for a model (with fallback)
+/**
+ * Prices fetched from the live catalogue for the models actually seen in the
+ * data. Populated once per page load; the table below is the offline floor.
+ */
+const livePricing = new Map<string, { inputPerMTok: number; outputPerMTok: number; cacheHitsPerMTok: number; cache5mWritePerMTok: number; cache1hWritePerMTok: number }>();
+
+async function loadLivePricing(modelIds: string[]): Promise<boolean> {
+  const missing = modelIds.filter(id => !livePricing.has(id));
+  if (missing.length === 0) return false;
+  const results = await Promise.all(missing.map(async id => {
+    try {
+      const res = await window.electronAPI?.models?.price(id);
+      return [id, res?.price] as const;
+    } catch {
+      return [id, null] as const;
+    }
+  }));
+  let changed = false;
+  for (const [id, price] of results) {
+    if (!price || typeof price.input !== 'number' || typeof price.output !== 'number') continue;
+    livePricing.set(id, {
+      inputPerMTok: price.input,
+      outputPerMTok: price.output,
+      cacheHitsPerMTok: price.cache_read ?? price.input * 0.1,
+      cache5mWritePerMTok: price.cache_write ?? price.input * 1.25,
+      cache1hWritePerMTok: price.input * 2,
+    });
+    changed = true;
+  }
+  return changed;
+}
+
 function getModelPricing(modelId: string) {
+  const live = livePricing.get(modelId);
+  if (live) return live;
+
   // Try exact match first
   if (MODEL_PRICING[modelId]) return MODEL_PRICING[modelId];
 
@@ -271,36 +216,7 @@ type TimeRange = 'daily' | 'weekly' | 'monthly';
 export default function UsagePage() {
   const { data, loading, error } = useClaude();
   const [costTimeRange, setCostTimeRange] = useState<TimeRange>('daily');
-  const [showPricingTable, setShowPricingTable] = useState(false);
-  const [openRouterLiveModels, setOpenRouterLiveModels] = useState<Array<{ id: string; name: string; inputPerMTok: number; outputPerMTok: number }> | null>(openRouterPricingCache?.models ?? null);
-  const [loadingOpenRouterPricing, setLoadingOpenRouterPricing] = useState(false);
-
-  // Fetch OpenRouter live pricing when the section is first opened
-  useEffect(() => {
-    if (!showPricingTable || openRouterPricingCache || loadingOpenRouterPricing) return;
-    let cancelled = false;
-    setLoadingOpenRouterPricing(true);
-    fetch('https://openrouter.ai/api/v1/models')
-      .then(r => r.ok ? r.json() : null)
-      .then(json => {
-        if (cancelled || !json?.data) return;
-        const models = (json.data as Array<{ id: string; name?: string; pricing?: { prompt?: string; completion?: string } }>)
-          .filter(m => m.id && m.pricing?.prompt)
-          .map(m => ({
-            id: m.id,
-            name: m.name || m.id.split('/').pop() || m.id,
-            inputPerMTok: parseFloat(m.pricing!.prompt!) * 1_000_000,
-            outputPerMTok: parseFloat(m.pricing!.completion || '0') * 1_000_000,
-          }))
-          .filter(m => m.inputPerMTok > 0)
-          .slice(0, 100);
-        openRouterPricingCache = { models };
-        setOpenRouterLiveModels(models);
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoadingOpenRouterPricing(false); });
-    return () => { cancelled = true; };
-  }, [showPricingTable]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [, setPricingLoaded] = useState(0);
 
   // Get today's stats - use the most recent available
   const todayActivity = useMemo(() => {
@@ -374,6 +290,18 @@ export default function UsagePage() {
   }, [data?.stats?.dailyModelTokens]);
 
   // Calculate total usage and cost from model stats
+  // Pull live prices for whatever models the data actually contains, then
+  // nudge a re-render so the figures pick them up.
+  useEffect(() => {
+    const ids = Object.keys(data?.stats?.modelUsage || {});
+    if (ids.length === 0) return;
+    let cancelled = false;
+    loadLivePricing(ids).then(changed => {
+      if (changed && !cancelled) setPricingLoaded(n => n + 1);
+    });
+    return () => { cancelled = true; };
+  }, [data?.stats?.modelUsage]);
+
   const totalUsage = useMemo(() => {
     if (!data?.stats?.modelUsage) return { totalCost: 0, totalTokens: 0, totalInput: 0, totalOutput: 0, totalCacheRead: 0, totalCacheWrite: 0 };
 
