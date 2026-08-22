@@ -1,15 +1,16 @@
-# Dorothy
+# Tars
 
-![Dorothy](screenshots/background-2.png)
+![Tars](screenshots/background-2.png)
 
 A beautiful desktop app to orchestrate your [Claude Code](https://claude.ai/code) ,[Codex](https://chatgpt.com/codex), [Gemini](https://geminicli.com/), [Grok](https://x.ai/cli) and local agents. Deploy, monitor, and debug — all from one delightful interface. Free and open source.
 
-![Dorothy Dashboard](screenshots/0.png)
+![Tars Dashboard](screenshots/0.png)
 
 ## Table of Contents
 
-- [Why Dorothy](#why-dorothy)
+- [Why Tars](#why-tars)
 - [Core Features](#core-features)
+- [Delegation over ACP](#delegation-over-acp)
 - [External Scheduling (Hermes webhook)](#external-scheduling-hermes-webhook)
 - [Memory & Brain](#memory--brain)
 - [Kanban Task Management](#kanban-task-management)
@@ -29,16 +30,22 @@ A beautiful desktop app to orchestrate your [Claude Code](https://claude.ai/code
 
 ---
 
-## Why Dorothy
+## Why Tars
 
-AI CLI tools are powerful — but it runs one agent at a time, in one terminal. Dorothy removes that limitation:
+An AI coding CLI runs one agent, in one terminal. Tars runs a team of them, and
+does it the same way whichever CLI each one happens to be:
 
-- **Run 10+ agents simultaneously** across different projects and codebases
-- **Automate agent workflows** — trigger agents on GitHub PRs, issues, and external events
-- **Delegate and coordinate** — a Super Agent orchestrates other agents via MCP tools
-- **Manage tasks visually** — Kanban board with automatic agent assignment
-- **Schedule recurring work** — cron-based tasks that run autonomously
-- **Control from anywhere** — Telegram and Slack integration for remote management
+- **Many agents at once**, each in its own PTY, across projects and worktrees
+- **Delegation with a receipt** — tasks run over the Agent Client Protocol, so a
+  delegated task returns its answer, why the turn ended, the tools it used and
+  what it cost, on Claude Code, Codex, Gemini, Grok, opencode or pi alike
+- **One memory for all of them** — project notes, session observations, your
+  Hermes gateway, gbrain and Honcho, reachable from every CLI
+- **Prices and models that stay current** — read from a live catalogue, not from
+  a table baked into the release
+- **Review and Logs** — what each agent changed, and one search across the fleet
+- **Driven by Hermes** — its cron jobs and its kanban board, from here
+- **Control from anywhere** — Telegram and Slack for remote management
 
 ---
 
@@ -64,21 +71,38 @@ Run multiple agents simultaneously, each in its own isolated PTY terminal sessio
 
 ### Super Agent (Orchestrator)
 
-A meta-agent that programmatically controls all other agents. Give it a high-level task and it delegates, monitors, and coordinates the work across your agent pool.
+A meta-agent that drives the others. Give it a high-level task and it delegates,
+monitors and coordinates across your agent pool.
 
 ![Super Agent](screenshots/super-agent.png)
 
-- Creates, starts, and stops agents programmatically via MCP tools
-- Delegates tasks based on agent capabilities and assigned skills
-- Monitors progress, captures output, and handles errors
-- Responds to Telegram and Slack messages for remote orchestration
-- Can spin up temporary agents for one-off tasks and clean them up after
+- Creates, starts and stops agents through MCP tools
+- **Delegates over ACP** — `session/prompt` returns a stop reason, the agent's
+  text, its tool calls and the turn's token usage, instead of typing into a
+  terminal and hoping. Falls back to terminal dispatch for CLIs with no ACP mode
+- **Cannot edit files itself** — file-editing tools are refused through the
+  protocol's own permission request, so the rule holds on every CLI rather than
+  only where a Claude-specific flag exists
+- Scoped to its own project: a call from an agent with no identity is refused
+  rather than allowed to reach every project
+- Responds to Telegram and Slack for remote orchestration
 
 ### Usage Tracking
 
-Monitor Claude Code API usage across all agents — token consumption, conversation history, cost tracking, and activity patterns.
+What your agents cost, per provider and per model.
 
 ![Usage Stats](screenshots/stats.png)
+
+Two sources, because no single one covers every CLI. Claude Code writes
+transcripts, so its usage is reconstructed from them — deduplicated by message
+and request id, because resuming a session copies earlier messages forward and
+counting those twice would double every figure. Every other CLI is counted from
+the turns it reports back over ACP, which is the only place that usage exists.
+
+Prices come from the live catalogue, so a price change lands without an update.
+**Budget & limits** shows each provider the limit it actually has: quota windows
+for a subscription, spend against a budget for pay-as-you-go, and nothing at all
+for a local model, which is not metered.
 
 ### Skills & Plugin System
 
@@ -97,11 +121,52 @@ Configure Claude Code settings directly — permissions, environment variables, 
 
 ---
 
+### Review
+
+What each agent actually changed: the files it touched with their line counts,
+and the patch itself. Compared against the branch the worktree was cut from
+rather than against its own remote copy, and untracked files are included —
+which is most of what a fresh agent produces.
+
+### Logs
+
+One search across every agent's retained output, attributed to the agent and
+branch that produced it. A plain substring works; wrap the query in slashes for
+a regex.
+
+### Schedules
+
+Your Hermes cron jobs: every profile in one list, with run-now, pause, resume
+and delete. Hermes owns the scheduler — nothing is scheduled here.
+
+---
+
+## Delegation over ACP
+
+Tars speaks the [Agent Client Protocol](https://agentclientprotocol.com) as a
+client: JSON-RPC over stdio to an agent subprocess. That is what makes the same
+orchestration work across CLIs that share nothing else.
+
+```
+initialize                 → protocol version, agent capabilities
+session/new  { cwd, mcpServers }   → Tars injects its own MCP servers here
+session/set_mode           → who arbitrates permissions
+session/prompt             → returns { stopReason, usage }
+  ← session/update         → agent_message_chunk, tool_call, plan, usage_update
+  ← session/request_permission → Tars answers, so a deny list holds everywhere
+```
+
+Launch commands come from the public ACP registry rather than being hardcoded,
+and are cached for a day. Providers with no ACP mode fall back to terminal
+dispatch, so nothing that worked stops working.
+
+---
+
 ## External Scheduling (Hermes webhook)
 
-Dorothy deliberately has no built-in scheduler. Recurring jobs live in an
+Tars deliberately has no built-in scheduler. Recurring jobs live in an
 external agent (e.g. a self-hosted [Hermes Agent](https://hermes-agent.nousresearch.com/)
-instance) whose cron jobs call Dorothy's webhook to drive agents:
+instance) whose cron jobs call Tars's webhook to drive agents:
 
 ```
 POST http://<dorothy-host>:31415/api/webhooks/hermes
@@ -120,22 +185,36 @@ session or spawns a fresh one, and refuses (409) when the agent is blocked
 on a permission dialog. Poll `GET /api/agents/:id` for status/output.
 
 If the scheduler runs on another machine (a VPS), expose the localhost-bound
-API with a tunnel, e.g. `tailscale serve 31415` on the Dorothy machine.
+API with a tunnel, e.g. `tailscale serve 31415` on the Tars machine.
 
 ## Memory & Brain
 
-Agents draw from three memory layers, surfaced on the **Brain** page:
+One memory, five sources, reachable from every CLI — not just the ones that
+share Claude's config directory.
 
-- **Native project memory** — Claude Code auto-memory
-  (`~/.claude/projects/*/memory/`). Injected into every fresh session via
-  `GET /api/memory/context` (MEMORY.md + recent cross-session activity);
-  significant tool uses are captured to a per-project ledger via
-  `POST /api/memory/remember` (`~/.dorothy/observations/`).
-- **gbrain** — shared semantic memory (vector + knowledge graph), registered
-  as a remote HTTP MCP server for every claude-binary agent
-  (Settings → Memory Backends).
-- **Honcho** — Plastic Labs' memory layer over MCP (`mcp.honcho.dev`).
+| Source | What it is | How agents reach it |
+|---|---|---|
+| Project memory | `~/.claude/projects/*/memory/*.md` | digest at session start, `memory_read` |
+| Session observations | per-project ledger in `~/.dorothy/observations/` | digest at session start |
+| Hermes memory | the gateway's own `MEMORY.md` / `USER.md`, plus full-text search over every past session | `memory_search` |
+| gbrain | shared semantic memory over MCP | `memory_search` |
+| Honcho | Plastic Labs' memory layer over MCP | `memory_search` |
 
+Hermes exposes no HTTP API for memory *content* — `/api/memory` only administers
+which provider is active — so the files come through `/api/files/read` and recall
+through `/api/sessions/search`, which is what its own dashboard does.
+
+Reaching all of it is provider-agnostic twice over:
+
+- **`tars-memory`**, a bundled MCP server registered with *every* provider's own
+  config (`~/.claude.json`, `~/.codex/config.toml`, `~/.gemini/settings.json`,
+  `~/.grok/config.toml`, `~/.opencode/config.json`, `~/.pi/config.json`), exposing
+  `memory_search`, `memory_read`, `memory_write` and `memory_sources`
+- **prompt injection** for the CLIs that have no session-start hook, so they
+  cannot begin blind even if they never call a tool
+
+The Brain page contacts each source when you open it: *reachable* means something
+answered, and it lists the tools each backend offers.
 
 ## Kanban Task Management
 
@@ -214,7 +293,7 @@ Same capabilities as Telegram, accessible via @mentions or direct messages.
 
 **Setup:**
 1. Go to [api.slack.com/apps](https://api.slack.com/apps) → **Create New App** → **From scratch**
-2. Name it "Dorothy" and select your workspace
+2. Name it "Tars" and select your workspace
 3. **Socket Mode** → Enable → Generate App Token with scope `connections:write` (`xapp-...`)
 4. **OAuth & Permissions** → Add scopes: `app_mentions:read`, `chat:write`, `im:history`, `im:read`, `im:write`
 5. **Install to Workspace** → Copy Bot Token (`xoxb-...`)
@@ -280,7 +359,7 @@ All tools support cursor-based pagination for large result sets.
 
 ## Google Workspace
 
-Access Gmail, Drive, Sheets, Docs, Calendar, and more directly from your agents via the [Google Workspace CLI](https://github.com/googleworkspace/cli) (`gws`). Dorothy integrates `gws` as an MCP server so agents can read emails, manage files, create documents, and interact with Google APIs.
+Access Gmail, Drive, Sheets, Docs, Calendar, and more directly from your agents via the [Google Workspace CLI](https://github.com/googleworkspace/cli) (`gws`). Tars integrates `gws` as an MCP server so agents can read emails, manage files, create documents, and interact with Google APIs.
 
 ### Setup
 
@@ -316,7 +395,9 @@ Additional services (Slides, Tasks, Chat, People, Forms, Keep) are available bas
 
 ## MCP Servers & Tools
 
-Dorothy exposes **five MCP (Model Context Protocol) servers** with **40+ tools** for programmatic agent control. These are used internally by the Super Agent and can be registered in any Claude Code session via `~/.claude/settings.json`.
+Tars bundles **seven MCP servers**. They are registered automatically with every
+provider Tars can run, not only with Claude Code, so an agent on Codex or Gemini
+gets the same toolbelt.
 
 ### mcp-orchestrator
 
@@ -400,15 +481,15 @@ MCP server for Twitter/X data via the SocialData API. See [SocialData (Twitter/X
 
 ### Download
 
-Download the latest release from [GitHub Releases](https://github.com/Charlie85270/Dorothy/releases).
+Download the latest release from [GitHub Releases](https://github.com/Charlie85270/Tars/releases).
 
-> **macOS:** If "app is damaged", run `xattr -cr /Applications/Dorothy.app`
+> **macOS:** If "app is damaged", run `xattr -cr /Applications/Tars.app`
 
 ### Build from Source
 
 ```bash
-git clone https://github.com/Charlie85270/Dorothy.git
-cd Dorothy/app/dorothy
+git clone https://github.com/Charlie85270/Tars.git
+cd Tars/app/tars
 npm install
 npx @electron/rebuild        # Rebuild native modules for Electron
 npm run electron:dev          # Development mode
@@ -416,7 +497,7 @@ npm run electron:build        # Production build (DMG)
 ```
 
 Output in `release/`:
-- **macOS**: `release/mac-arm64/Dorothy.app` (Apple Silicon) or `release/mac/Dorothy.app` (Intel)
+- **macOS**: `release/mac-arm64/Tars.app` (Apple Silicon) or `release/mac/Tars.app` (Intel)
 - DMG installer included
 
 ### Web Browser (Development)
@@ -493,7 +574,7 @@ Claude Code ←→ stdio ←→ MCP Server
 ## Project Structure
 
 ```
-dorothy/
+tars/
 ├── src/                           # Next.js frontend (React)
 │   ├── app/                       # Page routes
 │   │   ├── agents/                # Agent management UI (+ templates, teams)
@@ -578,11 +659,17 @@ dorothy/
 
 | File | Description |
 |------|-------------|
-| `~/.dorothy/agents.json` | Persisted agent state (all agents, all sessions) |
-| `~/.dorothy/kanban-tasks.json` | Kanban board tasks |
-| `~/.dorothy/team-templates.json` | Team templates (one-click project teams) |
-| `~/.dorothy/observations/` | Per-project activity ledgers (memory capture) |
-| `~/.dorothy/vault.db` | Vault documents, folders, and FTS index (SQLite) |
+| `~/.dorothy/agents.json` | Persisted agents. Versioned, written atomically through a temp file and rename; a corrupt copy is kept as `.corrupt` rather than replaced |
+| `~/.dorothy/agents.backup.json` | Last copy that parsed successfully |
+| `~/.dorothy/projects.json` | Folders you added, so an update never loses them |
+| `~/.dorothy/kanban-tasks.json` | Local kanban board (the Hermes board lives in the gateway) |
+| `~/.dorothy/team-templates.json` | Team templates |
+| `~/.dorothy/observations/` | Per-project activity ledgers |
+| `~/.dorothy/usage-ledger.jsonl` | Per-turn tokens and cost, for the CLIs that write no transcript |
+| `~/.dorothy/model-catalog.json` | Cached model + price catalogue, with its ETag |
+| `~/.dorothy/acp-registry.json` | Cached ACP launch commands |
+| `~/.dorothy/hermes-connection.json` | Gateway mode, URL and token |
+| `~/.dorothy/vault.db` | Vault documents, folders and FTS index (SQLite) |
 
 ### Generated Files
 
@@ -601,17 +688,28 @@ dorothy/
 npm run dev              # Next.js dev server
 npm run electron:dev     # Electron + Next.js concurrent dev mode
 npm run build            # Next.js production build
-npm run electron:build   # Distributable Electron app (DMG)
-npm run electron:pack    # Electron directory package
+npm run electron:build   # Distributable app (DMG)
+npm run electron:pack    # Directory package, for testing a real build
+npm run sandbox          # A second instance with its own HOME, beside your real one
 npm run lint             # ESLint
+npm run lint:design      # Design guardrails (radius, shadows, gradients, palette)
+npm run e2e              # Playwright drives the real Electron app, 35 surfaces
+npm run e2e:update       # Re-record the visual baselines
+npm run e2e:guard        # Fail if a surface in design/UI-INVENTORY.md is uncovered
 ```
 
 ### Build Pipeline
 
-1. Next.js production build
-2. TypeScript compilation (Electron + MCP servers)
-3. MCP servers built independently
-4. `electron-builder` packages into distributable
+1. Next.js production build (API routes moved aside — the packaged app has no server)
+2. TypeScript compilation for the Electron main process
+3. The seven MCP servers built independently and copied into `extraResources`
+4. `electron-builder` packages into a distributable
+
+### Design
+
+`design/tars.pen` holds every surface as a Pencil frame — pages, all seventeen
+settings sections, overlays, menus, control states, the launch sequence and the
+loading stages. `design/UI-INVENTORY.md` is the checklist the E2E guard reads.
 
 ### Environment
 

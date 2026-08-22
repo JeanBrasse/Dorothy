@@ -1,5 +1,5 @@
 #!/bin/bash
-# UserPromptSubmit hook for dorothy (Gemini CLI)
+# UserPromptSubmit hook for tars (Gemini CLI)
 # Sets agent status back to "running" when user submits a new prompt mid-session
 
 INPUT=$(cat)

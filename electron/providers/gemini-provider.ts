@@ -65,7 +65,7 @@ export class GeminiProvider implements CLIProvider {
       }
     }
 
-    // Include Dorothy directory
+    // Include Tars directory
     command += ` --include-directories '${os.homedir()}/.dorothy'`;
 
     // Prompt with skills directive

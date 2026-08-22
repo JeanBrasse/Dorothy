@@ -10,7 +10,7 @@ let showingBadge = false;
 
 function resolveIconPath(): string {
   // __dirname is electron/dist/core/ at runtime, resources are at electron/resources/
-  // Use the full-color Dorothy logo instead of a monochrome template
+  // Use the full-color Tars logo instead of a monochrome template
   let iconPath = path.join(__dirname, '..', '..', 'resources', 'trayColor.png');
   // In production, resources are unpacked outside the asar archive
   iconPath = iconPath.replace('app.asar', 'app.asar.unpacked');

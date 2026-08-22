@@ -102,7 +102,7 @@ export class ClaudeProvider implements CLIProvider {
       }
     }
 
-    // Dorothy's CLAUDE.md via ~/.dorothy
+    // Tars's CLAUDE.md via ~/.dorothy
     command += ` --add-dir '${os.homedir()}/.dorothy'`;
 
     // Prompt with skills directive

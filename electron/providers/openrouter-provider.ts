@@ -149,8 +149,8 @@ export class OpenRouterProvider implements CLIProvider {
       vars.ANTHROPIC_BASE_URL = OPENROUTER_BASE_URL;
       vars.ANTHROPIC_API_KEY = apiKey;
       // OpenRouter HTTP-Referer header (optional but recommended)
-      vars.OR_SITE_URL = 'https://dorothy.app';
-      vars.OR_APP_NAME = 'Dorothy';
+      vars.OR_SITE_URL = 'https://tars.app';
+      vars.OR_APP_NAME = 'Tars';
     }
 
     return vars;

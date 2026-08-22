@@ -116,7 +116,7 @@ async function spawnAgentSession(
   // roster; this header guarantees the essentials even if hooks are absent.
   // (The provider builder handles the skills prefix itself.)
   const identityHeader =
-    `[Dorothy: you are agent "${agent.name || agent.id}" (id ${agent.id}), ` +
+    `[Tars: you are agent "${agent.name || agent.id}" (id ${agent.id}), ` +
     `${agent.role || 'worker'} of project ${agent.projectPath}` +
     (agent.worktreePath
       ? `, working in worktree ${agent.worktreePath}${agent.branchName ? ` (branch ${agent.branchName})` : ''} — stay inside this directory`
@@ -391,7 +391,7 @@ export async function performDispatch(
     // typed message is useless and the delayed \r could ACCEPT the pending
     // permission. Refuse and surface the reason instead.
     sendJson({
-      error: `Agent "${agent.name || agent.id}" is blocked on a permission dialog; a typed message cannot answer it. Resolve it in the Dorothy UI, or stop the agent and re-dispatch.`,
+      error: `Agent "${agent.name || agent.id}" is blocked on a permission dialog; a typed message cannot answer it. Resolve it in the Tars UI, or stop the agent and re-dispatch.`,
       waitingReason: 'permission',
     }, 409);
     return;
@@ -547,7 +547,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
                 (a.skills?.length ? `, skills: ${a.skills.join(', ')}` : ''));
 
     const lines = [
-      `# Dorothy agent identity`,
+      `# Tars agent identity`,
       ``,
       `You are "${agent.name || agent.id}" (agent id: ${agent.id}), ${agent.role || 'worker'} of project ${agent.projectPath}.`,
     ];
@@ -831,7 +831,7 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
         agent.status === 'waiting' && agent.waitingReason === 'permission') {
       // Same guard as /dispatch: never type into a blocking permission dialog.
       sendJson({
-        error: `Agent "${agent.name || agent.id}" is blocked on a permission dialog; a typed message cannot answer it. Resolve it in the Dorothy UI, or stop the agent and re-dispatch.`,
+        error: `Agent "${agent.name || agent.id}" is blocked on a permission dialog; a typed message cannot answer it. Resolve it in the Tars UI, or stop the agent and re-dispatch.`,
         waitingReason: 'permission',
       }, 409);
       return;

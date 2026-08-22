@@ -7,7 +7,7 @@ import { RouteApp, RouteContext } from './types';
 
 /**
  * Incoming webhooks — lets an external scheduler (the user's Hermes instance)
- * drive Dorothy agents. Dorothy deliberately has no scheduler of its own:
+ * drive Tars agents. Tars deliberately has no scheduler of its own:
  * Hermes cron jobs / automation blueprints call this endpoint instead.
  *
  * Auth: the standard API bearer token (~/.dorothy/api-token) — NOT exempt.

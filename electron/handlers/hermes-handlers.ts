@@ -97,7 +97,7 @@ const API_PORT = 31415;
 
 /**
  * Hermes integration handlers — everything the Settings → Hermes section
- * needs to wire a remote (VPS) Hermes instance to this Dorothy:
+ * needs to wire a remote (VPS) Hermes instance to this Tars:
  * - connection info: the incoming-webhook URL/token to paste into Hermes
  *   cron jobs, plus Tailscale state (DNS name, serve status) so the user
  *   knows exactly how the VPS reaches this machine
@@ -282,7 +282,7 @@ export function registerHermesHandlers(): void {
   ipcMain.handle('hermes:crons:delete', async (_event, params: { jobId: string; profile?: string }) =>
     deleteHermesCron(readConnection(), params.jobId, params.profile));
 
-  // ── Kanban (the board lives in Hermes; Dorothy is a client) ──
+  // ── Kanban (the board lives in Hermes; Tars is a client) ──
   ipcMain.handle('hermes:kanban:board', async (_event, params: { board?: string } = {}) => {
     return fetchHermesBoard(readConnection(), params?.board);
   });

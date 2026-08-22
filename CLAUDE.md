@@ -1,6 +1,6 @@
 ## Memory System
 
-Dorothy exposes Claude Code's **native memory** (`~/.claude/projects/*/memory/`) via the Memory page. No custom storage — reads real Claude Code memory files. Project dir names use path-as-folder-name encoding (slashes → dashes).
+Tars exposes Claude Code's **native memory** (`~/.claude/projects/*/memory/`) via the Memory page. No custom storage — reads real Claude Code memory files. Project dir names use path-as-folder-name encoding (slashes → dashes).
 
 ## Memory
 
@@ -12,7 +12,7 @@ Use auto memory (`~/.claude/projects/.../memory/`) actively on this project:
 
 ## Autonomy
 
-When you are delegated a task by Dorothy or an orchestrator agent, **always act autonomously**:
+When you are delegated a task by Tars or an orchestrator agent, **always act autonomously**:
 - Do NOT ask for confirmation before proceeding — just do the work and report results
 - Do NOT ask "Would you like me to continue?" or "Shall I proceed?" — the answer is always yes
 - If a task is ambiguous, make reasonable assumptions and state them in your report

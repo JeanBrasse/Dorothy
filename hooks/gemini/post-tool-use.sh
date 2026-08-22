@@ -1,5 +1,5 @@
 #!/bin/bash
-# Post-tool-use hook for dorothy memory system (Gemini CLI)
+# Post-tool-use hook for tars memory system (Gemini CLI)
 
 INPUT=$(cat)
 

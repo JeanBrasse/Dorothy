@@ -161,7 +161,7 @@ export async function signInHermes(
 }
 
 // ── Kanban plugin ─────────────────────────────────────────────────────────
-// The board itself (columns, tasks, runs, workers) lives in Hermes: Dorothy
+// The board itself (columns, tasks, runs, workers) lives in Hermes: Tars
 // is only a client. Endpoints are mounted at /api/plugins/kanban.
 
 export const HERMES_KANBAN_COLUMNS = [
@@ -195,7 +195,7 @@ export async function updateHermesTask(conn: HermesConnection, taskId: string, p
 }
 
 // ── Cron / automations ────────────────────────────────────────────────────
-// Schedules live in Hermes (per-profile jobs.json); Dorothy lists and drives
+// Schedules live in Hermes (per-profile jobs.json); Tars lists and drives
 // them. Unit routes need the job's own `profile`, otherwise the gateway scans
 // every profile to find it.
 

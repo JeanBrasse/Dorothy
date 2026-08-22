@@ -30,7 +30,7 @@ export function createWindow() {
     height: 1000,
     minWidth: 1200,
     minHeight: 800,
-    title: 'Dorothy',
+    title: 'Tars',
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#121212',
     webPreferences: {

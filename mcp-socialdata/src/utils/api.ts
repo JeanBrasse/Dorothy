@@ -18,7 +18,7 @@ function getApiKey(): string {
     // Ignore read errors
   }
   throw new Error(
-    "SocialData API key not configured. Please add your API key in Dorothy Settings > SocialData."
+    "SocialData API key not configured. Please add your API key in Tars Settings > SocialData."
   );
 }
 

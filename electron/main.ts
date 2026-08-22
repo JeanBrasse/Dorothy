@@ -1,5 +1,5 @@
 /**
- * Dorothy - Main Electron Entry Point
+ * Tars - Main Electron Entry Point
  *
  * This file initializes and wires together all the modular components:
  * - Window management and protocol handling
@@ -105,7 +105,7 @@ import {
   isSuperAgent,
   getSuperAgent,
   ensureDataDir,
-  ensureDorothyClaudeMd,
+  ensureTarsClaudeMd,
   migrateFromClaudeManager,
 } from './utils';
 
@@ -323,8 +323,8 @@ app.whenReady().then(async () => {
   // Ensure data directory exists
   ensureDataDir();
 
-  // Write Dorothy's CLAUDE.md to ~/.dorothy/ so all spawned agents can load it
-  ensureDorothyClaudeMd();
+  // Write Tars's CLAUDE.md to ~/.dorothy/ so all spawned agents can load it
+  ensureTarsClaudeMd();
 
   // Install/update statusline script if enabled (ensures script is always up-to-date after app updates)
   // statusLineEnabled defaults to true for new users

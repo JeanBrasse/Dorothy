@@ -253,7 +253,7 @@ function getApiKey(): string {
   } catch {
     // Ignore
   }
-  throw new Error('SocialData API key not configured. Please add your API key in Dorothy Settings > SocialData.');
+  throw new Error('SocialData API key not configured. Please add your API key in Tars Settings > SocialData.');
 }
 
 describe('mcp-socialdata', () => {

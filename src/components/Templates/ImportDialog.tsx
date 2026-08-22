@@ -54,8 +54,8 @@ export function ImportDialog({ onClose, onImport }: ImportDialogProps) {
         setPreview(null);
         return;
       }
-      if (json.kind !== 'dorothy.agent-template') {
-        setParseError('Not a Tars template file (missing kind: "dorothy.agent-template")');
+      if (json.kind !== 'tars.agent-template') {
+        setParseError('Not a Tars template file (missing kind: "tars.agent-template")');
         setParsed(null);
         setPreview(null);
         return;
@@ -143,7 +143,7 @@ export function ImportDialog({ onClose, onImport }: ImportDialogProps) {
           <textarea
             value={text}
             onChange={e => tryParse(e.target.value)}
-            placeholder='{ "kind": "dorothy.agent-template", "version": 1, "templates": [...] }'
+            placeholder='{ "kind": "tars.agent-template", "version": 1, "templates": [...] }'
             rows={10}
             className="w-full px-2 py-1.5 bg-secondary border border-border text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/40 font-mono resize-y"
           />

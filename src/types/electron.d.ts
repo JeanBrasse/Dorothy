@@ -295,7 +295,7 @@ export interface AgentTemplatePatch extends Partial<AgentTemplateInput> {
 
 export interface TemplateExport {
   version: number;
-  kind: 'dorothy.agent-template';
+  kind: 'tars.agent-template';
   exportedAt: string;
   templates: AgentTemplateInput[];
 }

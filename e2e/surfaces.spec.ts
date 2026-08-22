@@ -9,7 +9,7 @@ import { ALL } from './surfaces.mjs';
  *
  * The app boots fully sandboxed: HOME points at a temp dir, so ~/.dorothy and
  * ~/.claude are empty test fixtures and the API binds a dedicated port —
- * the user's live Dorothy instance is never touched.
+ * the user's live Tars instance is never touched.
  *
  * For each surface in e2e/surfaces.mjs:
  *  - navigate (and click through to overlays / settings sections)

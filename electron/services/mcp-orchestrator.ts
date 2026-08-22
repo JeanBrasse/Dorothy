@@ -145,7 +145,7 @@ async function installBundledSkills(): Promise<void> {
   const bundledSkills: string[] = [];
   const providers = getAllProviders();
 
-  // Older Dorothy versions copied world-builder into every provider's skill
+  // Older Tars versions copied world-builder into every provider's skill
   // dir; agents still list it although its MCP tools are gone. Remove those
   // copies — but only when the content is recognizably ours.
   for (const provider of providers) {
@@ -217,7 +217,7 @@ async function installBundledSkills(): Promise<void> {
  * Writes ~/.claude.json (the file `claude mcp add -s user` maintains)
  * directly: no dependency on the claude binary being on the packaged app's
  * PATH, and no CLI boot blocking the main process. Removal only touches
- * entries whose URL matches Dorothy's own settings — a gbrain/honcho the
+ * entries whose URL matches Tars's own settings — a gbrain/honcho the
  * user registered independently is never deleted.
  *
  * Claude-binary providers only: native CLIs (codex, gemini, grok, opencode,

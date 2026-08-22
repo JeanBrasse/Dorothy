@@ -11,7 +11,7 @@ import * as path from 'path';
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tars-memhub-'));
 const fakeHome = path.join(tmp, 'home');
 
-vi.mock('../../../electron/constants', () => ({ DATA_DIR: path.join(tmp, 'dorothy') }));
+vi.mock('../../../electron/constants', () => ({ DATA_DIR: path.join(tmp, 'tars') }));
 vi.mock('os', async (importOriginal) => {
   const actual = await importOriginal<typeof import('os')>();
   return { ...actual, default: { ...actual, homedir: () => fakeHome }, homedir: () => fakeHome };
@@ -39,7 +39,7 @@ const hermesConn = { mode: 'remote' as const, url: 'http://gateway.local:9119' }
 
 beforeEach(() => {
   fs.rmSync(fakeHome, { recursive: true, force: true });
-  fs.rmSync(path.join(tmp, 'dorothy'), { recursive: true, force: true });
+  fs.rmSync(path.join(tmp, 'tars'), { recursive: true, force: true });
   fs.mkdirSync(memoryDir, { recursive: true });
   fs.writeFileSync(path.join(memoryDir, 'MEMORY.md'), '# Index\n\nThe deploy key lives in 1Password.\n\nThe API binds 31415.');
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Notification hook for dorothy
+# Notification hook for tars
 # Captures and forwards Claude Code notifications
 
 # Read JSON input from stdin

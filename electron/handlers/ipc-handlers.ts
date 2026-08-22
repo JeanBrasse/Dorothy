@@ -1706,7 +1706,7 @@ function registerAppSettingsHandlers(deps: IpcHandlerDependencies): void {
     }
 
     try {
-      await telegramBot.sendMessage(chatId, '✅ Test message from Dorothy!');
+      await telegramBot.sendMessage(chatId, '✅ Test message from Tars!');
       return { success: true };
     } catch (err) {
       console.error('Telegram send test failed:', err);
@@ -1911,7 +1911,7 @@ function registerAppSettingsHandlers(deps: IpcHandlerDependencies): void {
     try {
       await slackApp.client.chat.postMessage({
         channel: appSettings.slackChannelId,
-        text: ':white_check_mark: Test message from Dorothy!',
+        text: ':white_check_mark: Test message from Tars!',
         mrkdwn: true,
       });
       return { success: true };

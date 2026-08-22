@@ -225,4 +225,4 @@ export const CHANGELOG: Release[] = [
 ];
 
 export const LATEST_RELEASE = CHANGELOG[0];
-export const WHATS_NEW_STORAGE_KEY = 'dorothy_whats_new_last_seen';
+export const WHATS_NEW_STORAGE_KEY = 'tars_whats_new_last_seen';

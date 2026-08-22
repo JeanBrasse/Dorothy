@@ -722,7 +722,7 @@ export default function UsagePage() {
             // Use API dailyCostMap first, fall back to tokenStats.dailyCosts
             let dayCost = todayCost;
             let dayLabel = latestDataDate ?? 'No data';
-            let isDorothyOnly = false;
+            let isTarsOnly = false;
             if (dayCost === 0 && data?.tokenStats?.dailyCosts) {
               const days = Object.keys(data.tokenStats.dailyCosts).sort();
               if (days.length > 0) {
@@ -731,7 +731,7 @@ export default function UsagePage() {
                 if (dc.extraCost > 0) {
                   dayCost = dc.extraCost;
                   dayLabel = latest;
-                  isDorothyOnly = true;
+                  isTarsOnly = true;
                 }
               }
             }
@@ -747,7 +747,7 @@ export default function UsagePage() {
                   </div>
                 </div>
                 <p className="text-xs text-text-muted">
-                  {dayLabel}{isDorothyOnly && ' (extra usage est.)'}
+                  {dayLabel}{isTarsOnly && ' (extra usage est.)'}
                 </p>
               </>
             );
@@ -781,11 +781,11 @@ export default function UsagePage() {
             const ts = data?.tokenStats;
             const inTok = hasModelTokens ? totalUsage.totalInput : (ts?.totalInputTokens ?? 0);
             const outTok = hasModelTokens ? totalUsage.totalOutput : (ts?.totalOutputTokens ?? 0);
-            const dorothyOnly = !hasModelTokens && ts && (ts.totalInputTokens + ts.totalOutputTokens) > 0;
+            const tarsOnly = !hasModelTokens && ts && (ts.totalInputTokens + ts.totalOutputTokens) > 0;
             return (
               <p className="text-xs text-text-muted">
                 {(inTok / 1000000).toFixed(2)}M in / {(outTok / 1000000).toFixed(2)}M out
-                {dorothyOnly && ' (Tars only)'}
+                {tarsOnly && ' (Tars only)'}
               </p>
             );
           })()}

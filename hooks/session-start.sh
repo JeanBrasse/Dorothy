@@ -1,5 +1,5 @@
 #!/bin/bash
-# Session start hook for dorothy
+# Session start hook for tars
 # Registers session ID and injects memory context (does NOT set running — that's UserPromptSubmit's job)
 
 # Read JSON input from stdin

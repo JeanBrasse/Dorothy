@@ -177,7 +177,7 @@ describe('update-checker', () => {
           html_url: 'https://github.com/JeanBrasse/Dorothy/releases/tag/v2.0.0',
           body: 'Release notes here',
           assets: [
-            { name: 'Dorothy-2.0.0.dmg', browser_download_url: 'https://github.com/.../Dorothy-2.0.0.dmg' },
+            { name: 'Tars-2.0.0.dmg', browser_download_url: 'https://github.com/.../Tars-2.0.0.dmg' },
           ],
         }),
       });
@@ -207,7 +207,7 @@ describe('update-checker', () => {
           html_url: 'https://github.com/JeanBrasse/Dorothy/releases/tag/v2.0.0',
           body: 'Big update',
           assets: [
-            { name: 'Dorothy-2.0.0.dmg', browser_download_url: 'https://example.com/Dorothy-2.0.0.dmg' },
+            { name: 'Tars-2.0.0.dmg', browser_download_url: 'https://example.com/Tars-2.0.0.dmg' },
           ],
         }),
       });
@@ -218,7 +218,7 @@ describe('update-checker', () => {
         currentVersion: '1.2.1',
         latestVersion: '2.0.0',
         hasUpdate: true,
-        downloadUrl: 'https://example.com/Dorothy-2.0.0.dmg',
+        downloadUrl: 'https://example.com/Tars-2.0.0.dmg',
         releaseUrl: 'https://github.com/JeanBrasse/Dorothy/releases/tag/v2.0.0',
       }));
     });
@@ -370,8 +370,8 @@ describe('update-checker', () => {
           html_url: 'https://github.com/releases/v2.0.0',
           body: '',
           assets: [
-            { name: 'Dorothy-2.0.0.zip', browser_download_url: 'https://example.com/Dorothy-2.0.0.zip' },
-            { name: 'Dorothy-2.0.0.dmg', browser_download_url: 'https://example.com/Dorothy-2.0.0.dmg' },
+            { name: 'Tars-2.0.0.zip', browser_download_url: 'https://example.com/Tars-2.0.0.zip' },
+            { name: 'Tars-2.0.0.dmg', browser_download_url: 'https://example.com/Tars-2.0.0.dmg' },
           ],
         }),
       });
@@ -379,7 +379,7 @@ describe('update-checker', () => {
       await checkForUpdates();
 
       expect(win.webContents.send).toHaveBeenCalledWith('app:update-available', expect.objectContaining({
-        downloadUrl: 'https://example.com/Dorothy-2.0.0.dmg',
+        downloadUrl: 'https://example.com/Tars-2.0.0.dmg',
       }));
     });
 
@@ -394,7 +394,7 @@ describe('update-checker', () => {
           html_url: 'https://github.com/releases/v2.0.0',
           body: '',
           assets: [
-            { name: 'Dorothy-2.0.0.zip', browser_download_url: 'https://example.com/Dorothy-2.0.0.zip' },
+            { name: 'Tars-2.0.0.zip', browser_download_url: 'https://example.com/Tars-2.0.0.zip' },
           ],
         }),
       });
@@ -402,7 +402,7 @@ describe('update-checker', () => {
       await checkForUpdates();
 
       expect(win.webContents.send).toHaveBeenCalledWith('app:update-available', expect.objectContaining({
-        downloadUrl: 'https://example.com/Dorothy-2.0.0.zip',
+        downloadUrl: 'https://example.com/Tars-2.0.0.zip',
       }));
     });
 

@@ -1,5 +1,5 @@
 /**
- * API utilities for communicating with dorothy API server
+ * API utilities for communicating with tars API server
  */
 
 import * as fs from "fs";
@@ -9,7 +9,7 @@ import * as os from "os";
 const API_URL = process.env.CLAUDE_MGR_API_URL || "http://127.0.0.1:31415";
 const API_TOKEN_FILE = path.join(os.homedir(), ".dorothy", "api-token");
 
-// Caller identity, injected into the PTY environment by Dorothy when it spawns
+// Caller identity, injected into the PTY environment by Tars when it spawns
 // the agent. Sent on every request so the server can scope agent listings and
 // reject cross-project actions (the "orchestrator drove another project's
 // agents" bug).
@@ -47,10 +47,10 @@ export async function apiRequest(
     headers["Authorization"] = `Bearer ${token}`;
   }
   if (CALLER_AGENT_ID) {
-    headers["X-Dorothy-Caller-Id"] = CALLER_AGENT_ID;
+    headers["X-Tars-Caller-Id"] = CALLER_AGENT_ID;
   }
   if (CALLER_PROJECT_PATH) {
-    headers["X-Dorothy-Caller-Project"] = CALLER_PROJECT_PATH;
+    headers["X-Tars-Caller-Project"] = CALLER_PROJECT_PATH;
   }
 
   // Long-poll wait endpoints need a longer timeout. Callers passing a custom
