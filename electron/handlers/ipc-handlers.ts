@@ -8,6 +8,7 @@ import { broadcastToAllWindows } from '../utils/broadcast';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { DATA_DIR } from '../constants';
 import { v4 as uuidv4 } from 'uuid';
 import * as pty from 'node-pty';
 import TelegramBot from 'node-telegram-bot-api';
@@ -76,6 +77,27 @@ export interface IpcHandlerDependencies {
 /**
  * Register all IPC handlers
  */
+
+/** Projects the user added by hand. Kept in ~/.dorothy so they outlive app
+ *  updates and are shared by every surface (the renderer's localStorage was
+ *  neither durable nor visible outside the Projects page). */
+const CUSTOM_PROJECTS_FILE = path.join(DATA_DIR, 'projects.json');
+
+function readCustomProjects(): string[] {
+  try {
+    if (!fs.existsSync(CUSTOM_PROJECTS_FILE)) return [];
+    const parsed = JSON.parse(fs.readFileSync(CUSTOM_PROJECTS_FILE, 'utf-8'));
+    return Array.isArray(parsed) ? parsed.filter((p: unknown) => typeof p === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCustomProjects(list: string[]): void {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(CUSTOM_PROJECTS_FILE, JSON.stringify(Array.from(new Set(list)), null, 2));
+}
+
 export function registerIpcHandlers(deps: IpcHandlerDependencies): void {
   registerPtyHandlers(deps);
   registerAgentHandlers(deps);
@@ -1850,28 +1872,59 @@ function registerFileSystemHandlers(deps: IpcHandlerDependencies): void {
   ipcMain.handle('fs:list-projects', async () => {
     try {
       const claudeDir = path.join(os.homedir(), '.claude', 'projects');
-      if (!fs.existsSync(claudeDir)) return [];
+      const projects: Array<{ id: string; path: string; name: string; custom?: boolean }> = [];
+      const seen = new Set<string>();
 
-      const dirs = fs.readdirSync(claudeDir);
-      const projects: Array<{ id: string; path: string; name: string }> = [];
+      const push = (p: string, id: string, custom = false) => {
+        if (!p || p === '/' || p === os.homedir()) return;
+        if (seen.has(p) || !fs.existsSync(p)) return;
+        if (/\/\.?worktrees\//.test(p)) return;
+        seen.add(p);
+        projects.push({ id, path: p, name: path.basename(p), ...(custom ? { custom: true } : {}) });
+      };
 
-      for (const dir of dirs) {
-        const fullPath = path.join(claudeDir, dir);
-        const stat = fs.statSync(fullPath);
-        if (!stat.isDirectory()) continue;
+      // Projects the user explicitly added (persisted here, not in the
+      // renderer's localStorage, so they survive updates and are visible to
+      // every surface: agent creation, team deployment, Brain).
+      for (const p of readCustomProjects()) push(p, `custom:${p}`, true);
 
-        const decodedPath = decodeProjectPath(dir);
-        projects.push({
-          id: dir,
-          path: decodedPath,
-          name: path.basename(decodedPath),
-        });
+      if (fs.existsSync(claudeDir)) {
+        for (const dir of fs.readdirSync(claudeDir)) {
+          const fullPath = path.join(claudeDir, dir);
+          if (!fs.statSync(fullPath).isDirectory()) continue;
+          push(decodeProjectPath(dir), dir);
+        }
       }
 
       return projects;
     } catch (err) {
       console.error('Failed to list projects:', err);
       return [];
+    }
+  });
+
+  ipcMain.handle('fs:add-custom-project', async (_event, projectPath: string) => {
+    try {
+      const clean = String(projectPath || '').trim();
+      if (!clean || !fs.existsSync(clean)) return { success: false, error: 'Folder not found' };
+      const list = readCustomProjects();
+      if (!list.includes(clean)) {
+        list.push(clean);
+        writeCustomProjects(list);
+      }
+      return { success: true, projects: list };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('fs:remove-custom-project', async (_event, projectPath: string) => {
+    try {
+      const list = readCustomProjects().filter(p => p !== projectPath);
+      writeCustomProjects(list);
+      return { success: true, projects: list };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
   });
 

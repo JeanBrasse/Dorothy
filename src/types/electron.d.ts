@@ -383,7 +383,9 @@ export interface ElectronAPI {
 
   // File system
   fs: {
-    listProjects: () => Promise<{ path: string; name: string; lastModified: string }[]>;
+    listProjects: () => Promise<{ path: string; name: string; lastModified?: string; custom?: boolean }[]>;
+    addCustomProject: (projectPath: string) => Promise<{ success: boolean; projects?: string[]; error?: string }>;
+    removeCustomProject: (projectPath: string) => Promise<{ success: boolean; projects?: string[]; error?: string }>;
   };
 
   // Claude data

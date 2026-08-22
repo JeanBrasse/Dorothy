@@ -285,7 +285,7 @@ export function useElectronSkills() {
 
 // Hook for file system operations via Electron IPC
 export function useElectronFS() {
-  const [projects, setProjects] = useState<{ path: string; name: string; lastModified: string }[]>([]);
+  const [projects, setProjects] = useState<{ path: string; name: string; lastModified?: string; custom?: boolean }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchProjects = useCallback(async () => {

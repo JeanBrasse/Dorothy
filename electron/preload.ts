@@ -193,6 +193,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   fs: {
     listProjects: () =>
       ipcRenderer.invoke('fs:list-projects'),
+    addCustomProject: (projectPath: string) =>
+      ipcRenderer.invoke('fs:add-custom-project', projectPath),
+    removeCustomProject: (projectPath: string) =>
+      ipcRenderer.invoke('fs:remove-custom-project', projectPath),
   },
 
   // Claude data

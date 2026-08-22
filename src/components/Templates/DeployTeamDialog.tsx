@@ -5,6 +5,7 @@ import { FolderOpen, Loader2, Rocket, Save, Search, Trash2, X } from 'lucide-rea
 import type { TeamTemplate, TeamTemplateMember } from '@/types/electron';
 import { useElectronAgents, useElectronFS } from '@/hooks/useElectron';
 import { useElectronTeamTemplates } from '@/hooks/useElectronTeamTemplates';
+import { PROVIDER_REGISTRY, computeProviderAvailability } from '@/lib/providers';
 
 interface DeployTeamDialogProps {
   open: boolean;
@@ -17,6 +18,17 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
   const { agents, createAgent, updateAgent } = useElectronAgents();
   const { projects, openFolderDialog } = useElectronFS();
   const { teams, create: createTeam, remove: removeTeam } = useElectronTeamTemplates();
+
+  const [availability, setAvailability] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    if (!open) return;
+    Promise.all([
+      window.electronAPI?.cliPaths?.detect(),
+      window.electronAPI?.appSettings?.get(),
+    ]).then(([paths, settings]) => {
+      setAvailability(computeProviderAvailability(paths as Record<string, string | undefined> | undefined, settings));
+    });
+  }, [open]);
 
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [projectPath, setProjectPath] = useState<string | null>(null);
@@ -59,10 +71,43 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
   // before deploying, and optionally saved back as a custom team.
   const [editedMembers, setEditedMembers] = useState<TeamTemplateMember[]>([]);
   const [expandedMember, setExpandedMember] = useState<number | null>(null);
+  // Which members actually get deployed; extras can be appended too.
+  const [selectedIdx, setSelectedIdx] = useState<Set<number>>(new Set());
   useEffect(() => {
-    setEditedMembers(selectedTeam ? selectedTeam.members.map(m => ({ ...m })) : []);
+    const members = selectedTeam ? selectedTeam.members.map(m => ({ ...m })) : [];
+    setEditedMembers(members);
+    setSelectedIdx(new Set(members.map((_, i) => i)));
     setExpandedMember(null);
   }, [selectedTeam]);
+
+  function toggleMember(i: number) {
+    setSelectedIdx(prev => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i); else next.add(i);
+      return next;
+    });
+  }
+
+  function addExtraMember() {
+    setEditedMembers(prev => {
+      const next = [...prev, {
+        name: `Engineer ${prev.length + 1}`,
+        character: 'robot' as const,
+        provider: 'claude' as const,
+        permissionMode: 'auto' as const,
+        skills: [],
+      }];
+      setSelectedIdx(sel => new Set([...sel, next.length - 1]));
+      setExpandedMember(next.length - 1);
+      return next;
+    });
+  }
+
+  function removeMember(i: number) {
+    setEditedMembers(prev => prev.filter((_, idx) => idx !== i));
+    setSelectedIdx(prev => new Set(Array.from(prev).filter(x => x !== i).map(x => (x > i ? x - 1 : x))));
+    setExpandedMember(null);
+  }
 
   const membersDirty = useMemo(
     () => !!selectedTeam && JSON.stringify(editedMembers) !== JSON.stringify(selectedTeam.members),
@@ -104,7 +149,8 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
     const createdIds: string[] = [];
     const issues: string[] = [];
 
-    const membersToDeploy = editedMembers.length > 0 ? editedMembers : selectedTeam.members;
+    const membersToDeploy = (editedMembers.length > 0 ? editedMembers : selectedTeam.members)
+      .filter((_, i) => selectedIdx.size === 0 || selectedIdx.has(i));
     for (const member of membersToDeploy) {
       const agentName = `${member.name} - ${projectName}`;
       // Re-deploying the same team must not double up agents: two agents with
@@ -295,22 +341,43 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
                 <label className="block text-xs font-medium text-foreground">
                   Members <span className="text-muted-foreground font-normal">- click a member to edit its model, effort, branch and instructions</span>
                 </label>
-                {membersDirty && <span className="text-[10px] text-primary">edited</span>}
+                <div className="flex items-center gap-2">
+                  {membersDirty && <span className="text-[10px] text-primary">edited</span>}
+                  <button onClick={addExtraMember} className="text-[10px] text-primary hover:underline">
+                    + Add member
+                  </button>
+                </div>
               </div>
               <div className="space-y-1">
                 {editedMembers.map((m, i) => (
                   <div key={i} className="border border-border bg-secondary/30">
-                    <button
-                      onClick={() => setExpandedMember(expandedMember === i ? null : i)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-left"
-                    >
+                    <div className="w-full flex items-center gap-2 px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedIdx.has(i)}
+                        onChange={() => toggleMember(i)}
+                        className="accent-[var(--primary)] shrink-0"
+                        title="Deploy this member"
+                      />
+                      <button
+                        onClick={() => setExpandedMember(expandedMember === i ? null : i)}
+                        className="flex-1 flex items-center gap-2 text-left"
+                      >
                       <span className="text-xs font-medium text-foreground">{m.name}</span>
                       {m.orchestratorMode && <span className="text-[10px] px-1 py-px bg-primary/10 text-primary">orchestrator</span>}
                       {m.worktreeBranch && <span className="text-[10px] font-mono text-muted-foreground">⎇ {m.worktreeBranch}</span>}
                       <span className="ml-auto text-[10px] font-mono text-muted-foreground">
-                        {m.model || 'default'} · {m.effort || 'default'}
+                        {m.provider || 'claude'} / {m.model || 'default'} / {m.effort || 'default'}
                       </span>
-                    </button>
+                      </button>
+                      <button
+                        onClick={() => removeMember(i)}
+                        className="shrink-0 p-1 text-muted-foreground hover:text-danger"
+                        title="Remove from this deployment"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
                     {expandedMember === i && (
                       <div className="px-3 pb-3 pt-1 space-y-2 border-t border-border">
                         <div className="flex gap-2">
@@ -334,6 +401,18 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
                         </div>
                         <div className="flex gap-2">
                           <div className="flex-1">
+                            <label className="block text-[10px] text-muted-foreground mb-0.5">Provider</label>
+                            <select
+                              value={m.provider || 'claude'}
+                              onChange={e => patchMember(i, { provider: e.target.value as TeamTemplateMember['provider'], model: undefined })}
+                              className="w-full px-2 py-1 bg-card border border-border text-xs text-foreground outline-none focus:border-primary/40"
+                            >
+                              {PROVIDER_REGISTRY.filter(p => availability[p.id] !== false).map(p => (
+                                <option key={p.id} value={p.id}>{p.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex-1">
                             <label className="block text-[10px] text-muted-foreground mb-0.5">Model</label>
                             <select
                               value={m.model || ''}
@@ -341,10 +420,9 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
                               className="w-full px-2 py-1 bg-card border border-border text-xs text-foreground outline-none focus:border-primary/40"
                             >
                               <option value="">Default</option>
-                              <option value="fable">Fable</option>
-                              <option value="opus">Opus</option>
-                              <option value="sonnet">Sonnet</option>
-                              <option value="haiku">Haiku</option>
+                              {(PROVIDER_REGISTRY.find(p => p.id === (m.provider || 'claude'))?.models ?? [])
+                                .filter(mo => mo.id !== 'default')
+                                .map(mo => <option key={mo.id} value={mo.id}>{mo.name}</option>)}
                             </select>
                           </div>
                           <div className="flex-1">

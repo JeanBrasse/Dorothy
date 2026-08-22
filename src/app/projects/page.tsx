@@ -145,27 +145,32 @@ export default function ProjectsPage() {
     }
   }, [selectedProject, loadGitBranch]);
 
-  // Load custom projects from localStorage
+  // Custom projects live in ~/.dorothy/projects.json (main process): they
+  // survive app updates and every surface sees them (agent creation, team
+  // deployment, Brain). Anything left in localStorage is migrated once.
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(CUSTOM_PROJECTS_KEY);
-      if (stored) {
-        setCustomProjects(JSON.parse(stored));
+    let cancelled = false;
+    (async () => {
+      try {
+        const legacyRaw = localStorage.getItem(CUSTOM_PROJECTS_KEY);
+        if (legacyRaw) {
+          const legacy = JSON.parse(legacyRaw) as CustomProject[];
+          for (const p of legacy) {
+            if (p?.path) await window.electronAPI?.fs?.addCustomProject(p.path);
+          }
+          localStorage.removeItem(CUSTOM_PROJECTS_KEY);
+        }
+      } catch (err) {
+        console.error('Failed to migrate custom projects:', err);
       }
-    } catch (err) {
-      console.error('Failed to load custom projects:', err);
-    }
+      const list = await window.electronAPI?.fs?.listProjects().catch(() => []);
+      if (cancelled || !list) return;
+      setCustomProjects(list.filter(p => p.custom).map(p => ({
+        path: p.path, name: p.name, addedAt: p.lastModified ?? '',
+      })));
+    })();
+    return () => { cancelled = true; };
   }, []);
-
-  // Save custom projects
-  const saveCustomProjects = (projects: CustomProject[]) => {
-    setCustomProjects(projects);
-    try {
-      localStorage.setItem(CUSTOM_PROJECTS_KEY, JSON.stringify(projects));
-    } catch (err) {
-      console.error('Failed to save custom projects:', err);
-    }
-  };
 
   // Add a new project
   const handleAddProject = async () => {
@@ -177,7 +182,8 @@ export default function ProjectsPage() {
         const existsInCustom = customProjects.some(p => p.path.replace(/\/+$/, '').toLowerCase() === normalizedPath.toLowerCase());
         if (!existsInCustom) {
           const name = selectedPath.split('/').pop() || 'Unknown Project';
-          saveCustomProjects([...customProjects, { path: normalizedPath, name, addedAt: new Date().toISOString() }]);
+          await window.electronAPI?.fs?.addCustomProject(normalizedPath);
+          setCustomProjects([...customProjects, { path: normalizedPath, name, addedAt: new Date().toISOString() }]);
         }
       }
     } catch (err) {
@@ -188,7 +194,8 @@ export default function ProjectsPage() {
   // Remove a custom project
   const handleRemoveProject = (projectPath: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    saveCustomProjects(customProjects.filter(p => p.path !== projectPath));
+    window.electronAPI?.fs?.removeCustomProject(projectPath);
+    setCustomProjects(customProjects.filter(p => p.path !== projectPath));
     if (selectedProject?.path === projectPath) {
       setSelectedProject(null);
     }
