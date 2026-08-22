@@ -225,6 +225,28 @@ export interface TemplateExport {
 }
 
 /** One agent slot in a team. Deploying a team creates one agent per member. */
+export type HermesMode = 'local' | 'ssh' | 'remote' | 'cloud';
+export type HermesAuthMode = 'token' | 'oauth';
+
+export interface HermesSshConfig {
+  host: string;
+  user: string;
+  port?: number;
+  keyPath?: string;
+  remotePort?: number;
+  localPort?: number;
+}
+
+export interface HermesConnection {
+  mode: HermesMode;
+  localPort?: number;
+  ssh?: HermesSshConfig;
+  url?: string;
+  authMode?: HermesAuthMode;
+  token?: string;
+  org?: string;
+}
+
 export interface TeamTemplateMember {
   name: string;
   character: AgentCharacter;
@@ -853,6 +875,21 @@ export interface ElectronAPI {
 
   // Hermes integration (remote scheduler wiring)
   hermes?: {
+    getConnection: () => Promise<{ connection: HermesConnection; baseUrl: string; desktopConfigAvailable: boolean }>;
+    saveConnection: (connection: HermesConnection) => Promise<{ success: boolean; error?: string }>;
+    importDesktopConnection: () => Promise<{ success: boolean; connection?: HermesConnection; baseUrl?: string; error?: string }>;
+    testConnection: (connection: HermesConnection) => Promise<{
+      success: boolean;
+      baseUrl?: string;
+      status?: number;
+      version?: string;
+      gatewayState?: string;
+      authRequired?: boolean;
+      authFlows?: string[];
+      authProviders?: string[];
+      needsSignIn?: boolean;
+      error?: string;
+    }>;
     getConnectionInfo: () => Promise<{
       apiPort: number;
       webhookPath: string;
@@ -921,7 +958,7 @@ export interface ElectronAPI {
 
   // Native Claude memory (reads ~/.claude/projects/*/memory/)
   memory?: {
-    listProjects: () => Promise<{ projects: ProjectMemory[]; error: string | null }>;
+    listProjects: (extraProjectPaths?: string[]) => Promise<{ projects: ProjectMemory[]; error: string | null }>;
     readFile: (filePath: string) => Promise<{ content: string; error?: string }>;
     writeFile: (filePath: string, content: string) => Promise<{ success: boolean; error?: string }>;
     createFile: (memoryDir: string, fileName: string, content?: string) => Promise<{ success: boolean; file?: MemoryFile; error?: string }>;

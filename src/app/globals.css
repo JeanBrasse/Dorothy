@@ -1,6 +1,3 @@
-/* Cooperlabs type system — Roboto Condensed (UI), Roboto Mono (data),
-   Instrument Serif (display stand-in for PP Eiko) */
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap');
 
 @import "tailwindcss";
 
@@ -271,9 +268,9 @@
   --color-cyan-950: #3A1A00;
 
   /* Typography */
-  --font-sans: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-serif: 'Instrument Serif', Georgia, serif;
-  --font-mono: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: var(--font-sans-loaded), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-serif: var(--font-serif-loaded), Georgia, serif;
+  --font-mono: var(--font-mono-loaded), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 /* ============================================
@@ -293,7 +290,7 @@
   body {
     background: var(--background);
     color: var(--foreground);
-    font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: var(--font-sans);
     font-size: 14px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
@@ -307,14 +304,14 @@
   }
   /* Headings - use app sans-serif font by default */
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: var(--font-sans);
     font-weight: 500;
     letter-spacing: 0;
   }
   /* Use retro serif only where explicitly applied via .font-serif class */
   /* Display serif (PP Eiko stand-in) — wordmark and large titles only */
   .font-serif {
-    font-family: 'Instrument Serif', Georgia, serif;
+    font-family: var(--font-serif);
   }
   h1 {
     font-size: 2rem;

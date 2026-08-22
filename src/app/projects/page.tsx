@@ -293,26 +293,19 @@ export default function ProjectsPage() {
   const isDefaultProject = (projectPath: string) => defaultProjectPath === projectPath;
 
   // Normalize path for comparison
-  const normalizePath = (path: string) => {
-    return path.replace(/\/+$/, '').toLowerCase();
+  const normalizePath = (p: string) => {
+    const trimmed = p.replace(/\/+$/, '').toLowerCase();
+    return trimmed === '' ? '/' : trimmed;
   };
 
-  // Flexible path matching
+  // Segment-boundary matching. The old version used endsWith(), and since
+  // normalizing '/' produced an empty string, endsWith('') was true for every
+  // path — one phantom card claimed every agent on the machine.
   const pathsMatch = (path1: string, path2: string) => {
-    const norm1 = normalizePath(path1);
-    const norm2 = normalizePath(path2);
-    if (norm1 === norm2) return true;
-    if (norm1.endsWith(norm2) || norm2.endsWith(norm1)) return true;
-    const name1 = norm1.split('/').pop();
-    const name2 = norm2.split('/').pop();
-    if (name1 && name2 && name1 === name2) {
-      const parts1 = norm1.split('/').filter(Boolean);
-      const parts2 = norm2.split('/').filter(Boolean);
-      if (parts1.length >= 2 && parts2.length >= 2) {
-        if (parts1.slice(-2).join('/') === parts2.slice(-2).join('/')) return true;
-      }
-    }
-    return false;
+    const a = normalizePath(path1);
+    const b = normalizePath(path2);
+    if (a === b) return true;
+    return a.startsWith(b + '/') || b.startsWith(a + '/');
   };
 
   // Get agents for the selected project

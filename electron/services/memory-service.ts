@@ -70,8 +70,19 @@ function readMemoryFile(filePath: string): MemoryFile {
   };
 }
 
-export function listProjectMemories(): ProjectMemory[] {
+/** Claude Code's own encoding: every '/' and '.' becomes '-'. */
+function encodeProjectPath(projectPath: string): string {
+  return projectPath.replace(/[/.]/g, '-');
+}
+
+/**
+ * @param extraProjectPaths Dorothy's own projects (agent folders, projects
+ * page). They belong in Brain even when Claude Code never opened them —
+ * otherwise a freshly added project is invisible here.
+ */
+export function listProjectMemories(extraProjectPaths: string[] = []): ProjectMemory[] {
   const results: ProjectMemory[] = [];
+  const seenPaths = new Set<string>();
 
   for (const { provider, dir: projectsDir } of PROVIDER_MEMORY_DIRS) {
     if (!fs.existsSync(projectsDir)) continue;
@@ -127,8 +138,27 @@ export function listProjectMemories(): ProjectMemory[] {
         }
       }
 
+      seenPaths.add(project.projectPath);
       results.push(project);
     }
+  }
+
+  // Dorothy-known projects with no memory yet: surfaced as empty entries so
+  // the user can create their MEMORY.md from the UI.
+  for (const projectPath of extraProjectPaths) {
+    if (!projectPath || seenPaths.has(projectPath)) continue;
+    seenPaths.add(projectPath);
+    results.push({
+      id: `dorothy:${projectPath}`,
+      projectName: getProjectName(projectPath),
+      projectPath,
+      memoryDir: path.join(CLAUDE_PROJECTS_DIR, encodeProjectPath(projectPath), 'memory'),
+      files: [],
+      totalSize: 0,
+      lastModified: '',
+      hasMemory: false,
+      provider: 'claude',
+    });
   }
 
   // Sort: projects with memory first, then by lastModified desc

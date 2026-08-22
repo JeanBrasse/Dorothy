@@ -34,11 +34,23 @@ export function useMemory() {
     try {
       setLoading(true);
       setError(null);
-      // Fetch projects and active agents in parallel
-      const [memResult, agents] = await Promise.all([
-        window.electronAPI.memory.listProjects(),
-        window.electronAPI.agent.list().catch(() => []),
-      ]);
+      // Agents first: their project folders are part of what Brain must show,
+      // even when Claude Code never wrote memory for them yet.
+      const agents = await window.electronAPI.agent.list().catch(() => []);
+      const customProjects: string[] = (() => {
+        try {
+          const raw = localStorage.getItem('dorothy-custom-projects');
+          const parsed = raw ? JSON.parse(raw) : [];
+          return Array.isArray(parsed)
+            ? parsed.map((p: unknown) => (typeof p === 'string' ? p : (p as { path?: string })?.path)).filter(Boolean) as string[]
+            : [];
+        } catch { return []; }
+      })();
+      const knownPaths = Array.from(new Set([
+        ...agents.map(a => a.projectPath).filter(Boolean),
+        ...customProjects,
+      ]));
+      const memResult = await window.electronAPI.memory.listProjects(knownPaths);
 
       // Build agent count map keyed by projectPath
       const countMap = new Map<string, number>();

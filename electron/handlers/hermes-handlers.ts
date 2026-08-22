@@ -5,8 +5,94 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as http from 'http';
+import * as https from 'https';
+import { DATA_DIR } from '../constants';
+import {
+  HermesConnection,
+  defaultHermesConnection,
+  resolveHermesBaseUrl,
+  HERMES_DEFAULT_PORT,
+} from '../types/hermes';
 
 const execFileAsync = promisify(execFile);
+
+const HERMES_CONNECTION_FILE = path.join(DATA_DIR, 'hermes-connection.json');
+/** Where Hermes Desktop keeps its own connection config on macOS. */
+const HERMES_DESKTOP_CONFIG = path.join(
+  os.homedir(), 'Library', 'Application Support', 'Hermes', 'connection.json',
+);
+
+function readConnection(): HermesConnection {
+  try {
+    if (fs.existsSync(HERMES_CONNECTION_FILE)) {
+      return { ...defaultHermesConnection(), ...JSON.parse(fs.readFileSync(HERMES_CONNECTION_FILE, 'utf-8')) };
+    }
+  } catch (err) {
+    console.error('[hermes] cannot read connection config:', err);
+  }
+  return defaultHermesConnection();
+}
+
+function writeConnection(conn: HermesConnection): void {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(HERMES_CONNECTION_FILE, JSON.stringify(conn, null, 2));
+}
+
+/** Hermes Desktop's config shape -> ours (same vocabulary, nested differently). */
+function importDesktopConfig(): HermesConnection | null {
+  try {
+    if (!fs.existsSync(HERMES_DESKTOP_CONFIG)) return null;
+    const raw = JSON.parse(fs.readFileSync(HERMES_DESKTOP_CONFIG, 'utf-8'));
+    const mode = raw?.mode as HermesConnection['mode'];
+    if (!mode) return null;
+    const conn: HermesConnection = { mode, authMode: 'token' };
+    const section = raw?.[mode] ?? {};
+    if (mode === 'remote' || mode === 'cloud') {
+      conn.url = section.url;
+      conn.authMode = section.authMode === 'oauth' ? 'oauth' : 'token';
+      if (section.token?.encoding === 'plain' && section.token?.value) conn.token = section.token.value;
+      if (section.org) conn.org = section.org;
+    } else if (mode === 'ssh') {
+      conn.ssh = {
+        host: section.host, user: section.user,
+        port: section.port, keyPath: section.keyPath || section.identityFile,
+        remotePort: section.remotePort || HERMES_DEFAULT_PORT,
+        localPort: section.localPort,
+      };
+    } else {
+      conn.localPort = section.port || HERMES_DEFAULT_PORT;
+    }
+    return conn;
+  } catch (err) {
+    console.error('[hermes] cannot import Hermes Desktop config:', err);
+    return null;
+  }
+}
+
+/** GET a Hermes endpoint, following the gateway's own auth conventions. */
+function hermesGet(baseUrl: string, pathname: string, token?: string, timeoutMs = 6000): Promise<{ status: number; body: unknown }> {
+  return new Promise((resolve, reject) => {
+    let target: URL;
+    try { target = new URL(baseUrl + pathname); } catch { reject(new Error('Invalid gateway URL')); return; }
+    const mod = target.protocol === 'https:' ? https : http;
+    const req = mod.request(target, {
+      method: 'GET',
+      timeout: timeoutMs,
+      headers: token ? { 'X-Hermes-Session-Token': token } : undefined,
+    }, res => {
+      let raw = '';
+      res.on('data', c => { raw += c; });
+      res.on('end', () => {
+        let body: unknown = raw;
+        try { body = JSON.parse(raw); } catch { /* keep raw */ }
+        resolve({ status: res.statusCode ?? 0, body });
+      });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    req.end();
+  });
+}
 
 const API_PORT = 31415;
 
@@ -97,6 +183,68 @@ function postLocal(pathname: string, token: string, payload: unknown): Promise<{
 }
 
 export function registerHermesHandlers(): void {
+  ipcMain.handle('hermes:connection:get', async () => {
+    const connection = readConnection();
+    return {
+      connection,
+      baseUrl: resolveHermesBaseUrl(connection),
+      desktopConfigAvailable: fs.existsSync(HERMES_DESKTOP_CONFIG),
+    };
+  });
+
+  ipcMain.handle('hermes:connection:save', async (_event, connection: HermesConnection) => {
+    try {
+      writeConnection(connection);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('hermes:connection:import', async () => {
+    const imported = importDesktopConfig();
+    if (!imported) return { success: false, error: 'No Hermes Desktop configuration found on this machine.' };
+    writeConnection(imported);
+    return { success: true, connection: imported, baseUrl: resolveHermesBaseUrl(imported) };
+  });
+
+  /**
+   * Probes the gateway the way Hermes Desktop does: /api/status is public and
+   * advertises the version plus which auth model is in force, so we can tell
+   * "unreachable" from "reachable but you still need to sign in".
+   */
+  ipcMain.handle('hermes:connection:test', async (_event, connection: HermesConnection) => {
+    const baseUrl = resolveHermesBaseUrl(connection);
+    if (!baseUrl) return { success: false, error: 'No gateway URL resolved for this mode.' };
+
+    try {
+      const { status, body } = await hermesGet(baseUrl, '/api/status', connection.token);
+      if (status === 0) return { success: false, baseUrl, error: 'No response from gateway.' };
+
+      const info = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+      const authRequired = info.auth_required === true;
+      const authFlows = Array.isArray(info.auth_flows) ? info.auth_flows as string[] : [];
+      const authProviders = Array.isArray(info.auth_providers) ? info.auth_providers as string[] : [];
+
+      return {
+        success: status < 400,
+        baseUrl,
+        status,
+        version: typeof info.version === 'string' ? info.version : undefined,
+        gatewayState: typeof info.gateway_state === 'string' ? info.gateway_state : undefined,
+        authRequired,
+        authFlows,
+        authProviders,
+        // A cookie-gated gateway cannot be driven by a static token: say so
+        // instead of reporting a false success.
+        needsSignIn: authRequired && authFlows.includes('cookie'),
+      };
+    } catch (err) {
+      return { success: false, baseUrl, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+
   ipcMain.handle('hermes:getConnectionInfo', async () => {
     const [tailscale, token] = await Promise.all([detectTailscale(), Promise.resolve(readApiToken())]);
 

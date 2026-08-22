@@ -431,6 +431,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   hermes: {
     getConnectionInfo: () =>
       ipcRenderer.invoke('hermes:getConnectionInfo'),
+    getConnection: () =>
+      ipcRenderer.invoke('hermes:connection:get'),
+    saveConnection: (connection: Record<string, unknown>) =>
+      ipcRenderer.invoke('hermes:connection:save', connection),
+    importDesktopConnection: () =>
+      ipcRenderer.invoke('hermes:connection:import'),
+    testConnection: (connection: Record<string, unknown>) =>
+      ipcRenderer.invoke('hermes:connection:test', connection),
     testWebhook: (params: { agentName?: string; agentId?: string; projectPath?: string }) =>
       ipcRenderer.invoke('hermes:testWebhook', params),
     testGateway: (url: string) =>
@@ -555,8 +563,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Native Claude memory (reads ~/.claude/projects/*/memory/)
   memory: {
-    listProjects: () =>
-      ipcRenderer.invoke('memory:list-projects'),
+    listProjects: (extraProjectPaths?: string[]) =>
+      ipcRenderer.invoke('memory:list-projects', extraProjectPaths),
     readFile: (filePath: string) =>
       ipcRenderer.invoke('memory:read-file', filePath),
     writeFile: (filePath: string, content: string) =>

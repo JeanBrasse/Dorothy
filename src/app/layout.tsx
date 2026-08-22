@@ -1,5 +1,12 @@
 import type { Metadata, Viewport } from "next";
+import { Roboto_Condensed, Roboto_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
+
+// Self-hosted at build time: no render-blocking request to Google at runtime,
+// and the type system still works offline.
+const sans = Roboto_Condensed({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-sans-loaded", display: "swap" });
+const mono = Roboto_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono-loaded", display: "swap" });
+const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-serif-loaded", display: "swap" });
 import ClientLayout from "@/components/ClientLayout";
 
 export const metadata: Metadata = {
@@ -31,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" style={{ colorScheme: 'dark' }}>
+    <html lang="en" className={`dark ${sans.variable} ${mono.variable} ${serif.variable}`} style={{ colorScheme: 'dark' }}>
       <head>
         {/* Applies the stored theme before the first paint: without this the
             light palette renders for one frame on every cold load (white flash). */}

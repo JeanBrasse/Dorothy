@@ -200,6 +200,7 @@ export async function getClaudeProjects(): Promise<ClaudeProject[]> {
     if (!fs.existsSync(projectsDir)) return [];
 
     const projects: ClaudeProject[] = [];
+    const seenPaths = new Set<string>();
 
     const dirs = fs.readdirSync(projectsDir);
     for (const dir of dirs) {
@@ -209,6 +210,15 @@ export async function getClaudeProjects(): Promise<ClaudeProject[]> {
 
       // Decode project path smartly
       const decodedPath = decodeProjectPath(dir);
+
+      // Skip junk entries: the decoder falls back to '/' or to fabricated
+      // paths for stale/renamed folders, and worktrees are views of a repo
+      // rather than projects of their own ('main', 'feat-backend' cards).
+      if (!decodedPath || decodedPath === '/' || decodedPath === os.homedir()) continue;
+      if (!fs.existsSync(decodedPath)) continue;
+      if (/\/\.?worktrees\//.test(decodedPath)) continue;
+      if (seenPaths.has(decodedPath)) continue;
+      seenPaths.add(decodedPath);
 
       // Get sessions
       const sessions: Array<{ id: string; timestamp: number }> = [];
