@@ -159,7 +159,7 @@ export function setupProtocolHandler() {
   // Serve local files via local-file:// protocol (for vault image previews etc.)
   // URLs are encoded as: local-file://host/path where host is empty
   // e.g. local-file:///Users/charlie/Desktop/photo.png
-  protocol.handle('local-file', (request) => {
+  protocol.handle('local-file', async (request) => {
     try {
       // Parse as URL to properly decode path components
       const url = new URL(request.url);
@@ -176,7 +176,7 @@ export function setupProtocolHandler() {
       if (filePath && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
         const ext = path.extname(filePath).toLowerCase();
         const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
-        return new Response(fs.readFileSync(filePath), {
+        return new Response(await fs.promises.readFile(filePath), {
           headers: { 'Content-Type': mimeType },
         });
       }
@@ -192,7 +192,7 @@ export function setupProtocolHandler() {
     const basePath = getAppBasePath();
     console.log('Registering app:// protocol with basePath:', basePath);
 
-    protocol.handle('app', (request) => {
+    protocol.handle('app', async (request) => {
       let urlPath = request.url.replace('app://', '');
 
       // Remove the host part (e.g., "localhost" or "-")
@@ -223,7 +223,7 @@ export function setupProtocolHandler() {
         const ext = path.extname(filePath).toLowerCase();
         const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
 
-        return new Response(fs.readFileSync(filePath), {
+        return new Response(await fs.promises.readFile(filePath), {
           headers: { 'Content-Type': mimeType },
         });
       }
@@ -231,7 +231,7 @@ export function setupProtocolHandler() {
       // If it's a page route without .html, try adding index.html
       const htmlPath = path.join(basePath, relativePath, 'index.html');
       if (fs.existsSync(htmlPath)) {
-        return new Response(fs.readFileSync(htmlPath), {
+        return new Response(await fs.promises.readFile(htmlPath), {
           headers: { 'Content-Type': 'text/html' },
         });
       }

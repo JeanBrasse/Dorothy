@@ -102,9 +102,15 @@ const ATTRACTION  = 0.032;
 const DAMPING     = 0.85;
 const ITERATIONS  = 1;
 
-function tickForce(nodes: GraphNode[], edges: GraphEdge[]) {
+/**
+ * One step of the layout.
+ *
+ * Returns the total kinetic energy so the caller can stop once the graph has
+ * settled: this used to run forever at 60fps, O(n²) per frame with a fresh Map
+ * each time, burning a core for as long as the page was open.
+ */
+function tickForce(nodes: GraphNode[], edges: GraphEdge[], idx: Map<string, number>): number {
   const n = nodes.length;
-  const idx = new Map(nodes.map((nd, i) => [nd.id, i]));
 
   for (let iter = 0; iter < ITERATIONS; iter++) {
     // Repulsion between all pairs
@@ -149,7 +155,14 @@ function tickForce(nodes: GraphNode[], edges: GraphEdge[]) {
       nd.y += nd.vy;
     }
   }
+
+  let energy = 0;
+  for (const nd of nodes) energy += nd.vx * nd.vx + nd.vy * nd.vy;
+  return energy;
 }
+
+/** Below this the graph has stopped moving in any way a person can see. */
+const SETTLED_ENERGY = 0.05;
 
 // ── Data types ────────────────────────────────────────────────────────────────
 
@@ -515,6 +528,8 @@ function drawGraph(
 export default function AgentKnowledgeGraph() {
   const canvasRef    = useRef<HTMLCanvasElement>(null);
   const animRef      = useRef<number>(0);
+  /** Set by the render loop; kicks it back off after an interaction. */
+  const restartRef   = useRef<() => void>(() => undefined);
   const graphRef     = useRef<GraphData>({ nodes: [], edges: [] });
   const transformRef = useRef({ x: 0, y: 0, scale: 1 });
   const hoveredRef   = useRef<string | null>(null);
@@ -699,13 +714,37 @@ export default function AgentKnowledgeGraph() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // The node index is stable for a given graph, so it is built once rather
+    // than allocated on every frame.
+    let idx = new Map(graphRef.current.nodes.map((nd, i) => [nd.id, i]));
+    let indexedCount = graphRef.current.nodes.length;
+
     const loop = () => {
-      animRef.current = requestAnimationFrame(loop);
       const graph = graphRef.current;
       const t = transformRef.current;
-      tickForce(graph.nodes, graph.edges);
-      if (warmupRef.current > 0) { warmupRef.current--; return; }
-      drawGraph(ctx, graph, hoveredRef.current, t);
+
+      if (graph.nodes.length !== indexedCount) {
+        idx = new Map(graph.nodes.map((nd, i) => [nd.id, i]));
+        indexedCount = graph.nodes.length;
+      }
+
+      const energy = tickForce(graph.nodes, graph.edges, idx);
+      if (warmupRef.current > 0) {
+        warmupRef.current--;
+      } else {
+        drawGraph(ctx, graph, hoveredRef.current, t);
+      }
+
+      // Settled: draw one last frame and stop. Interaction restarts it.
+      if (energy < SETTLED_ENERGY && warmupRef.current <= 0) {
+        animRef.current = 0;
+        return;
+      }
+      animRef.current = requestAnimationFrame(loop);
+    };
+
+    restartRef.current = () => {
+      if (!animRef.current) animRef.current = requestAnimationFrame(loop);
     };
 
     animRef.current = requestAnimationFrame(loop);
@@ -771,6 +810,7 @@ export default function AgentKnowledgeGraph() {
     const hit = hitTest(ex, ey);
     const prev = hoveredRef.current;
     hoveredRef.current = hit?.id ?? null;
+    restartRef.current();
     if (canvasRef.current) canvasRef.current.style.cursor = hit ? 'pointer' : 'grab';
     if (prev !== hoveredRef.current) warmupRef.current = 0;
   }, [hitTest]);

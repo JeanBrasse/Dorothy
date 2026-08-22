@@ -117,9 +117,11 @@ export async function setupMcpOrchestrator(appSettings?: AppSettings): Promise<v
       for (const provider of providers) {
         try {
           if (!provider.isMcpServerRegistered(name, serverPath)) {
+            // Registering spawns a CLI, and this is the main thread — the one
+            // that paints the window and pumps every PTY. Yield between each
+            // so the app stays answerable while it catches up.
+            await new Promise(resolve => setImmediate(resolve));
             await provider.registerMcpServer(name, command, args);
-          } else {
-            console.log(`[${provider.id}] ${name} already registered`);
           }
         } catch (err) {
           console.error(`[${provider.id}] Failed to register ${name}:`, err);

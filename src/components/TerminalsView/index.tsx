@@ -321,12 +321,12 @@ export default function TerminalsView() {
     }
   }, [filteredAgents, stopAgent]);
 
-  const handleCopyOutput = useCallback((agentId: string) => {
-    const agent = agents.find(a => a.id === agentId);
-    if (agent) {
-      navigator.clipboard.writeText(agent.output.join('')).catch(() => { });
-    }
-  }, [agents]);
+  const handleCopyOutput = useCallback(async (agentId: string) => {
+    // The list no longer carries the scrollback, so ask for this one agent.
+    const full = await window.electronAPI?.agent?.get(agentId);
+    const output = full?.output?.join('') ?? '';
+    if (output) navigator.clipboard.writeText(output).catch(() => { });
+  }, []);
 
   const handleLayoutChange = useCallback((preset: LayoutPreset) => {
     if (tabManager.activeCustomTab) {
@@ -396,11 +396,19 @@ export default function TerminalsView() {
     return () => window.removeEventListener('keydown', handler);
   }, [viewFullscreen]);
 
-  // Re-fit terminals when view fullscreen changes
+  // Re-fit terminals when the view goes fullscreen.
+  //
+  // multiTerminal is a fresh object every render, so depending on it re-ran
+  // this on every agents:tick — a full xterm refit of every pane, twice a
+  // second. Only the fullscreen flag should trigger it.
+  const fitAllRef = useRef(multiTerminal.fitAll);
   useEffect(() => {
-    const timer = setTimeout(() => multiTerminal.fitAll(), 100);
+    fitAllRef.current = multiTerminal.fitAll;
+  });
+  useEffect(() => {
+    const timer = setTimeout(() => fitAllRef.current(), 100);
     return () => clearTimeout(timer);
-  }, [viewFullscreen, multiTerminal]);
+  }, [viewFullscreen]);
 
   const runningCount = filteredAgents.filter(a => a.status === 'running' || a.status === 'waiting').length;
 

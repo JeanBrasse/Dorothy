@@ -759,7 +759,11 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
 
   // Get all agents
   ipcMain.handle('agent:list', async () => {
-    return Array.from(agents.values());
+    // Without the scrollback. This runs on mount, after every create, start,
+    // stop, remove and update, on every agent:complete and on every tick where
+    // the count changed - serialising each agent's whole terminal history over
+    // IPC each time. Whoever needs the output asks for that agent.
+    return Array.from(agents.values()).map(agent => ({ ...agent, output: [] }));
   });
 
   // Update an agent (supports all editable fields)
