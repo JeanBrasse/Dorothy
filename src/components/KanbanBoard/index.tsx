@@ -349,7 +349,7 @@ export default function KanbanBoard() {
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 5 }}
-                      className="absolute top-full mt-2 right-0 w-48 bg-card border border-border rounded-none shadow-lg z-20 py-2"
+                      className="absolute top-full mt-2 right-0 w-48 bg-card border border-border rounded-none z-20 py-2"
                     >
                       {[{ id: '', name: 'All Projects' }, ...projects].map((p) => {
                         const isSelected = (p.id === '' && !filterProject) || filterProject === p.id;

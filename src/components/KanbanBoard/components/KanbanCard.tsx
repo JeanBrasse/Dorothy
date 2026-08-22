@@ -90,7 +90,7 @@ export function KanbanCard({ task, onEdit, onDelete, onStart, onOpenTerminal, is
         shadow-sm transition-all duration-200
         border border-border/50
         cursor-pointer hover:shadow-md hover:border-border
-        ${isTaskDragging ? 'scale-105 shadow-xl z-50 rotate-2' : ''}
+        ${isTaskDragging ? 'scale-105 z-50 rotate-2' : ''}
         ${isAgentWorking ? 'ring-2 ring-green-500/30' : ''}
         ${isDone ? 'opacity-70' : ''}
         ${isBeingDragged ? 'pointer-events-none' : ''}

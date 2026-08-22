@@ -112,7 +112,6 @@ export default function ProviderBadge({ provider, className = '' }: ProviderBadg
     <span
       title={def.label}
       className={`relative inline-flex items-center justify-center w-6 h-6 bg-secondary ${className}`}
-      style={{ borderRadius: 6 }}
     >
       <ProviderIconRenderer icon={def.icon} />
       <svg

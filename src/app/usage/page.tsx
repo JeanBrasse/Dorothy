@@ -865,13 +865,11 @@ export default function UsagePage() {
                 key={range}
                 onClick={() => setCostTimeRange(range)}
                 className="px-3 py-1 text-xs font-medium capitalize relative z-10 transition-colors duration-200 cursor-pointer"
-                style={{ borderRadius: '10px' }}
               >
                 {costTimeRange === range && (
                   <motion.div
                     layoutId="costTimeRangeIndicator"
                     className="absolute inset-0 bg-accent-green/20"
-                    style={{ borderRadius: '10px' }}
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}

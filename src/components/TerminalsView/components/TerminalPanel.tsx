@@ -72,11 +72,10 @@ export default function TerminalPanel({
     <div
       ref={setDropRef}
       className={`
-        flex flex-col overflow-hidden h-full
-        ${isOver ? 'border-purple-500/70 shadow-[0_0_15px_rgba(168,85,247,0.2)]' : isFocused ? 'border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.1)]' : 'border-white/10'}
+        flex flex-col overflow-hidden h-full bg-background border transition-colors
+        ${isOver ? 'border-primary' : isFocused ? 'border-primary/50' : 'border-border'}
         ${isFullscreen ? 'fixed inset-0 z-[80] window-no-drag pt-7' : ''}
       `}
-      style={{ backgroundColor: '#1a1a2e' }}
       onClick={handleClick}
     >
       {/* Header */}
@@ -97,8 +96,7 @@ export default function TerminalPanel({
       {/* Terminal body */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0 overflow-hidden relative"
-        style={{ backgroundColor: '#1a1a2e' }}
+        className="flex-1 min-h-0 overflow-hidden relative bg-background"
       />
     </div>
   );

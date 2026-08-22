@@ -256,7 +256,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
-              className="bg-card border border-border rounded-lg shadow-xl max-w-md w-full p-6"
+              className="bg-card border border-border rounded-lg max-w-md w-full p-6"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center gap-3 mb-4">

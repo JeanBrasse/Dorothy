@@ -343,7 +343,6 @@ export default function TerminalDialog({ open, repo, title, onClose, availablePr
                           ? 'bg-secondary text-foreground'
                           : 'bg-secondary/50 text-muted-foreground hover:text-foreground'
                       } ${isClaude ? 'opacity-90 cursor-default' : ''}`}
-                      style={{ borderRadius: 4 }}
                     >
                       {typeof icon === 'string' ? (
                         <img src={icon} alt={config.label} className="w-3 h-3 object-contain" />

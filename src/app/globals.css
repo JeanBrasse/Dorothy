@@ -223,6 +223,11 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  /* Semantic feedback colors (exposed to Tailwind as bg-success etc.) */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
   /* Agent status — semantic, accent-independent */
   --color-status-running: var(--success);
   --color-status-waiting: var(--warning);
@@ -348,11 +353,20 @@ input, textarea, select {
   border-radius: 2px;
 }
 
-/* Neutralize leftover retro rounding on containers (xterm excluded) */
-.rounded-xl:not(.xterm *):not([class*="xterm"]),
-.rounded-2xl:not(.xterm *):not([class*="xterm"]),
-.rounded-lg:not(.xterm *):not([class*="xterm"]) {
-  border-radius: var(--radius-lg) !important;
+/* Neutralize leftover retro rounding on containers (xterm excluded).
+   rounded-full survives only on small status dots and avatars — anything
+   bigger than 12px gets squared off. */
+.rounded-md:not([class*="xterm"]),
+.rounded-lg:not([class*="xterm"]),
+.rounded-xl:not([class*="xterm"]),
+.rounded-2xl:not([class*="xterm"]),
+.rounded-3xl:not([class*="xterm"]) {
+  border-radius: var(--radius-sm) !important;
+}
+
+/* Flat surfaces: no elevation anywhere in the app chrome */
+[class*="shadow-"]:not([class*="xterm"]) {
+  box-shadow: none !important;
 }
 
 /* ============================================

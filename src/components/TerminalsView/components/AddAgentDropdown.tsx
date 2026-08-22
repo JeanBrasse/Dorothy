@@ -82,7 +82,6 @@ export default function AddAgentDropdown({
       <button
         onClick={() => setOpen(prev => !prev)}
         className="flex items-center gap-1.5 px-2.5 py-1.5 bg-foreground text-background text-xs font-medium hover:bg-foreground/90 transition-colors"
-        style={{ borderRadius: 7 }}
         title="Add existing agent to this board"
       >
         <Plus className="w-3.5 h-3.5" />
@@ -91,7 +90,7 @@ export default function AddAgentDropdown({
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 mt-1 bg-card border border-border shadow-xl z-50 min-w-[220px] max-h-[320px] overflow-y-auto">
+        <div className="absolute top-full right-0 mt-1 bg-card border border-border z-50 min-w-[220px] max-h-[320px] overflow-y-auto">
           {/* Search input */}
           <div className="sticky top-0 z-10 bg-card border-b border-border p-2">
             <div className="relative">

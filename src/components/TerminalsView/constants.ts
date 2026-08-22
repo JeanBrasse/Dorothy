@@ -43,11 +43,11 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
 
 // Status colors (light theme compatible)
 export const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  running: { bg: 'bg-green-600/15', text: 'text-green-700', dot: 'bg-green-600' },
-  waiting: { bg: 'bg-amber-500/15', text: 'text-amber-700', dot: 'bg-amber-500' },
-  idle: { bg: 'bg-gray-500/15', text: 'text-gray-600', dot: 'bg-gray-400' },
-  error: { bg: 'bg-red-500/15', text: 'text-red-700', dot: 'bg-red-500' },
-  completed: { bg: 'bg-primary/15', text: 'text-primary', dot: 'bg-primary' },
+  running: { bg: 'bg-success/12', text: 'text-success', dot: 'bg-success' },
+  waiting: { bg: 'bg-warning/12', text: 'text-warning', dot: 'bg-warning' },
+  idle: { bg: 'bg-muted', text: 'text-muted-foreground', dot: 'bg-muted-foreground' },
+  error: { bg: 'bg-danger/12', text: 'text-danger', dot: 'bg-danger' },
+  completed: { bg: 'bg-primary/12', text: 'text-primary', dot: 'bg-primary' },
 };
 
 // Local storage key for persisting sidebar state

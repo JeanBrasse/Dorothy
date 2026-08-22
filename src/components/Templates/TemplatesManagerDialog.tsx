@@ -255,7 +255,7 @@ export function TemplatesManagerDialog({ open, onClose }: TemplatesManagerDialog
       />
 
       {installError && (
-        <div className="fixed bottom-4 right-4 z-[80] max-w-sm bg-card border border-amber-500/40 px-4 py-3 shadow-lg flex flex-col gap-2">
+        <div className="fixed bottom-4 right-4 z-[80] max-w-sm bg-card border border-amber-500/40 px-4 py-3 flex flex-col gap-2">
           <p className="text-xs text-foreground">{installError}</p>
           <div className="flex items-center justify-end gap-2">
             <button

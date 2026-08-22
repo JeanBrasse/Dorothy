@@ -487,7 +487,7 @@ export default function SkillsTab() {
                                 <ProviderBadge key={pid} provider={pid} />
                               ) : null
                             )}
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-medium ml-1" style={{ borderRadius: 4 }}>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-medium ml-1">
                               <Check className="w-2.5 h-2.5" />
                               Installed
                             </span>
@@ -502,7 +502,6 @@ export default function SkillsTab() {
                                 ? 'bg-primary/10 text-primary'
                                 : 'bg-foreground text-background hover:bg-foreground/90'
                               }`}
-                            style={{ borderRadius: 5 }}
                           >
                             {isInstalling ? (
                               <>

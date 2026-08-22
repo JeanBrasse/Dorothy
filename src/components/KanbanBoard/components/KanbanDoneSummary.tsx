@@ -31,7 +31,7 @@ export function KanbanDoneSummary({ task, onClose, onDelete }: KanbanDoneSummary
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl"
       >
-        <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-green-500/5">
             <div className="flex items-center gap-3">

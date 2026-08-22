@@ -196,7 +196,7 @@ export default function CustomTabBar({
         {showCreateDialog && (
           <div
             ref={createDialogRef}
-            className="absolute top-full left-0 mt-1 bg-card border border-border shadow-xl z-50 p-3 min-w-[260px]"
+            className="absolute top-full left-0 mt-1 bg-card border border-border z-50 p-3 min-w-[260px]"
           >
             {projectGroups && projectGroups.length > 0 && onCreateFromProject && (
               <div className="mb-3">

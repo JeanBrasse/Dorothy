@@ -59,7 +59,7 @@ export default function Sidebar({
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-0 right-0 z-50 flex flex-col bg-card border border-border shadow-2xl overflow-hidden"
+            className="absolute top-0 right-0 z-50 flex flex-col bg-card border border-border overflow-hidden"
             style={{ width: 300, maxHeight: 'calc(100% - 32px)' }}
             onMouseDown={e => e.stopPropagation()}
           >

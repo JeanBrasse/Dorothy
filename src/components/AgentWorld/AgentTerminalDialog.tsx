@@ -184,7 +184,7 @@ export default function AgentTerminalDialog({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          className={`bg-bg-secondary border border-border-primary rounded-none overflow-hidden shadow-2xl ${dialogClass} flex flex-col [&_button:not(:disabled)]:cursor-pointer`}
+          className={`bg-bg-secondary border border-border-primary rounded-none overflow-hidden ${dialogClass} flex flex-col [&_button:not(:disabled)]:cursor-pointer`}
         >
           <AgentDialogHeader
             agent={agent}
@@ -225,7 +225,7 @@ export default function AgentTerminalDialog({
               {terminalReady && !isAtBottom && (
                 <button
                   onClick={scrollToBottom}
-                  className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-white/70 hover:text-white text-xs transition-colors z-10 shadow-lg"
+                  className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-white/70 hover:text-white text-xs transition-colors z-10"
                   title="Scroll to bottom"
                 >
                   <ChevronDown className="w-3.5 h-3.5" />

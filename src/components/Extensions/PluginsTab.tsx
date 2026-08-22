@@ -96,7 +96,7 @@ const PluginCard = React.memo(function PluginCard({
               </span>
             )}
             {installed && (
-              <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary" style={{ borderRadius: 5 }}>
+              <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary">
                 Installed
               </span>
             )}
@@ -146,7 +146,6 @@ const PluginCard = React.memo(function PluginCard({
                 ? 'bg-secondary text-muted-foreground'
                 : 'bg-foreground text-background hover:bg-foreground/90'
                 }`}
-              style={{ borderRadius: 7 }}
             >
               {isInstalling ? (
                 <>
@@ -165,7 +164,6 @@ const PluginCard = React.memo(function PluginCard({
                 ? 'bg-primary/10 text-primary'
                 : 'bg-secondary text-muted-foreground hover:text-foreground'
                 }`}
-              style={{ borderRadius: 7 }}
               title="Copy install command"
             >
               {justCopied ? (
@@ -639,7 +637,7 @@ export default function PluginsTab() {
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 5 }}
-                className="absolute top-full mt-2 right-0 w-48 bg-card border border-border rounded-none shadow-lg z-20 py-2 max-h-80 overflow-y-auto"
+                className="absolute top-full mt-2 right-0 w-48 bg-card border border-border rounded-none z-20 py-2 max-h-80 overflow-y-auto"
               >
                 <button
                   onClick={() => {
@@ -695,7 +693,7 @@ export default function PluginsTab() {
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 5 }}
-                className="absolute top-full mt-2 right-0 w-56 bg-card border border-border rounded-none shadow-lg z-20 py-2"
+                className="absolute top-full mt-2 right-0 w-56 bg-card border border-border rounded-none z-20 py-2"
               >
                 <button
                   onClick={() => { setSelectedMarketplace(null); setShowMarketplaceDropdown(false); }}
@@ -740,7 +738,7 @@ export default function PluginsTab() {
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 5 }}
-                className="absolute top-full mt-2 right-0 w-56 bg-card border border-border rounded-none shadow-lg z-20 py-2 max-h-80 overflow-y-auto"
+                className="absolute top-full mt-2 right-0 w-56 bg-card border border-border rounded-none z-20 py-2 max-h-80 overflow-y-auto"
               >
                 <button
                   onClick={() => { setSelectedAuthor(null); setShowAuthorDropdown(false); }}

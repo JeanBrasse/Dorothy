@@ -75,7 +75,6 @@ export default function LayoutPresetSelector({ current, onChange, disabledPreset
       <button
         onClick={() => setOpen(prev => !prev)}
         className="flex items-center gap-2 px-2.5 py-1.5 bg-secondary border border-border hover:border-border transition-colors text-xs"
-        style={{ borderRadius: 7 }}
       >
         <GridIcon preset={current} size={16} />
         <span className="text-foreground">{LAYOUT_PRESETS[current].label}</span>
@@ -83,7 +82,7 @@ export default function LayoutPresetSelector({ current, onChange, disabledPreset
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 bg-card border border-border shadow-xl z-50 min-w-[180px]">
+        <div className="absolute top-full left-0 mt-1 bg-card border border-border z-50 min-w-[180px]">
           {(Object.keys(LAYOUT_PRESETS) as LayoutPreset[]).map(preset => {
             const isDisabled = disabledSet.has(preset);
             return (

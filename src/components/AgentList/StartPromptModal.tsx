@@ -48,7 +48,7 @@ export function StartPromptModal({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-bg-secondary border border-border-primary rounded-none p-6 w-full max-w-lg mx-4 shadow-2xl"
+            className="bg-bg-secondary border border-border-primary rounded-none p-6 w-full max-w-lg mx-4"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
