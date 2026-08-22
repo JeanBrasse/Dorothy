@@ -71,7 +71,21 @@ export async function getClaudeSettings(): Promise<ClaudeSettings | null> {
  * Read Claude Code stats from stats-cache.json, statsig_user_metadata.json,
  * or compute from local files (history.jsonl + sessions/)
  */
+/**
+ * Reading the stats means parsing history.jsonl, every session file and every
+ * transcript. The Usage page and the tray both ask for it, so without a memo
+ * that whole sweep ran again on each request, synchronously, on the main
+ * thread. A minute of staleness is invisible in a usage chart.
+ */
+let statsMemo: { at: number; value: ClaudeStats | null } | null = null;
+const STATS_TTL_MS = 60_000;
+
+export function clearClaudeStatsCache(): void {
+  statsMemo = null;
+}
+
 export async function getClaudeStats(): Promise<ClaudeStats | null> {
+  if (statsMemo && Date.now() - statsMemo.at < STATS_TTL_MS) return statsMemo.value;
   try {
     let base: ClaudeStats | null = null;
 
@@ -95,15 +109,18 @@ export async function getClaudeStats(): Promise<ClaudeStats | null> {
     if (!hasTokens) {
       const usage = computeTranscriptUsage();
       if (Object.keys(usage.modelUsage).length > 0) {
-        return {
+        const merged = {
           ...(base || {}),
           modelUsage: usage.modelUsage,
           dailyModelTokens: usage.dailyModelTokens,
           lastComputedDate: usage.lastComputedDate ?? (base?.lastComputedDate as string | undefined),
         } as ClaudeStats;
+        statsMemo = { at: Date.now(), value: merged };
+        return merged;
       }
     }
 
+    statsMemo = { at: Date.now(), value: base };
     return base;
   } catch {
     return null;
