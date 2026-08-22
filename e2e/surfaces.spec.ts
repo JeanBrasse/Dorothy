@@ -55,9 +55,15 @@ for (const surface of ALL as Array<{ name: string; route: string; clickText?: st
     await page.goto(DEV_URL + surface.route, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(600);
 
+    // Settings labels collide with the main navigation ('Extensions' is both a
+    // page and a settings group), so scope those clicks to the settings nav.
+    const scope = surface.name.startsWith('settings-')
+      ? page.getByTestId('settings-nav')
+      : page;
+
     for (const clickText of [surface.clickText, surface.clickText2]) {
       if (!clickText) continue;
-      const target = page.getByText(clickText, { exact: true }).first();
+      const target = scope.getByText(clickText, { exact: true }).first();
       await target.waitFor({ state: 'visible', timeout: 8000 });
       await target.click();
       await page.waitForTimeout(400);

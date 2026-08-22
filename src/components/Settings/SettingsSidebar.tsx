@@ -12,7 +12,7 @@ export const SettingsSidebar = ({ activeSection, onSectionChange }: SettingsSide
   return (
     <>
       {/* Desktop Sidebar */}
-      <nav className="w-52 shrink-0 hidden lg:block overflow-y-auto">
+      <nav data-testid="settings-nav" className="w-52 shrink-0 hidden lg:block overflow-y-auto">
         <div className="space-y-1">
           {SECTION_GROUPS.map((group) => {
             const Icon = group.icon;

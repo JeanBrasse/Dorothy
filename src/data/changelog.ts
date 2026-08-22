@@ -7,6 +7,25 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    id: 14,
+    version: '1.4.0',
+    date: '2026-08-22',
+    updates: [
+      'Dorothy is now Tars — new name, new landing page, same app',
+      'Opening the dashboard no longer starts your agents. A mount-time effect was resuming every idle agent that had no terminal attached, so simply navigating home launched all of them; starting is now an explicit action, and leaving and coming back never touches a running session',
+      'Schedules page — your Hermes cron jobs finally have a screen: every profile in one list, run now, pause, resume or delete, refreshed while the window is visible',
+      'Settings went from seventeen flat entries to six groups (General, AI & Providers, Hermes, Integrations, Extensions, Workspace). Nothing was removed, it just stopped being a scroll hunt',
+      'Usage shows real money again. The page priced tokens from ~/.claude/stats-cache.json, a file most accounts never get, so every cost was computed from zero. Tars now reads the transcripts directly, drops the messages a resumed session copies forward (over half of them, which would have doubled every figure), and prices 1h cache writes at their real rate',
+      'Plugin catalogue was pointing at a deleted repository and served nothing on a fresh install. It now reads the seven real Claude Code marketplaces: 685 plugins, and installing one registers its marketplace first, which is the step that used to fail',
+      'Skills directory no longer truncated to 300 of its ~600 entries',
+      'Your projects survive updates — they live in ~/.dorothy/projects.json instead of browser storage keyed to the app origin, and the phantom card that claimed every agent is gone',
+      'Deploy Team: pick which members to deploy, add extras beyond the template, and choose the provider and model per member instead of Claude for everyone',
+      'The version in Settings is the real one, read from the running app rather than a hardcoded string',
+      'Security: closed command injection through the Brain page, added Origin checks on the local API, removed an unauthenticated memory endpoint, and the Hermes webhook now publishes a single path instead of the whole API',
+      'Menus, dropdowns and selects are rendered by the app, not the OS, so they follow the theme; sidebar collapse and the heavy yellow rules are gone, and page titles have their subtitles back',
+    ],
+  },
+  {
     id: 13,
     version: '1.3.0',
     date: '2026-08-22',

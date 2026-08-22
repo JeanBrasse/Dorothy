@@ -30,15 +30,33 @@ export const PAGES = [
   { name: 'settings-general', route: '/settings' },
 ];
 
-// Les 18 sections de Settings, chacune un clic dans la sidebar de la page.
-export const SETTINGS_SECTIONS = [
-  'Terminal', 'AI Providers', 'CLI Paths', 'Git', 'Notifications',
-  'Telegram', 'Slack', 'X (Twitter)', 'Tasmania', 'Google Workspace',
-  'Permissions', 'Skills & Plugins', 'Hermes', 'Memory Backends', 'Custom MCP', 'System',
-].map(label => ({
-  name: 'settings-' + label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+// Les 16 sections de Settings. Depuis le regroupement, chaque section est un
+// groupe cliqué puis son enfant : le nom de surface reste celui d'avant pour
+// que les baselines et l'inventaire ne bougent pas.
+const SETTINGS_TREE = [
+  ['terminal', 'General', 'Terminal'],
+  ['ai-providers', 'AI & Providers', 'Providers'],
+  ['cli-paths', 'AI & Providers', 'CLI Paths'],
+  ['permissions', 'AI & Providers', 'Permissions'],
+  ['hermes', 'Hermes', 'Connection'],
+  ['notifications', 'General', 'Notifications'],
+  ['system', 'General', 'System'],
+  ['telegram', 'Integrations', 'Telegram'],
+  ['slack', 'Integrations', 'Slack'],
+  ['x-twitter', 'Integrations', 'X (Twitter)'],
+  ['google-workspace', 'Integrations', 'Google Workspace'],
+  ['skills-plugins', 'Extensions', 'Skills & Plugins'],
+  ['custom-mcp', 'Extensions', 'Custom MCP'],
+  ['tasmania', 'Extensions', 'Tasmania'],
+  ['git', 'Workspace', 'Git'],
+  ['memory-backends', 'Workspace', 'Memory Backends'],
+];
+
+export const SETTINGS_SECTIONS = SETTINGS_TREE.map(([name, group, child]) => ({
+  name: 'settings-' + name,
   route: '/settings',
-  clickText: label,
+  clickText: group,
+  clickText2: child,
 }));
 
 // Overlays dont le déclencheur est connu et stable. Les autres entrées de
