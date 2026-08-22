@@ -197,15 +197,15 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
           Hermes
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Wire your self-hosted Hermes instance to Dorothy. Hermes owns all scheduling -
+          Wire your self-hosted Hermes instance to Tars. Hermes owns all scheduling -
           its cron jobs call the webhook below to drive your agents.
         </p>
       </div>
 
-      {/* ── Incoming webhook (Hermes Dorothy) ── */}
+      {/* ── Incoming webhook (Hermes to Tars) ── */}
       <div className="bg-card border border-border p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground">Incoming webhook - Hermes Dorothy</h3>
+          <h3 className="text-sm font-semibold text-foreground">Incoming webhook - Hermes to Tars</h3>
           <button onClick={refreshInfo} className="p-1.5 text-muted-foreground hover:text-foreground" title="Refresh">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -287,13 +287,13 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
         )}
       </div>
 
-      {/* ── Hermes instance (Dorothy Hermes) ── */}
+      {/* ── Hermes instance (Tars to Hermes) ── */}
       <div className="bg-card border border-border p-4 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Hermes instance - Dorothy Hermes</h3>
+            <h3 className="text-sm font-semibold text-foreground">Hermes instance - Tars to Hermes</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Same connection modes as Hermes Desktop. Dorothy probes <code className="bg-secondary px-1">/api/status</code> to
+              Same connection modes as Hermes Desktop. Tars probes <code className="bg-secondary px-1">/api/status</code> to
               report the version and which sign-in the gateway demands.
             </p>
           </div>
@@ -373,7 +373,7 @@ export const HermesSection = ({ appSettings, onSaveAppSettings }: HermesSectionP
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Dorothy reads the gateway through the tunnel on 127.0.0.1 - open it with your usual
+              Tars reads the gateway through the tunnel on 127.0.0.1 - open it with your usual
               <code className="bg-secondary px-1 mx-1">ssh -L</code> command or the Hermes Desktop tunnel.
             </p>
           </div>

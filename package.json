@@ -24,12 +24,12 @@
     "lint:design": "bash scripts/design-lint.sh"
   },
   "build": {
-    "appId": "io.dorothy.app",
-    "productName": "Dorothy",
+    "appId": "xyz.cooperlabs.tars",
+    "productName": "Tars",
     "publish": {
       "provider": "github",
-      "owner": "Charlie85270",
-      "repo": "dorothy"
+      "owner": "JeanBrasse",
+      "repo": "Dorothy"
     },
     "directories": {
       "output": "release"
