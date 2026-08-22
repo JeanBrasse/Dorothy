@@ -50,7 +50,7 @@ export default function Home() {
           <a href="#download" className="hover:text-ink transition-colors">Download</a>
         </div>
         <div className="flex items-center gap-4">
-          <a href="https://github.com/JeanBrasse/Dorothy" target="_blank" rel="noopener noreferrer" className="text-ink-soft hover:text-ink transition-colors">
+          <a href="https://github.com/JeanBrasse/Tars" target="_blank" rel="noopener noreferrer" className="text-ink-soft hover:text-ink transition-colors">
             <Github className="w-[18px] h-[18px]" />
           </a>
           <a href="#download" className="hidden sm:flex items-center gap-1.5 px-4 py-2 bg-accent text-bg text-[13px] font-medium hover:bg-accent-deep transition-colors">
@@ -75,7 +75,7 @@ export default function Home() {
             <Download className="w-4 h-4" />
             Download for Mac
           </a>
-          <a href="https://github.com/JeanBrasse/Dorothy" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-5 py-2.5 border border-line-strong text-sm text-ink-soft hover:text-ink transition-colors">
+          <a href="https://github.com/JeanBrasse/Tars" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-5 py-2.5 border border-line-strong text-sm text-ink-soft hover:text-ink transition-colors">
             <Github className="w-4 h-4" />
             Source
           </a>
@@ -167,7 +167,7 @@ export default function Home() {
             <span className="inline-block w-2 h-2 bg-accent" />
             <span className="font-display text-base">Tars</span>
           </span>
-          <a href="https://github.com/JeanBrasse/Dorothy" target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-ink-muted hover:text-ink transition-colors">
+          <a href="https://github.com/JeanBrasse/Tars" target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-ink-muted hover:text-ink transition-colors">
             github
           </a>
         </div>

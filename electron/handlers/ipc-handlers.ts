@@ -8,7 +8,7 @@ import { broadcastToAllWindows } from '../utils/broadcast';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import { DATA_DIR } from '../constants';
+import { DATA_DIR, dataPath } from '../constants';
 import { v4 as uuidv4 } from 'uuid';
 import * as pty from 'node-pty';
 import TelegramBot from 'node-telegram-bot-api';
@@ -1383,7 +1383,7 @@ function registerClaudeDataHandlers(deps: IpcHandlerDependencies): void {
       // Read rate limits from statusline cache file
       let rateLimits = null;
       try {
-        const rateLimitsFile = path.join(os.homedir(), '.dorothy', 'rate-limits.json');
+        const rateLimitsFile = dataPath('rate-limits.json');
         if (fs.existsSync(rateLimitsFile)) {
           rateLimits = JSON.parse(fs.readFileSync(rateLimitsFile, 'utf-8'));
         }
@@ -1394,7 +1394,7 @@ function registerClaudeDataHandlers(deps: IpcHandlerDependencies): void {
       // Read accumulated token stats from statusline
       let tokenStats = null;
       try {
-        const tokenStatsFile = path.join(os.homedir(), '.dorothy', 'token-stats.json');
+        const tokenStatsFile = dataPath('token-stats.json');
         if (fs.existsSync(tokenStatsFile)) {
           const raw = JSON.parse(fs.readFileSync(tokenStatsFile, 'utf-8'));
           // Sum all sessions

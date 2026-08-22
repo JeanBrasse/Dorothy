@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
 import type { AppSettings } from '../types';
+import { DATA_DIR } from '../constants';
 import type {
   CLIProvider,
   InteractiveCommandParams,
@@ -66,7 +67,7 @@ export class GeminiProvider implements CLIProvider {
     }
 
     // Include Tars directory
-    command += ` --include-directories '${os.homedir()}/.dorothy'`;
+    command += ` --include-directories '${DATA_DIR}'`;
 
     // Prompt with skills directive
     let finalPrompt = params.prompt;
@@ -96,7 +97,7 @@ export class GeminiProvider implements CLIProvider {
       command += ' --debug';
     }
 
-    command += ` --include-directories "${os.homedir()}/.dorothy"`;
+    command += ` --include-directories "${DATA_DIR}"`;
 
     const escaped = params.prompt.replace(/'/g, "'\\''");
     command += ` -p '${escaped}'`;
@@ -376,7 +377,7 @@ fi
 export PATH="${params.binaryDir}:$PATH"
 cd "${params.projectPath}"
 echo "=== Task started at $(date) ===" >> "${params.logPath}"
-"${params.binaryPath}" --output-format stream-json --debug --include-directories "${params.homeDir}/.dorothy" -p '${promptWithSkills}' >> "${params.logPath}" 2>&1
+"${params.binaryPath}" --output-format stream-json --debug --include-directories "${DATA_DIR}" -p '${promptWithSkills}' >> "${params.logPath}" 2>&1
 echo "=== Task completed at $(date) ===" >> "${params.logPath}"
 `;
   }

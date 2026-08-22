@@ -21,7 +21,7 @@ const redis = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_RE
  * Resolving the latest release at request time means the button cannot go stale
  * again, and it can only ever serve a build from this repository.
  */
-const REPO = 'JeanBrasse/Dorothy';
+const REPO = 'JeanBrasse/Tars';
 const RELEASES_PAGE = `https://github.com/${REPO}/releases/latest`;
 
 interface ReleaseAsset {

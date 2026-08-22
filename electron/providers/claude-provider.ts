@@ -12,6 +12,7 @@ import type {
   HookConfig,
 } from './cli-provider';
 import { safeEffort } from './cli-provider';
+import { DATA_DIR } from '../constants';
 
 export class ClaudeProvider implements CLIProvider {
   readonly id = 'claude' as const;
@@ -104,7 +105,7 @@ export class ClaudeProvider implements CLIProvider {
     }
 
     // Tars's CLAUDE.md via ~/.dorothy
-    command += ` --add-dir '${os.homedir()}/.dorothy'`;
+    command += ` --add-dir '${DATA_DIR}'`;
 
     // Prompt with skills directive
     let finalPrompt = params.prompt;
@@ -140,7 +141,7 @@ export class ClaudeProvider implements CLIProvider {
       command += ` --mcp-config "${params.mcpConfigPath}"`;
     }
 
-    command += ` --add-dir "${os.homedir()}/.dorothy"`;
+    command += ` --add-dir "${DATA_DIR}"`;
 
     const escaped = params.prompt.replace(/'/g, "'\\''");
     command += ` -p '${escaped}'`;
@@ -440,7 +441,7 @@ export PATH="${params.binaryDir}:$PATH"
 cd "${params.projectPath}"
 echo "=== Task started at $(date) ===" >> "${params.logPath}"
 unset CLAUDECODE
-CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1 "${params.binaryPath}" ${flags} --output-format stream-json --verbose --mcp-config "${params.mcpConfigPath}" --add-dir "${params.homeDir}/.dorothy" -p '${promptWithSkills}' >> "${params.logPath}" 2>&1
+CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1 "${params.binaryPath}" ${flags} --output-format stream-json --verbose --mcp-config "${params.mcpConfigPath}" --add-dir "${DATA_DIR}" -p '${promptWithSkills}' >> "${params.logPath}" 2>&1
 echo "=== Task completed at $(date) ===" >> "${params.logPath}"
 `;
   }
