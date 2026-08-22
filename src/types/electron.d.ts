@@ -1,3 +1,23 @@
+export interface ChangedFile {
+  path: string;
+  status: 'added' | 'modified' | 'deleted' | 'renamed' | 'untracked';
+  additions: number;
+  deletions: number;
+}
+
+export interface ReviewDiff {
+  repo: string;
+  branch: string;
+  baseBranch: string | null;
+  ahead: number;
+  behind: number;
+  files: ChangedFile[];
+  totalAdditions: number;
+  totalDeletions: number;
+  patch: string;
+  truncated: boolean;
+}
+
 export interface MemorySourceStatus {
   id: string;
   label: string;
@@ -482,6 +502,14 @@ export interface ElectronAPI {
   // App settings (notifications, etc.)
   app?: {
     getVersion: () => Promise<{ version: string }>;
+  };
+
+  /** What an agent changed: per-file stats plus the actual patch. */
+  review?: {
+    diff: (repoPath: string, baseBranch?: string) =>
+      Promise<{ success: boolean; diff?: ReviewDiff; error?: string }>;
+    file: (repoPath: string, file: string, baseBranch?: string) =>
+      Promise<{ success: boolean; patch?: string; error?: string }>;
   };
 
   /** Federated memory: every source probed for real, searchable from one place. */

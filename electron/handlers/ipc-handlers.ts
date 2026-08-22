@@ -26,6 +26,7 @@ import { scheduleTick } from '../utils/agents-tick';
 import { loadCatalog, modelsForProvider, priceFor, catalogStatus } from '../services/model-catalog';
 import { assembleDigest, needsPromptInjection, wrapDigestForPrompt, searchMemory, memoryStatus } from '../services/memory-hub';
 import { usableHermesConnection } from '../services/hermes-config';
+import { reviewDiff, fileDiff } from '../services/git-review';
 
 /**
  * Normalize a JIRA domain value to a full hostname.
@@ -1552,6 +1553,27 @@ function registerAppSettingsHandlers(deps: IpcHandlerDependencies): void {
   });
 
   ipcMain.handle('models:catalog-status', async () => catalogStatus());
+
+  // What an agent actually changed. Shell-free: git runs with an argv array,
+  // so a branch or path with a quote in it is data rather than syntax.
+  ipcMain.handle('review:diff', async (_event, { repoPath, baseBranch }: { repoPath: string; baseBranch?: string }) => {
+    try {
+      return { success: true as const, diff: await reviewDiff(repoPath, { baseBranch }) };
+    } catch (err) {
+      return { success: false as const, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('review:file', async (
+    _event,
+    { repoPath, file, baseBranch }: { repoPath: string; file: string; baseBranch?: string },
+  ) => {
+    try {
+      return { success: true as const, patch: await fileDiff(repoPath, file, baseBranch) };
+    } catch (err) {
+      return { success: false as const, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
 
   // Memory: real status (each backend is probed, not inferred from settings)
   // and federated search across every configured source.

@@ -232,6 +232,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
   },
 
+  review: {
+    diff: (repoPath: string, baseBranch?: string) =>
+      ipcRenderer.invoke('review:diff', { repoPath, baseBranch }),
+    file: (repoPath: string, file: string, baseBranch?: string) =>
+      ipcRenderer.invoke('review:file', { repoPath, file, baseBranch }),
+  },
+
   memoryHub: {
     sources: (projectPath?: string) =>
       ipcRenderer.invoke('memory:sources', { projectPath }),

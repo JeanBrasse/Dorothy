@@ -12,6 +12,7 @@ import {
   BarChart2,
   Columns,
   CalendarClock,
+  FileDiff,
   Moon,
   Sun,
   Archive,
@@ -31,11 +32,12 @@ const navItems = [
   { href: '/agents', icon: Bot, label: 'Agents', shortcut: '2' },
   { href: '/kanban', icon: Columns, label: 'Kanban', shortcut: '3' },
   { href: '/crons', icon: CalendarClock, label: 'Schedules', shortcut: '4' },
-  { href: '/vault', icon: Archive, label: 'Vault', shortcut: '5' },
-  { href: '/projects', icon: FolderKanban, label: 'Projects', shortcut: '6' },
-  { href: '/skills', icon: Sparkles, label: 'Extensions', shortcut: '7' },
-  { href: '/usage', icon: BarChart2, label: 'Usage', shortcut: '8' },
-  { href: '/memory', icon: Brain, label: 'Brain', shortcut: '9' },
+  { href: '/review', icon: FileDiff, label: 'Review', shortcut: '5' },
+  { href: '/vault', icon: Archive, label: 'Vault', shortcut: '6' },
+  { href: '/projects', icon: FolderKanban, label: 'Projects', shortcut: '7' },
+  { href: '/skills', icon: Sparkles, label: 'Extensions', shortcut: '8' },
+  { href: '/usage', icon: BarChart2, label: 'Usage', shortcut: '9' },
+  { href: '/memory', icon: Brain, label: 'Brain', shortcut: '0' },
 ];
 
 interface SidebarProps {

@@ -22,6 +22,7 @@ export const PAGES = [
   { name: 'extensions-skills', route: '/skills' },
   { name: 'extensions-plugins', route: '/skills', clickText: 'Plugins', settle: 1500 },
   { name: 'crons', route: '/crons' },
+  { name: 'review', route: '/review' },
   { name: 'usage', route: '/usage' },
   { name: 'brain-agents', route: '/memory' },
   { name: 'brain-projects', route: '/memory', clickText: 'Projects' },
