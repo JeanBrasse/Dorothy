@@ -423,13 +423,17 @@ export default function UsagePage() {
     Object.entries(data.stats.modelUsage).forEach(([modelId, usage]) => {
       const nonCacheTotal = (usage.inputTokens || 0) + (usage.outputTokens || 0);
       if (nonCacheTotal === 0) return;
-      const cost = calculateModelCost(
-        modelId,
-        usage.inputTokens || 0,
-        usage.outputTokens || 0,
-        usage.cacheReadInputTokens || 0,
-        usage.cacheCreationInputTokens || 0,
-      );
+      // costUSD is the measured figure — it knows the 1h/5m cache write split,
+      // which the flat table below has to guess at.
+      const cost = usage.costUSD && usage.costUSD > 0
+        ? usage.costUSD
+        : calculateModelCost(
+          modelId,
+          usage.inputTokens || 0,
+          usage.outputTokens || 0,
+          usage.cacheReadInputTokens || 0,
+          usage.cacheCreationInputTokens || 0,
+        );
       rateMap.set(modelId, cost / nonCacheTotal);
     });
     return rateMap;
@@ -460,13 +464,15 @@ export default function UsagePage() {
     if (!data?.stats?.modelUsage) return [];
 
     return Object.entries(data.stats.modelUsage).map(([modelId, usage]) => {
-      const cost = calculateModelCost(
-        modelId,
-        usage.inputTokens || 0,
-        usage.outputTokens || 0,
-        usage.cacheReadInputTokens || 0,
-        usage.cacheCreationInputTokens || 0
-      );
+      const cost = usage.costUSD && usage.costUSD > 0
+        ? usage.costUSD
+        : calculateModelCost(
+          modelId,
+          usage.inputTokens || 0,
+          usage.outputTokens || 0,
+          usage.cacheReadInputTokens || 0,
+          usage.cacheCreationInputTokens || 0
+        );
 
       const pricing = getModelPricing(modelId);
 

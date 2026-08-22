@@ -2,6 +2,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { decodeProjectPath } from '../utils/decode-project-path';
+import { computeTranscriptUsage } from './transcript-usage';
 
 // Type definitions for Claude data structures
 export interface ClaudeSettings {
@@ -72,21 +73,38 @@ export async function getClaudeSettings(): Promise<ClaudeSettings | null> {
  */
 export async function getClaudeStats(): Promise<ClaudeStats | null> {
   try {
+    let base: ClaudeStats | null = null;
+
     // Primary stats are in stats-cache.json
     const statsCachePath = path.join(os.homedir(), '.claude', 'stats-cache.json');
     if (fs.existsSync(statsCachePath)) {
-      const statsCache = JSON.parse(fs.readFileSync(statsCachePath, 'utf-8'));
-      return statsCache;
+      base = JSON.parse(fs.readFileSync(statsCachePath, 'utf-8'));
+    } else {
+      // Fallback to statsig_user_metadata.json if it exists
+      const statsPath = path.join(os.homedir(), '.claude', 'statsig_user_metadata.json');
+      base = fs.existsSync(statsPath)
+        ? JSON.parse(fs.readFileSync(statsPath, 'utf-8'))
+        : computeStatsFromLocalFiles();
     }
 
-    // Fallback to statsig_user_metadata.json if it exists
-    const statsPath = path.join(os.homedir(), '.claude', 'statsig_user_metadata.json');
-    if (fs.existsSync(statsPath)) {
-      return JSON.parse(fs.readFileSync(statsPath, 'utf-8'));
+    // Neither cache file exists on most accounts, and the local-file fallback
+    // has no token counts at all, so the Usage page was pricing zero tokens.
+    // The transcripts do carry the usage blocks: read them.
+    const hasTokens =
+      base && Object.keys((base.modelUsage as Record<string, unknown>) || {}).length > 0;
+    if (!hasTokens) {
+      const usage = computeTranscriptUsage();
+      if (Object.keys(usage.modelUsage).length > 0) {
+        return {
+          ...(base || {}),
+          modelUsage: usage.modelUsage,
+          dailyModelTokens: usage.dailyModelTokens,
+          lastComputedDate: usage.lastComputedDate ?? (base?.lastComputedDate as string | undefined),
+        } as ClaudeStats;
+      }
     }
 
-    // Fallback: compute stats from local Claude Code files
-    return computeStatsFromLocalFiles();
+    return base;
   } catch {
     return null;
   }
