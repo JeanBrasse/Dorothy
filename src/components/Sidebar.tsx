@@ -13,6 +13,7 @@ import {
   Columns,
   CalendarClock,
   FileDiff,
+  ScrollText,
   Moon,
   Sun,
   Archive,
@@ -25,7 +26,7 @@ import { LATEST_RELEASE, WHATS_NEW_STORAGE_KEY } from '@/data/changelog';
 import { useStore } from '@/store';
 import Link from 'next/link';
 import { Brand } from '@/components/Brand';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 const navItems = [
   { href: '/', icon: LayoutDashboard, label: 'Dashboard', shortcut: '1' },
@@ -33,11 +34,12 @@ const navItems = [
   { href: '/kanban', icon: Columns, label: 'Kanban', shortcut: '3' },
   { href: '/crons', icon: CalendarClock, label: 'Schedules', shortcut: '4' },
   { href: '/review', icon: FileDiff, label: 'Review', shortcut: '5' },
-  { href: '/vault', icon: Archive, label: 'Vault', shortcut: '6' },
-  { href: '/projects', icon: FolderKanban, label: 'Projects', shortcut: '7' },
-  { href: '/skills', icon: Sparkles, label: 'Extensions', shortcut: '8' },
-  { href: '/usage', icon: BarChart2, label: 'Usage', shortcut: '9' },
-  { href: '/memory', icon: Brain, label: 'Brain', shortcut: '0' },
+  { href: '/logs', icon: ScrollText, label: 'Logs', shortcut: '6' },
+  { href: '/vault', icon: Archive, label: 'Vault', shortcut: '7' },
+  { href: '/projects', icon: FolderKanban, label: 'Projects', shortcut: '8' },
+  { href: '/skills', icon: Sparkles, label: 'Extensions', shortcut: '9' },
+  { href: '/usage', icon: BarChart2, label: 'Usage', shortcut: '0' },
+  { href: '/memory', icon: Brain, label: 'Brain' },
 ];
 
 interface SidebarProps {
@@ -60,8 +62,34 @@ function useWhatsNewBadge() {
   return hasNew;
 }
 
+/**
+ * Cmd/Ctrl + digit jumps to a page. The shortcuts were declared next to each
+ * nav item and bound to nothing, so they were decoration until now.
+ */
+function useNavShortcuts() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.metaKey && !e.ctrlKey) return;
+      if (e.altKey || e.shiftKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (target?.isContentEditable) return;
+
+      const item = navItems.find(nav => nav.shortcut && nav.shortcut === e.key);
+      if (!item) return;
+      e.preventDefault();
+      router.push(item.href);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [router]);
+}
+
 export default function Sidebar({ isMobile = false }: SidebarProps) {
   const pathname = usePathname();
+  useNavShortcuts();
   const { mobileMenuOpen, setMobileMenuOpen, darkMode, toggleDarkMode, vaultUnreadCount } = useStore();
   const whatsNewHasNew = useWhatsNewBadge();
 

@@ -1,3 +1,24 @@
+export interface LogLine {
+  agentId: string;
+  agentName: string;
+  projectPath: string;
+  branch?: string;
+  status: string;
+  line: string;
+  position: number;
+}
+
+export interface FleetEntry {
+  agentId: string;
+  agentName: string;
+  projectPath: string;
+  branch?: string;
+  provider?: string;
+  status: string;
+  lastActivity?: string;
+  lines: number;
+}
+
 export interface ChangedFile {
   path: string;
   status: 'added' | 'modified' | 'deleted' | 'renamed' | 'untracked';
@@ -502,6 +523,14 @@ export interface ElectronAPI {
   // App settings (notifications, etc.)
   app?: {
     getVersion: () => Promise<{ version: string }>;
+  };
+
+  /** Search across every agent's output at once. */
+  logs?: {
+    search: (query: string, opts?: { agentIds?: string[]; projectPath?: string; limit?: number }) =>
+      Promise<{ lines: LogLine[]; scannedAgents: number; truncated: boolean }>;
+    tail: (agentId: string, lines?: number) => Promise<{ lines: string[]; agentName: string }>;
+    fleet: () => Promise<{ agents: FleetEntry[] }>;
   };
 
   /** What an agent changed: per-file stats plus the actual patch. */

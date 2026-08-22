@@ -27,6 +27,7 @@ import { loadCatalog, modelsForProvider, priceFor, catalogStatus } from '../serv
 import { assembleDigest, needsPromptInjection, wrapDigestForPrompt, searchMemory, memoryStatus } from '../services/memory-hub';
 import { usableHermesConnection } from '../services/hermes-config';
 import { reviewDiff, fileDiff } from '../services/git-review';
+import { searchLogs, agentTail, fleetSummary } from '../services/log-search';
 
 /**
  * Normalize a JIRA domain value to a full hostname.
@@ -1563,6 +1564,21 @@ function registerAppSettingsHandlers(deps: IpcHandlerDependencies): void {
       return { success: false as const, error: err instanceof Error ? err.message : String(err) };
     }
   });
+
+  // One search across every agent's output, instead of opening 29 terminals.
+  ipcMain.handle('logs:search', async (
+    _event,
+    { query, agentIds, projectPath, limit }: { query: string; agentIds?: string[]; projectPath?: string; limit?: number },
+  ) => {
+    if (!query?.trim()) return { lines: [], scannedAgents: 0, truncated: false };
+    return searchLogs({ query, agentIds, projectPath, limit });
+  });
+
+  ipcMain.handle('logs:tail', async (_event, { agentId, lines }: { agentId: string; lines?: number }) => {
+    return agentTail(agentId, lines) ?? { lines: [], agentName: '' };
+  });
+
+  ipcMain.handle('logs:fleet', async () => ({ agents: fleetSummary() }));
 
   ipcMain.handle('review:file', async (
     _event,

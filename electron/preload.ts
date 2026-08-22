@@ -232,6 +232,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
   },
 
+  logs: {
+    search: (query: string, opts?: { agentIds?: string[]; projectPath?: string; limit?: number }) =>
+      ipcRenderer.invoke('logs:search', { query, ...opts }),
+    tail: (agentId: string, lines?: number) =>
+      ipcRenderer.invoke('logs:tail', { agentId, lines }),
+    fleet: () => ipcRenderer.invoke('logs:fleet'),
+  },
+
   review: {
     diff: (repoPath: string, baseBranch?: string) =>
       ipcRenderer.invoke('review:diff', { repoPath, baseBranch }),
