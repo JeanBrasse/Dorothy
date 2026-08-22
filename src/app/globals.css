@@ -620,8 +620,8 @@ button, a, input, textarea, select {
 }
 
 
-/* The indeterminate bar shown once an operation passes three seconds. */
-@keyframes loading-sweep {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(300%); }
+/* Waiting, in the app's own mark: squares that light in turn. */
+@keyframes square-pulse {
+  0%, 70%, 100% { opacity: 0.18; }
+  35%           { opacity: 1; }
 }

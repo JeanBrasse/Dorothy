@@ -8,8 +8,8 @@ import { BRAND_NAME } from '@/components/Brand';
  *
  * The window used to appear as a bare shell while the main process detected
  * providers and reached the gateway, which reads as a hang. This says what it
- * is waiting for, in the app's own marks, and gets out of the way the moment
- * the first screen can render.
+ * is waiting for, in the app's own mark: the orange square, drawn as a grid
+ * that fills itself in as each step lands.
  */
 
 const STEPS = [
@@ -18,26 +18,63 @@ const STEPS = [
   'connecting to Hermes',
 ];
 
-export function PromptMark({ size = 44, className = '' }: { size?: number; className?: string }) {
-  const stroke = Math.max(2, Math.round(size * 0.16));
+const GRID = 4;
+const CELLS = GRID * GRID;
+
+/**
+ * The mark, assembling. `filled` cells are lit; the rest sit at the dim rest
+ * state so the square keeps its silhouette the whole way through.
+ */
+export function SquareGrid({
+  filled,
+  size = 56,
+  className = '',
+}: {
+  filled: number;
+  size?: number;
+  className?: string;
+}) {
+  const gap = Math.max(2, Math.round(size * 0.07));
+  const cell = (size - gap * (GRID - 1)) / GRID;
+
   return (
-    <svg
-      width={size * 1.7}
-      height={size}
-      viewBox="0 0 76 46"
-      fill="none"
-      className={className}
+    <div
+      className={`grid ${className}`}
+      style={{
+        width: size,
+        height: size,
+        gap,
+        gridTemplateColumns: `repeat(${GRID}, ${cell}px)`,
+      }}
       aria-hidden
     >
-      <path
-        d="M 3 3 L 27 21 L 3 39"
-        stroke="currentColor"
-        strokeWidth={stroke}
-        strokeLinecap="butt"
-        strokeLinejoin="miter"
-      />
-      <rect x="42" y="32" width="26" height={stroke} fill="currentColor" />
-    </svg>
+      {Array.from({ length: CELLS }).map((_, i) => (
+        <span
+          key={i}
+          className="bg-primary transition-opacity duration-300 ease-out"
+          style={{ opacity: i < filled ? 1 : 0.16 }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** The same mark, waiting rather than progressing: a row of squares in turn. */
+export function SquarePulse({ count = 5, size = 6 }: { count?: number; size?: number }) {
+  return (
+    <div className="flex" style={{ gap: size }} aria-hidden>
+      {Array.from({ length: count }).map((_, i) => (
+        <span
+          key={i}
+          className="bg-primary"
+          style={{
+            width: size,
+            height: size,
+            animation: `square-pulse 1.2s ease-in-out ${i * 0.12}s infinite`,
+          }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -61,18 +98,16 @@ export function Splash({ onDone }: { onDone?: () => void }) {
     };
   }, [onDone]);
 
-  const progress = Math.round((step / STEPS.length) * 100);
+  // The grid fills in step with the work, not on a timer of its own.
+  const filled = Math.round((step / STEPS.length) * CELLS);
 
   return (
     <div
-      className={`fixed inset-0 z-[200] flex flex-col items-center justify-center gap-5 bg-background transition-opacity duration-250 ${
+      className={`fixed inset-0 z-[200] flex flex-col items-center justify-center gap-6 bg-background transition-opacity duration-250 ${
         leaving ? 'opacity-0' : 'opacity-100'
       }`}
     >
-      <PromptMark
-        size={44}
-        className={`text-primary transition-transform duration-500 ${step > 0 ? 'scale-100' : 'scale-90'}`}
-      />
+      <SquareGrid filled={filled} size={56} />
 
       <span
         className={`font-serif text-4xl text-foreground transition-opacity duration-500 ${
@@ -81,13 +116,6 @@ export function Splash({ onDone }: { onDone?: () => void }) {
       >
         {BRAND_NAME}
       </span>
-
-      <div className="w-[220px] h-[2px] bg-secondary">
-        <div
-          className="h-full bg-primary transition-[width] duration-300 ease-out"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
 
       <span
         className={`font-mono text-[11px] text-muted-foreground transition-opacity duration-300 ${

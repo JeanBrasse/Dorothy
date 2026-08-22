@@ -50,6 +50,8 @@ interface UpdateInfo {
 type UpdateFlowState = 'available' | 'downloading' | 'ready' | 'restarting';
 
 const VAULT_READ_DOCS_KEY = 'vault-read-docs';
+/** Kept in sync with the pre-hydration script in app/layout.tsx. */
+const THEME_KEY = 'tars-theme';
 
 function loadVaultReadDocs(): Set<string> {
   try {
@@ -150,20 +152,18 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
     window.electronAPI?.updates?.quitAndInstall();
   }, []);
 
-  // Initialize dark mode from localStorage on mount
+  // Initialize dark mode from localStorage on mount. Dark is the launch
+  // default: only an explicit 'light' pref moves off it. The old
+  // 'dorothy-dark-mode' key is deliberately not migrated - it carries the
+  // previous brand, and a stale 'false' in it used to open the app light.
   useEffect(() => {
-    const saved = localStorage.getItem('dorothy-dark-mode');
-    // Must honour an explicit 'false' too, otherwise picking light mode never
-    // survives a restart (the store defaults to dark).
-    if (saved !== null) {
-      setDarkMode(saved === 'true');
-    }
+    if (localStorage.getItem(THEME_KEY) === 'light') setDarkMode(false);
   }, [setDarkMode]);
 
   // Sync dark class on <html> and persist to localStorage
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
-    localStorage.setItem('dorothy-dark-mode', String(darkMode));
+    localStorage.setItem(THEME_KEY, darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
   // Global vault unread badge: listen for new documents even when VaultView is not mounted

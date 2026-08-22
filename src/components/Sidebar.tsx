@@ -114,8 +114,16 @@ export default function Sidebar({ isMobile = false }: SidebarProps) {
         className="fixed left-0 top-0 h-screen bg-card border-r border-border flex-col z-50 hidden lg:flex"
       >
         {/* Logo - top area also serves as drag region for macOS traffic lights */}
-        <div className="window-drag flex items-center px-4 pt-5 pb-4 border-b border-border shrink-0">
-          <Brand showWordmark={showLabels} markClassName="w-2.5 h-2.5" wordmarkClassName="font-serif text-xl text-foreground" />
+        {/* px-6 + a 20px mark slot + gap-3 puts the mark on the nav icons'
+            left edge and the wordmark on the nav labels'. */}
+        <div className="window-drag flex items-center px-6 pt-5 pb-4 border-b border-border shrink-0">
+          <Brand
+            showWordmark={showLabels}
+            markClassName="w-2.5 h-2.5"
+            wordmarkClassName="font-serif text-xl text-foreground"
+            markSlotClassName="w-5"
+            gapClassName="gap-3"
+          />
         </div>
 
         {/* Navigation */}

@@ -157,9 +157,9 @@ function ProjectCard({
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left px-3 py-3 transition-all duration-100 border-l-2 !rounded-none group ${isSelected
-        ? 'bg-primary/10 border-l-primary text-foreground'
-        : 'border-l-transparent hover:bg-secondary/60 hover:border-l-border text-muted-foreground hover:text-foreground'
+      className={`w-full text-left px-3 py-3 transition-all duration-100 border !rounded-none group ${isSelected
+        ? 'bg-secondary border-border text-foreground'
+        : 'border-transparent hover:bg-secondary/60 text-muted-foreground hover:text-foreground'
         }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -496,7 +496,7 @@ export default function MemoryPage() {
       </div>
 
       {/* ── Tabs ── */}
-      <div className="flex items-center gap-0 border-b border-border mb-4 shrink-0">
+      <div className="flex items-center gap-1.5 border-b border-border pb-2 mb-4 shrink-0">
         {([
           { id: 'agents', label: 'Agents', icon: Share2 },
           { id: 'projects', label: 'Projects', icon: FolderOpen },
@@ -505,8 +505,8 @@ export default function MemoryPage() {
           <button
             key={id}
             onClick={() => setActiveTab(id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px !rounded-none ${activeTab === id
-              ? 'border-primary text-primary'
+            className={`flex items-center gap-2 px-3.5 py-2 text-sm font-medium border transition-colors !rounded-none ${activeTab === id
+              ? 'bg-secondary border-border text-foreground'
               : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
           >

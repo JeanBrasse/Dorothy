@@ -59,9 +59,6 @@ export function KanbanColumn({
         </button>
       </div>
 
-      {/* Accent bar */}
-      <div className={`h-0.5 ${config.accentColor} rounded-full mb-4`} />
-
       {/* Tasks container */}
       <div
         ref={setNodeRef}

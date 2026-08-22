@@ -34,10 +34,13 @@ function humanReset(resetsAt?: number): string {
   if (!resetsAt) return '';
   const seconds = resetsAt - Date.now() / 1000;
   if (seconds <= 0) return 'resetting';
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.round((seconds % 3600) / 60);
+  // Round to whole minutes first, then carry: rounding the remainder on its
+  // own yields "60m" just under the hour, and "1h 60m" just under two.
+  const totalMinutes = Math.round(seconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
   if (hours >= 24) return `resets in ${Math.round(hours / 24)}d`;
-  if (hours > 0) return `resets in ${hours}h ${minutes}m`;
+  if (hours > 0) return minutes ? `resets in ${hours}h ${minutes}m` : `resets in ${hours}h`;
   return `resets in ${minutes}m`;
 }
 
