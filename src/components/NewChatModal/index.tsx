@@ -273,7 +273,18 @@ export default function NewChatModal({
 
   // Clear selected skills when the USER changes provider - not when edit-mode
   // prepopulation does (that would wipe the agent's saved skills on open).
+  //
+  // The skipNextSkillsClear flag alone was not enough: it is only armed when the
+  // edited agent's provider DIFFERS from the one in state, so editing a Claude
+  // agent while the form already said "claude" armed nothing, and this effect's
+  // own mount run cleared the skills that the reset effect had just restored.
+  // Tracking the previous value makes the first run a no-op, which is the only
+  // run that was ever wrong.
+  const previousProvider = useRef<string | null>(null);
   useEffect(() => {
+    const previous = previousProvider.current;
+    previousProvider.current = provider;
+    if (previous === null) return;
     if (skipNextSkillsClear.current) {
       skipNextSkillsClear.current = false;
       return;

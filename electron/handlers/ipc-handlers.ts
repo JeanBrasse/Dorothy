@@ -18,6 +18,7 @@ import { App as SlackApp, LogLevel } from '@slack/bolt';
 import type { AgentStatus, WorktreeConfig, AgentCharacter, AppSettings, AgentProvider, AgentPermissionMode, AgentEffort } from '../types';
 import { buildFullPath } from '../utils/path-builder';
 import { decodeProjectPath } from '../utils/decode-project-path';
+import { resolveWorktreePath } from '../utils/worktree-path';
 import { getProvider, getAllProviders } from '../providers';
 import { writeProgrammaticInput } from '../core/pty-manager';
 import { killStalePty, ensureProjectTrusted, appendAgentOutput } from '../core/agent-manager';
@@ -281,11 +282,14 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
     // Create git worktree if enabled
     if (config.worktree?.enabled && config.worktree?.branchName) {
       branchName = config.worktree.branchName;
-      if (!/^[a-zA-Z0-9._\-\/]+$/.test(branchName)) {
+      const worktreesDir = path.join(cwd, '.worktrees');
+      // resolveWorktreePath refuses `..`: the old regex allowed both `.` and
+      // `/`, so `../../../etc` passed it, resolved outside the project, and
+      // the "already exists, reusing it" branch below then made it the cwd.
+      worktreePath = resolveWorktreePath(cwd, branchName);
+      if (!worktreePath) {
         throw new Error('Invalid branch name');
       }
-      const worktreesDir = path.join(cwd, '.worktrees');
-      worktreePath = path.join(worktreesDir, branchName);
 
       console.log(`Creating git worktree for agent ${id} at ${worktreePath} on branch ${branchName}`);
 
@@ -892,11 +896,11 @@ function registerAgentHandlers(deps: IpcHandlerDependencies): void {
       // (worktree changes on a running agent could be destructive)
       if (params.worktree.enabled && params.worktree.branchName) {
         const branchName = params.worktree.branchName;
-        if (!/^[a-zA-Z0-9._\-\/]+$/.test(branchName)) {
+        const worktreesDir = path.join(agent.projectPath, '.worktrees');
+        const worktreePath = resolveWorktreePath(agent.projectPath, branchName);
+        if (!worktreePath) {
           return { success: false, error: 'Invalid branch name' };
         }
-        const worktreesDir = path.join(agent.projectPath, '.worktrees');
-        const worktreePath = path.join(worktreesDir, branchName);
         try {
           if (!fs.existsSync(worktreesDir)) {
             fs.mkdirSync(worktreesDir, { recursive: true });
