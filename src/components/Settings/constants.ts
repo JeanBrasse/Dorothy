@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { SlackIcon } from './SlackIcon';
 import { TasmaniaIcon } from './TasmaniaIcon';
-import { ObsidianIcon } from './ObsidianIcon';
 import type { SettingsSection } from './types';
 
 export const SECTIONS: { id: SettingsSection; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -24,7 +23,6 @@ export const SECTIONS: { id: SettingsSection; label: string; icon: React.Compone
   { id: 'terminal', label: 'Terminal', icon: Terminal },
   { id: 'ai-providers', label: 'AI Providers', icon: Zap },
   { id: 'cli', label: 'CLI Paths', icon: Terminal },
-  { id: 'obsidian', label: 'Obsidian', icon: ObsidianIcon },
   { id: 'git', label: 'Git', icon: GitCommit },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'telegram', label: 'Telegram', icon: Send },

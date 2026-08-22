@@ -42,7 +42,6 @@ interface StepTaskProps {
   projectPath: string;
   provider: AgentProvider;
   model: string;
-  selectedObsidianVaults: string[];
 }
 
 const PERMISSION_MODES: { value: AgentPermissionMode; label: string; description: string; icon: React.ReactNode; iconColor: string; accent: string }[] = [
@@ -77,7 +76,6 @@ const StepTask = React.memo(function StepTask({
   projectPath,
   provider,
   model,
-  selectedObsidianVaults,
 }: StepTaskProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -268,9 +266,6 @@ const StepTask = React.memo(function StepTask({
           <SummaryRow icon={<Sparkles className="w-3.5 h-3.5" />} label="Model" value={`${provider} / ${model}`} />
           {selectedSkills.length > 0 && (
             <SummaryRow icon={<Zap className="w-3.5 h-3.5" />} label="Skills" value={`${selectedSkills.length} selected`} />
-          )}
-          {selectedObsidianVaults.length > 0 && (
-            <SummaryRow icon={<BookOpen className="w-3.5 h-3.5" />} label="Vaults" value={`${selectedObsidianVaults.length + 1} sources`} />
           )}
           {useWorktree && branchName && (
             <SummaryRow icon={<GitBranch className="w-3.5 h-3.5" />} label="Branch" value={branchName} mono />

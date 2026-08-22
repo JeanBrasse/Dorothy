@@ -10,7 +10,6 @@ import {
   InstallTerminalModal,
   GeneralSection,
   TerminalSection,
-  ObsidianSection,
   GitSection,
   NotificationsSection,
   TelegramSection,
@@ -76,8 +75,6 @@ function SettingsPageInner() {
         return <GeneralSection info={info} appSettings={appSettings} onSaveAppSettings={handleSaveAppSettings} />;
       case 'terminal':
         return <TerminalSection appSettings={appSettings} onSaveAppSettings={handleSaveAppSettings} />;
-      case 'obsidian':
-        return <ObsidianSection appSettings={appSettings} onSaveAppSettings={handleSaveAppSettings} />;
       case 'git':
         return <GitSection settings={settings} onUpdateSettings={updateSettings} />;
       case 'notifications':

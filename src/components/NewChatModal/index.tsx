@@ -612,10 +612,6 @@ export default function NewChatModal({
                 onInstallSkill={skillInstall.handleInstallSkill}
                 provider={provider}
                 installedSkillsByProvider={installedSkillsByProvider}
-                selectedObsidianVaults={selectedObsidianVaults}
-                registeredVaults={registeredVaults}
-                detectedVault={detectedVault}
-                onToggleVault={handleToggleVault}
               />
             )}
 
@@ -638,7 +634,6 @@ export default function NewChatModal({
                 projectPath={projectPath}
                 provider={provider}
                 model={model}
-                selectedObsidianVaults={selectedObsidianVaults}
               />
             )}
           </div>

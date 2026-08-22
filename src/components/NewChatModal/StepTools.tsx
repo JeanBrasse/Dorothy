@@ -26,10 +26,6 @@ interface StepToolsProps {
   onInstallSkill: (skill: Skill) => void;
   provider: AgentProvider;
   installedSkillsByProvider: Record<string, string[]>;
-  selectedObsidianVaults: string[];
-  registeredVaults: string[];
-  detectedVault: string | null;
-  onToggleVault: (vaultPath: string) => void;
 }
 
 /** CLI-based providers that have their own skill directories */
@@ -47,10 +43,6 @@ const StepTools = React.memo(function StepTools({
   onInstallSkill,
   provider,
   installedSkillsByProvider,
-  selectedObsidianVaults,
-  registeredVaults,
-  detectedVault,
-  onToggleVault,
 }: StepToolsProps) {
   const [skillSearch, setSkillSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -94,16 +86,6 @@ const StepTools = React.memo(function StepTools({
     },
     [installedSkillsByProvider]
   );
-
-  // Deduplicated vault list: detected vault first, then registered (excluding detected)
-  const allVaultPaths = useMemo(() => {
-    const paths: string[] = [];
-    if (detectedVault) paths.push(detectedVault);
-    for (const vp of registeredVaults) {
-      if (vp !== detectedVault) paths.push(vp);
-    }
-    return paths;
-  }, [registeredVaults, detectedVault]);
 
   const filteredSkills = useMemo(() => {
     let skills = liveSkills ?? SKILLS_DATABASE;
@@ -291,74 +273,9 @@ const StepTools = React.memo(function StepTools({
         </div>
       </div>
 
-      {/* ─── Vaults / Knowledge Section ─── */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-purple-500" />
-          <span className="font-medium text-sm">Knowledge</span>
-          <span className="text-xs text-text-muted">Data sources your agent can reference</span>
-        </div>
-
-        <div className="rounded-lg border border-border-primary bg-secondary/30 p-3 space-y-2">
-          {/* Dorothy Vault — always selected */}
-          <div className="flex items-center gap-3 p-2">
-            <div className="w-5 h-5 rounded border bg-purple-500 border-purple-500 flex items-center justify-center shrink-0">
-              <Check className="w-3 h-3 text-white" />
-            </div>
-            <span className="text-sm">Vault documents</span>
-            <span className="text-[10px] text-text-muted ml-auto">Always included</span>
-          </div>
-
-          {/* All Obsidian vaults — detected first, then registered */}
-          {allVaultPaths.map(vp => (
-            <div key={vp} className="flex items-center gap-3 p-2">
-              <button
-                onClick={() => onToggleVault(vp)}
-                className={`
-                  w-5 h-5 rounded border flex items-center justify-center transition-all shrink-0
-                  ${selectedObsidianVaults.includes(vp)
-                    ? 'bg-purple-500 border-purple-500'
-                    : 'border-purple-500/50 hover:border-purple-500'
-                  }
-                `}
-              >
-                {selectedObsidianVaults.includes(vp) && <Check className="w-3 h-3 text-white" />}
-              </button>
-              <ObsidianIcon />
-              <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium block">{vp.split('/').pop()}</span>
-                <span className="text-[11px] text-text-muted font-mono block truncate">{vp}</span>
-              </div>
-              {vp === detectedVault && (
-                <span className="text-[10px] text-text-muted shrink-0">Detected</span>
-              )}
-            </div>
-          ))}
-
-          {/* No vaults at all */}
-          {registeredVaults.length === 0 && !detectedVault && (
-            <a
-              href="/settings?section=obsidian"
-              className="block text-xs text-muted-foreground hover:text-foreground transition-colors p-2"
-            >
-              Add vaults in Settings &rarr;
-            </a>
-          )}
-        </div>
-      </div>
     </div>
   );
 });
 
-function ObsidianIcon() {
-  return (
-    <svg className="w-4 h-4 text-[#A88BFA] shrink-0" viewBox="0 0 25 25" xmlns="http://www.w3.org/2000/svg">
-      <path fill="currentColor" d="m6.91927 14.5955c.64053-.1907 1.67255-.4839 2.85923-.5565-.71191-1.7968-.88376-3.3691-.74554-4.76905.15962-1.61678.72977-2.9662 1.28554-4.11442.1186-.24501.2326-.47313.3419-.69198.1549-.30984.3004-.60109.4365-.8953.2266-.48978.3948-.92231.4798-1.32416.0836-.39515.0841-.74806-.0148-1.08657-.099-.338982-.3093-.703864-.7093-1.1038132-.5222-.1353116-1.1017-.0165173-1.53613.3742922l-5.15591 4.638241c-.28758.25871-.47636.60929-.53406.99179l-.44455 2.94723c.69903.6179 2.42435 2.41414 3.47374 4.90644.09364.2224.1819.4505.26358.6838z"/>
-      <path fill="currentColor" d="m2.97347 10.3512c-.02431.1037-.05852.205-.10221.3024l-2.724986 6.0735c-.279882.6238-.15095061 1.3552.325357 1.8457l4.288349 4.4163c2.1899-3.2306 1.87062-6.2699.87032-8.6457-.75846-1.8013-1.90801-3.2112-2.65683-3.9922z"/>
-      <path fill="currentColor" d="m5.7507 23.5094c.07515.012.15135.0192.2281.0215.81383.0244 2.18251.0952 3.29249.2997.90551.1669 2.70051.6687 4.17761 1.1005 1.1271.3294 2.2886-.5707 2.4522-1.7336.1192-.8481.343-1.8075.7553-2.6869l-.0095.0033c-.6982-1.9471-1.5865-3.2044-2.5178-4.0073-.9284-.8004-1.928-1.1738-2.8932-1.3095-1.60474-.2257-3.07497.1961-4.00103.4682.55465 2.3107.38396 5.0295-1.48417 7.8441z"/>
-      <path fill="currentColor" d="m17.3708 19.3102c.9267-1.3985 1.5868-2.4862 1.9352-3.0758.1742-.295.1427-.6648-.0638-.9383-.5377-.7126-1.5666-2.1607-2.1272-3.5015-.5764-1.3785-.6624-3.51876-.6673-4.56119-.0019-.39626-.1275-.78328-.3726-1.09465l-3.3311-4.23183c-.0117.19075-.0392.37998-.0788.56747-.1109.52394-.32 1.04552-.5585 1.56101-.1398.30214-.3014.62583-.4646.95284-.1086.21764-.218.4368-.3222.652-.5385 1.11265-1.0397 2.32011-1.1797 3.73901-.1299 1.31514.0478 2.84484.8484 4.67094.1333.0113.2675.0262.4023.0452 1.1488.1615 2.3546.6115 3.4647 1.5685.9541.8226 1.8163 2.0012 2.5152 3.6463z"/>
-    </svg>
-  );
-}
 
 export default StepTools;
