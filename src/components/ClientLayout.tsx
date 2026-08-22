@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Download, ExternalLink, RotateCw, Loader2 } from 'lucide-react';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import { Splash } from '@/components/Splash';
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -74,6 +75,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 function ClientLayoutInner({ children }: { children: React.ReactNode }) {
   const { sidebarCollapsed, mobileMenuOpen, setMobileMenuOpen, darkMode, setDarkMode, setVaultUnreadCount } = useStore();
   const isMobile = useIsMobile();
+
+  // Only on a genuine cold start: navigating between pages must never replay it.
+  const [showSplash, setShowSplash] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if (sessionStorage.getItem('tars-splash-shown')) return false;
+    sessionStorage.setItem('tars-splash-shown', '1');
+    return true;
+  });
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [updateDismissed, setUpdateDismissed] = useState(false);
   const [updateFlowState, setUpdateFlowState] = useState<UpdateFlowState>('available');
@@ -197,6 +206,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
+      {showSplash && <Splash onDone={() => setShowSplash(false)} />}
       {/* Full-width window drag bar at the very top (desktop only) */}
       <div className="window-drag hidden lg:block fixed top-0 left-0 right-0 h-7 z-[60]" />
 

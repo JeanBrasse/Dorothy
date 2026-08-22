@@ -23,6 +23,7 @@ import {
 import { useClaude } from '@/hooks/useClaude';
 import { getProviderDef, PROVIDER_REGISTRY } from '@/lib/providers';
 import { ProviderIconRenderer } from '@/components/ProviderBadge';
+import { BudgetAndLimits } from '@/components/Usage/BudgetAndLimits';
 
 // Token pricing per million tokens (MTok)
 const MODEL_PRICING: Record<string, {
@@ -567,118 +568,11 @@ export default function UsagePage() {
         </p>
       </div>
 
-      {/* Subscription Quota */}
-      {!data?.rateLimits && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-none border border-border-primary bg-bg-secondary p-4"
-        >
-          <div className="flex items-center gap-3 text-sm text-text-muted">
-            <Gauge className="w-4 h-4 text-accent-cyan shrink-0" />
-            <p>
-              Enable the <span className="text-text-primary font-medium">Status Line</span> in Settings and run an agent to see your subscription quota here.
-            </p>
-          </div>
-        </motion.div>
-      )}
-      {data?.rateLimits && (data.rateLimits.five_hour || data.rateLimits.seven_day) && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-none border border-border-primary bg-bg-secondary p-5"
-        >
-          <div className="text-sm font-medium mb-4 flex items-center gap-2">
-            <Gauge className="w-4 h-4 text-text-muted" />
-            Subscription Quota
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* 5-Hour Quota */}
-            {data.rateLimits.five_hour && (() => {
-              const rawPct = data.rateLimits.five_hour!.used_percentage;
-              const resetsAt = data.rateLimits.five_hour!.resets_at;
-              const now = Date.now() / 1000;
-              const isStale = resetsAt < now;
-              const pct = isStale ? 0 : rawPct;
-              const remainingSec = Math.max(0, resetsAt - now);
-              const remainingMin = Math.floor(remainingSec / 60);
-              const remainingH = Math.floor(remainingMin / 60);
-              const remainingM = remainingMin % 60;
-              const resetLabel = isStale
-                ? 'Window reset - awaiting update'
-                : remainingH > 0
-                  ? `Resets in ${remainingH}h ${remainingM}m`
-                  : `Resets in ${remainingM}m`;
-              const barColor = pct >= 90 ? 'bg-accent-red' : pct >= 70 ? 'bg-accent-amber' : 'bg-accent-green';
-
-              return (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-text-secondary">5-Hour Window</span>
-                    <span className="text-sm font-mono font-bold">
-                      {pct.toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="h-3 w-full bg-bg-tertiary rounded-none overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(pct, 100)}%` }}
-                      transition={{ duration: 0.6 }}
-                      className={`h-full ${barColor} rounded-none`}
-                    />
-                  </div>
-                  <div className="flex items-center gap-1 mt-1.5 text-xs text-text-muted">
-                    <Timer className="w-3 h-3" />
-                    <span>{resetLabel}</span>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* 7-Day Quota */}
-            {data.rateLimits.seven_day && (() => {
-              const rawPct = data.rateLimits.seven_day!.used_percentage;
-              const resetsAt = data.rateLimits.seven_day!.resets_at;
-              const now = Date.now() / 1000;
-              const isStale = resetsAt < now;
-              const pct = isStale ? 0 : rawPct;
-              const remainingSec = Math.max(0, resetsAt - now);
-              const remainingH = Math.floor(remainingSec / 3600);
-              const remainingD = Math.floor(remainingH / 24);
-              const remainingHMod = remainingH % 24;
-              const resetLabel = isStale
-                ? 'Window reset - awaiting update'
-                : remainingD > 0
-                  ? `Resets in ${remainingD}d ${remainingHMod}h`
-                  : `Resets in ${remainingH}h`;
-              const barColor = pct >= 90 ? 'bg-accent-red' : pct >= 70 ? 'bg-accent-amber' : 'bg-accent-green';
-
-              return (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-text-secondary">7-Day Window</span>
-                    <span className="text-sm font-mono font-bold">
-                      {pct.toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="h-3 w-full bg-bg-tertiary rounded-none overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(pct, 100)}%` }}
-                      transition={{ duration: 0.6 }}
-                      className={`h-full ${barColor} rounded-none`}
-                    />
-                  </div>
-                  <div className="flex items-center gap-1 mt-1.5 text-xs text-text-muted">
-                    <Timer className="w-3 h-3" />
-                    <span>{resetLabel}</span>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </motion.div>
-      )}
+      {/* Budget & limits — each provider gets the limit it actually has */}
+      <BudgetAndLimits
+        rateLimits={data?.rateLimits}
+        providerSpend={ledger.map(l => ({ provider: l.provider, costUSD: l.costUSD }))}
+      />
 
       {/* Cost Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

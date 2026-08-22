@@ -1,0 +1,181 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { Gauge } from 'lucide-react';
+import { PROVIDER_REGISTRY } from '@/lib/providers';
+import { ProviderIconRenderer } from '@/components/ProviderBadge';
+
+/**
+ * Budget and limits, per provider.
+ *
+ * The old panel showed Claude's subscription windows and nothing else, so a
+ * user on Codex or Gemini saw an empty box telling them to enable a status
+ * line. Providers do not share a notion of "quota": a subscription has rolling
+ * windows, an API key has spend against whatever budget you set, and a local
+ * model has no meter at all. Each row shows the limit that provider actually
+ * has, and says so plainly when there is none.
+ */
+
+interface RateWindow {
+  used_percentage: number;
+  resets_at?: number;
+}
+
+export interface BudgetRow {
+  providerId: string;
+  label: string;
+  kind: 'subscription' | 'pay-as-you-go' | 'local';
+  detail: string;
+  /** null when the provider has no meter */
+  percent: number | null;
+}
+
+function humanReset(resetsAt?: number): string {
+  if (!resetsAt) return '';
+  const seconds = resetsAt - Date.now() / 1000;
+  if (seconds <= 0) return 'resetting';
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.round((seconds % 3600) / 60);
+  if (hours >= 24) return `resets in ${Math.round(hours / 24)}d`;
+  if (hours > 0) return `resets in ${hours}h ${minutes}m`;
+  return `resets in ${minutes}m`;
+}
+
+export function buildBudgetRows(opts: {
+  rateLimits?: { five_hour?: RateWindow; seven_day?: RateWindow } | null;
+  providerSpend: { provider: string; costUSD: number }[];
+  budgets: Record<string, number>;
+  installed: Record<string, boolean>;
+}): BudgetRow[] {
+  const rows: BudgetRow[] = [];
+  const labelFor = (id: string) => PROVIDER_REGISTRY.find(p => p.id === id)?.label ?? id;
+
+  for (const [key, window] of [
+    ['5h window', opts.rateLimits?.five_hour],
+    ['7d window', opts.rateLimits?.seven_day],
+  ] as const) {
+    if (!window) continue;
+    const pct = Math.round(window.used_percentage);
+    rows.push({
+      providerId: 'claude',
+      label: 'Claude',
+      kind: 'subscription',
+      detail: [`${key}`, `${pct}% used`, humanReset(window.resets_at)].filter(Boolean).join(' · '),
+      percent: pct,
+    });
+  }
+
+  for (const spend of opts.providerSpend) {
+    const id = spend.provider;
+    if (!id) continue;
+    if (id === 'claude' && rows.length > 0) continue; // already covered by its windows
+    if (id === 'local' || id === 'tasmania') {
+      rows.push({ providerId: id, label: labelFor(id), kind: 'local', detail: '—', percent: null });
+      continue;
+    }
+    const budget = opts.budgets[id];
+    rows.push({
+      providerId: id,
+      label: labelFor(id),
+      kind: 'pay-as-you-go',
+      detail: budget
+        ? `$${spend.costUSD.toFixed(2)} of $${budget.toFixed(2)} this month`
+        : `$${spend.costUSD.toFixed(2)} this month · no budget set`,
+      percent: budget ? Math.min(999, Math.round((spend.costUSD / budget) * 100)) : null,
+    });
+  }
+
+  return rows;
+}
+
+export function BudgetAndLimits({
+  rateLimits,
+  providerSpend,
+}: {
+  rateLimits?: { five_hour?: RateWindow; seven_day?: RateWindow } | null;
+  providerSpend: { provider: string; costUSD: number }[];
+}) {
+  const [budgets, setBudgets] = useState<Record<string, number>>({});
+  const [installed, setInstalled] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    window.electronAPI?.appSettings?.get().then(s => {
+      const raw = (s as unknown as { providerBudgets?: Record<string, number> })?.providerBudgets;
+      if (raw) setBudgets(raw);
+    }).catch(() => undefined);
+    window.electronAPI?.cliPaths?.detect?.().then(paths => {
+      setInstalled(Object.fromEntries(Object.entries(paths ?? {}).map(([k, v]) => [k, !!v])));
+    }).catch(() => undefined);
+  }, []);
+
+  const rows = useMemo(
+    () => buildBudgetRows({ rateLimits, providerSpend, budgets, installed }),
+    [rateLimits, providerSpend, budgets, installed],
+  );
+
+  if (rows.length === 0) {
+    return (
+      <div className="border border-border-primary bg-bg-secondary p-4">
+        <div className="flex items-center gap-3 text-sm text-text-muted">
+          <Gauge className="w-4 h-4 shrink-0" />
+          <p>
+            No provider has reported a limit or any spend yet. Run an agent, and its provider
+            appears here with whatever limit it actually has.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-border-primary bg-bg-secondary p-5">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="text-sm font-medium flex items-center gap-2">
+          <Gauge className="w-4 h-4 text-text-muted" />
+          Budget &amp; limits
+        </div>
+        <p className="text-[10.5px] text-text-muted hidden sm:block">
+          each provider shows the limit it actually has
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        {rows.map((row, i) => {
+          const icon = PROVIDER_REGISTRY.find(p => p.id === row.providerId)?.icon;
+          const over = row.percent !== null && row.percent >= 90;
+          return (
+            <div key={`${row.providerId}-${i}`} className="border border-border-primary p-3 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  {icon && <ProviderIconRenderer icon={icon} className="w-3.5 h-3.5 shrink-0" />}
+                  <span className="text-xs font-medium">{row.label}</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 bg-bg-tertiary text-text-muted">
+                    {row.kind}
+                  </span>
+                </div>
+                <span className={`text-[11px] font-mono ${over ? 'text-accent-red' : 'text-text-secondary'}`}>
+                  {row.detail}
+                </span>
+              </div>
+
+              {row.percent === null ? (
+                <p className="text-[10.5px] text-text-muted">
+                  {row.kind === 'local'
+                    ? 'no metering — runs on your machine'
+                    : 'set a monthly budget in Settings to track this'}
+                </p>
+              ) : (
+                <div className="h-[5px] bg-bg-tertiary">
+                  <div
+                    className={`h-full ${over ? 'bg-accent-red' : 'bg-accent-orange'}`}
+                    style={{ width: `${Math.min(100, row.percent)}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

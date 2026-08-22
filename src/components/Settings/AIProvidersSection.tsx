@@ -146,10 +146,16 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
 
   return (
     <div className="space-y-6">
-      {/* Claude Code */}
       <div>
-        <h2 className="text-lg font-semibold mb-1">Claude Code</h2>
-        <p className="text-sm text-muted-foreground">Anthropic&apos;s official coding CLI - always available when installed.</p>
+        <h2 className="text-lg font-semibold mb-1">Providers</h2>
+        <p className="text-sm text-muted-foreground">
+          Every CLI and API Tars can run. They are all equal here — the options below each one
+          are that provider&apos;s own, not the app&apos;s.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Claude Code</h3>
       </div>
 
       <div className="border border-border bg-card p-5 space-y-4">
@@ -192,7 +198,13 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
 
         {/* Agent Settings */}
         <div className="border-t border-border pt-4 space-y-0">
-          <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">Agent Settings</p>
+          <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">
+            Claude Code options
+          </p>
+          <p className="text-xs text-muted-foreground mb-3">
+            These are flags the Claude CLI understands. Other providers have their own, set in
+            their own rows.
+          </p>
           <div className="flex items-center justify-between py-3 border-b border-border">
             <div>
               <span className="text-sm">Verbose Mode</span>
@@ -246,10 +258,10 @@ export const AIProvidersSection = ({ appSettings, onSaveAppSettings, onUpdateLoc
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold mb-1">External AI Providers</h2>
+        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">API providers</h3>
         <p className="text-sm text-muted-foreground">
-          Configure API keys to use models from other providers. All providers route through
-          the Claude CLI using the <code className="bg-secondary px-1 text-xs">ANTHROPIC_BASE_URL</code> override.
+          Model lists and prices for all of these come from the live catalogue, so you do not
+          need a key just to see what a provider offers. A key is what lets an agent run on it.
         </p>
       </div>
 

@@ -618,3 +618,10 @@ button, a, input, textarea, select {
 .xterm-viewport::-webkit-scrollbar-thumb {
   background: #CFCBC4;
 }
+
+
+/* The indeterminate bar shown once an operation passes three seconds. */
+@keyframes loading-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AlertCircle, Loader2, Pause, Play, RefreshCw, Trash2, Zap } from 'lucide-react';
+import { LoadingState } from '@/components/ui';
 
 /**
  * Hermes schedules. Tars does not own a scheduler: the jobs, their timers and
@@ -117,9 +118,12 @@ export default function CronsPage() {
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         {loading && jobs.length === 0 && (
-          <div className="flex items-center justify-center h-full text-muted-foreground gap-2">
-            <Loader2 className="w-4 h-4 animate-spin" /> Reading Hermes schedules...
-          </div>
+          <LoadingState
+            loading
+            rows={4}
+            what="Still reading the Hermes gateway…"
+            detail="waiting on /api/cron/jobs"
+          />
         )}
 
         {error && (
