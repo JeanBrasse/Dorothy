@@ -36,7 +36,12 @@ export async function apiRequest(
   timeoutMsOverride?: number
 ): Promise<unknown> {
   const url = `${API_URL}${endpoint}`;
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    // Marks this as an agent-initiated call, so the server can refuse to act
+    // when the caller turns out to have no identity to scope it by.
+    "X-Tars-Client": "mcp",
+  };
   const token = readApiToken();
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;

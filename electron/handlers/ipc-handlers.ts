@@ -28,6 +28,7 @@ import { assembleDigest, needsPromptInjection, wrapDigestForPrompt, searchMemory
 import { usableHermesConnection } from '../services/hermes-config';
 import { reviewDiff, fileDiff } from '../services/git-review';
 import { searchLogs, agentTail, fleetSummary } from '../services/log-search';
+import { providerTotals as ledgerProviderTotals, dailyCost as ledgerDailyCost } from '../services/usage-ledger';
 
 /**
  * Normalize a JIRA domain value to a full hostname.
@@ -1579,6 +1580,13 @@ function registerAppSettingsHandlers(deps: IpcHandlerDependencies): void {
   });
 
   ipcMain.handle('logs:fleet', async () => ({ agents: fleetSummary() }));
+
+  // Per-provider spend. Claude's own transcripts cover its family; the ledger
+  // is what makes every other CLI countable at all.
+  ipcMain.handle('usage:by-provider', async (_event, { sinceDays }: { sinceDays?: number } = {}) => ({
+    providers: ledgerProviderTotals(sinceDays),
+    dailyCost: ledgerDailyCost(sinceDays ?? 30),
+  }));
 
   ipcMain.handle('review:file', async (
     _event,

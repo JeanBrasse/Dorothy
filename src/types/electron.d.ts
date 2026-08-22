@@ -525,6 +525,22 @@ export interface ElectronAPI {
     getVersion: () => Promise<{ version: string }>;
   };
 
+  /** Per-provider spend, merged from transcripts and reported turns. */
+  usage?: {
+    byProvider: (sinceDays?: number) => Promise<{
+      providers: Array<{
+        provider: string;
+        inputTokens: number;
+        outputTokens: number;
+        costUSD: number;
+        turns: number;
+        models: string[];
+        measured: boolean;
+      }>;
+      dailyCost: Record<string, number>;
+    }>;
+  };
+
   /** Search across every agent's output at once. */
   logs?: {
     search: (query: string, opts?: { agentIds?: string[]; projectPath?: string; limit?: number }) =>

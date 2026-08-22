@@ -347,6 +347,18 @@ function callerProject(req: RouteRequest): string | undefined {
  */
 function assertSameProject(req: RouteRequest, agent: AgentStatus, sendJson: SendJson): boolean {
   const caller = callerProject(req);
+
+  // An agent's MCP always announces itself. If it does so without an identity
+  // its calls cannot be scoped, and defaulting to "allow" would let it drive
+  // every project's agents - which is the confusion this guard exists to stop.
+  if (!caller && req.raw?.headers?.['x-tars-client'] === 'mcp') {
+    sendJson({
+      error: 'This agent has no identity, so its calls cannot be scoped to a project. '
+        + 'Restart the agent from Tars so it is spawned with CLAUDE_AGENT_ID and CLAUDE_PROJECT_PATH.',
+    }, 403);
+    return false;
+  }
+
   if (!caller || agent.projectPath === caller) return true;
   if ((req.body as { allowCrossProject?: boolean } | undefined)?.allowCrossProject === true) return true;
   // DELETE requests have no parsed body — accept the override as a query param.

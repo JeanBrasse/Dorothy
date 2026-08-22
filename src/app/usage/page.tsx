@@ -110,6 +110,26 @@ async function loadLivePricing(modelIds: string[]): Promise<boolean> {
   return changed;
 }
 
+/**
+ * Which provider a model id belongs to. Transcript entries carry the model,
+ * not the CLI that ran it, and every claude-* model comes from a claude-binary
+ * provider whichever wrapper was used.
+ */
+function providerForModel(modelId: string): string {
+  const id = modelId.toLowerCase();
+  if (id.startsWith('claude-') || /fable|mythos|opus|sonnet|haiku/.test(id)) return 'claude';
+  if (id.startsWith('gpt-') || id.includes('codex')) return 'codex';
+  if (id.startsWith('gemini')) return 'gemini';
+  if (id.startsWith('grok')) return 'grok';
+  if (id.startsWith('deepseek')) return 'deepseek';
+  if (id.startsWith('kimi') || id.includes('moonshot')) return 'moonshot';
+  if (id.startsWith('qwen')) return 'qwen';
+  if (id.toLowerCase().startsWith('minimax')) return 'minimax';
+  if (id.startsWith('glm') || id.includes('zhipu')) return 'zhipu';
+  if (id.startsWith('mimo')) return 'mimo';
+  return 'claude';
+}
+
 function getModelPricing(modelId: string) {
   const live = livePricing.get(modelId);
   if (live) return live;
@@ -217,6 +237,7 @@ export default function UsagePage() {
   const { data, loading, error } = useClaude();
   const [costTimeRange, setCostTimeRange] = useState<TimeRange>('daily');
   const [, setPricingLoaded] = useState(0);
+  const [ledger, setLedger] = useState<Array<{ provider: string; inputTokens: number; outputTokens: number; costUSD: number; turns: number }>>([]);
 
   // Get today's stats - use the most recent available
   const todayActivity = useMemo(() => {
@@ -290,6 +311,16 @@ export default function UsagePage() {
   }, [data?.stats?.dailyModelTokens]);
 
   // Calculate total usage and cost from model stats
+  // Per-turn usage reported by the agents themselves. This is the only source
+  // that covers the CLIs which write no transcript of their own.
+  useEffect(() => {
+    let cancelled = false;
+    window.electronAPI?.usage?.byProvider()
+      .then(res => { if (!cancelled) setLedger(res?.providers ?? []); })
+      .catch(() => { if (!cancelled) setLedger([]); });
+    return () => { cancelled = true; };
+  }, []);
+
   // Pull live prices for whatever models the data actually contains, then
   // nudge a re-render so the figures pick them up.
   useEffect(() => {
@@ -1258,15 +1289,46 @@ export default function UsagePage() {
           Usage by Provider
         </div>
         {(() => {
-          const providerTotals = data?.tokenStats?.providerTotals;
-          const entries = providerTotals ? Object.entries(providerTotals) : [];
-          const sorted = entries
-            .sort(([, a], [, b]) => b.cost !== a.cost ? b.cost - a.cost : b.sessions - a.sessions);
+          // Two sources, because no single one covers every CLI: Claude Code
+          // writes transcripts we can reconstruct after the fact, and every
+          // ACP turn reports its own tokens as it happens. Merged by provider.
+          const rows = new Map<string, { sessions: number; in: number; out: number; cost: number; models: Set<string> }>();
+
+          const add = (providerId: string, patch: { sessions?: number; in?: number; out?: number; cost?: number; model?: string }) => {
+            const row = rows.get(providerId) ?? { sessions: 0, in: 0, out: 0, cost: 0, models: new Set<string>() };
+            row.sessions += patch.sessions ?? 0;
+            row.in += patch.in ?? 0;
+            row.out += patch.out ?? 0;
+            row.cost += patch.cost ?? 0;
+            if (patch.model) row.models.add(patch.model);
+            rows.set(providerId, row);
+          };
+
+          for (const model of modelCostBreakdown) {
+            add(providerForModel(model.modelId), {
+              in: model.inputTokens + model.cacheReadTokens + model.cacheWriteTokens,
+              out: model.outputTokens,
+              cost: model.cost,
+              model: model.modelId,
+            });
+          }
+
+          for (const entry of ledger) {
+            add(entry.provider, {
+              sessions: entry.turns,
+              in: entry.inputTokens,
+              out: entry.outputTokens,
+              cost: entry.costUSD,
+            });
+          }
+
+          const sorted = Array.from(rows.entries()).sort(([, a], [, b]) => b.cost - a.cost);
 
           if (sorted.length === 0) {
             return (
               <p className="text-xs text-text-muted">
-                No usage recorded yet for any provider. Start a chat to see token usage appear here.
+                Nothing recorded yet. Claude usage is read from its transcripts, and every other CLI
+                is counted from the turns it reports back - delegate a task and it appears here.
               </p>
             );
           }
@@ -1277,7 +1339,7 @@ export default function UsagePage() {
                 <thead>
                   <tr className="border-b border-border-primary">
                     <th className="text-left py-2 px-2 text-text-muted font-medium">Provider</th>
-                    <th className="text-right py-2 px-2 text-text-muted font-medium">Sessions</th>
+                    <th className="text-left py-2 px-2 text-text-muted font-medium">Models</th>
                     <th className="text-right py-2 px-2 text-text-muted font-medium">Tokens In</th>
                     <th className="text-right py-2 px-2 text-text-muted font-medium">Tokens Out</th>
                     <th className="text-right py-2 px-2 text-text-muted font-medium">Cost</th>
@@ -1298,7 +1360,9 @@ export default function UsagePage() {
                             <span className="font-medium">{label}</span>
                           </div>
                         </td>
-                        <td className="text-right py-2 px-2 tabular-nums">{totals.sessions}</td>
+                        <td className="py-2 px-2 text-text-muted truncate max-w-[220px]">
+                          {Array.from(totals.models).map(getModelDisplayName).join(', ') || '-'}
+                        </td>
                         <td className="text-right py-2 px-2 tabular-nums">{fmtTokens(totals.in)}</td>
                         <td className="text-right py-2 px-2 tabular-nums">{fmtTokens(totals.out)}</td>
                         <td className="text-right py-2 px-2 tabular-nums text-accent-green">

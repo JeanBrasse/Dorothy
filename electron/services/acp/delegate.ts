@@ -5,6 +5,7 @@ import { getMcpOrchestratorPath, getMcpMemoryPath } from '../mcp-orchestrator';
 import { getProvider } from '../../providers';
 import type { AgentStatus, AppSettings } from '../../types';
 import * as fs from 'fs';
+import { recordUsage } from '../usage-ledger';
 
 /**
  * Running a delegated task over ACP instead of typing it into a terminal.
@@ -101,6 +102,23 @@ export async function delegateOverAcp(opts: {
   try {
     await session.start();
     const turn: TurnResult = await session.prompt(task, opts.timeoutMs);
+
+    // Every provider reports its tokens over ACP, which is the only place
+    // non-Claude usage can be captured at all.
+    if (turn.usage || turn.costUSD != null) {
+      recordUsage({
+        agentId: agent.id,
+        provider: agent.provider ?? 'claude',
+        model: agent.model,
+        inputTokens: turn.usage?.inputTokens ?? 0,
+        outputTokens: turn.usage?.outputTokens ?? 0,
+        cachedReadTokens: turn.usage?.cachedReadTokens,
+        cachedWriteTokens: turn.usage?.cachedWriteTokens,
+        costUSD: turn.costUSD,
+        transport: 'acp',
+      });
+    }
+
     return {
       ok: turn.stopReason === 'end_turn',
       transport: 'acp',

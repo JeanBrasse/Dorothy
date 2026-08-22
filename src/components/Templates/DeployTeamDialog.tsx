@@ -6,6 +6,7 @@ import type { TeamTemplate, TeamTemplateMember } from '@/types/electron';
 import { useElectronAgents, useElectronFS } from '@/hooks/useElectron';
 import { useElectronTeamTemplates } from '@/hooks/useElectronTeamTemplates';
 import { PROVIDER_REGISTRY, computeProviderAvailability } from '@/lib/providers';
+import { useModelCatalog } from '@/hooks/useModelCatalog';
 import { Dropdown } from '@/components/ui';
 
 interface DeployTeamDialogProps {
@@ -13,6 +14,31 @@ interface DeployTeamDialogProps {
   onClose: () => void;
   /** Called after a successful deployment with the ids of the created agents. */
   onDeployed?: (agentIds: string[]) => void;
+}
+
+/**
+ * A member's model list, from the live catalogue rather than the snapshot
+ * compiled into the release - a team deployed today should be able to use a
+ * model released today.
+ */
+function MemberModelPicker({ provider, value, onChange }: {
+  provider: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const { models, loading } = useModelCatalog(provider);
+
+  return (
+    <Dropdown
+      value={value}
+      placeholder={loading ? 'Loading…' : 'Default'}
+      options={[
+        { value: '', label: 'Default' },
+        ...models.map(mo => ({ value: mo.id, label: mo.name, hint: mo.description })),
+      ]}
+      onChange={onChange}
+    />
+  );
 }
 
 export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialogProps) {
@@ -411,12 +437,9 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
                           </div>
                           <div className="flex-1">
                             <label className="block text-[10px] text-muted-foreground mb-0.5">Model</label>
-                            <Dropdown
+                            <MemberModelPicker
+                              provider={m.provider || 'claude'}
                               value={m.model || ''}
-                              placeholder="Default"
-                              options={[{ value: '', label: 'Default' }, ...((PROVIDER_REGISTRY.find(p => p.id === (m.provider || 'claude'))?.models ?? [])
-                                .filter(mo => mo.id !== 'default')
-                                .map(mo => ({ value: mo.id, label: mo.name, hint: mo.description })))]}
                               onChange={v => patchMember(i, { model: v || undefined })}
                             />
                           </div>

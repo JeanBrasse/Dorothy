@@ -232,6 +232,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
   },
 
+  usage: {
+    byProvider: (sinceDays?: number) =>
+      ipcRenderer.invoke('usage:by-provider', { sinceDays }),
+  },
+
   logs: {
     search: (query: string, opts?: { agentIds?: string[]; projectPath?: string; limit?: number }) =>
       ipcRenderer.invoke('logs:search', { query, ...opts }),
