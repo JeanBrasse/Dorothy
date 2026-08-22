@@ -1111,7 +1111,7 @@ function registerSkillHandlers(deps: IpcHandlerDependencies): void {
   ipcMain.handle('skill:fetch-marketplace', async () => {
     try {
       const res = await fetch('https://skills.sh/', {
-        headers: { 'User-Agent': 'Dorothy/1.0' },
+        headers: { 'User-Agent': 'Tars/1.0' },
       });
       if (!res.ok) return { skills: null };
 
@@ -1122,7 +1122,9 @@ function registerSkillHandlers(deps: IpcHandlerDependencies): void {
       const raw = match[1].replace(/\\"/g, '"');
       const allSkills: { source: string; name: string; installs: number }[] = JSON.parse(raw);
 
-      const skills = allSkills.slice(0, 300).map((s, i) => ({
+      // The directory publishes ~600 skills; the old 300 cap hid half of them
+      // behind a search box that only filters what was already downloaded.
+      const skills = allSkills.map((s, i) => ({
         rank: i + 1,
         name: s.name,
         repo: s.source,

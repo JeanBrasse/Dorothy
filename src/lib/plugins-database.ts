@@ -10,6 +10,7 @@ export interface Plugin {
   description: string;
   category: string;
   marketplace: string;
+  version?: string;
   author?: string;
   tags?: string[];
   homepage?: string;
@@ -59,21 +60,84 @@ const DEFAULT_TTL = 86_400_000; // 24 hours
 const CACHE_PREFIX = 'dorothy-plugins-src-';
 
 // ── Source registry ──
-// Add new sources here. Each is fetched, cached, and merged independently.
+// Each entry is a real Claude Code marketplace: its repo publishes a
+// .claude-plugin/marketplace.json, which is what `claude plugin marketplace
+// add` reads. Fetched, cached and merged independently, so one dead repo
+// costs its own plugins and nothing else.
 
-const SOURCES: PluginSource[] = [
-  {
-    id: 'claudemarketplaces',
-    name: 'Claude Marketplaces',
-    fetch: async () => {
-      const res = await fetch(
-        'https://raw.githubusercontent.com/mertbuilds/claudemarketplaces.com/refs/heads/main/lib/data/plugins.json',
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
-  },
+interface MarketplaceRepo {
+  /** owner/repo on GitHub — also the argument to `plugin marketplace add` */
+  repo: string;
+  /** Branch holding the manifest */
+  branch?: string;
+}
+
+const MARKETPLACE_REPOS: MarketplaceRepo[] = [
+  { repo: 'anthropics/claude-code' },
+  { repo: 'wshobson/agents' },
+  { repo: 'jeremylongshore/claude-code-plugins-plus-skills' },
+  { repo: 'davepoon/buildwithclaude' },
+  { repo: 'obra/superpowers-marketplace' },
+  { repo: 'fivetaku/gptaku_plugins' },
+  { repo: 'numman-ali/n-skills' },
 ];
+
+/** Shape of a .claude-plugin/marketplace.json entry. */
+interface ManifestPlugin {
+  name: string;
+  description?: string;
+  source?: string;
+  category?: string;
+  version?: string;
+  author?: { name?: string; email?: string; url?: string } | string;
+  homepage?: string;
+  keywords?: string[];
+  tags?: string[];
+}
+
+interface Manifest {
+  name: string;
+  description?: string;
+  owner?: { name?: string; email?: string };
+  plugins?: ManifestPlugin[];
+}
+
+function manifestToRemote(manifest: Manifest, repo: string): RemotePlugin[] {
+  const marketplace = manifest.name || repo;
+  return (manifest.plugins || []).map((p) => ({
+    id: `${p.name}@${marketplace}`,
+    name: p.name,
+    description: p.description || '',
+    source: repo,
+    marketplace,
+    marketplaceUrl: `https://github.com/${repo}`,
+    category: p.category || 'community',
+    // Adding the marketplace is idempotent, and it is the step people forget.
+    installCommand: `claude plugin marketplace add ${repo} && claude plugin install ${p.name}@${marketplace} -y`,
+    version: p.version,
+    author:
+      typeof p.author === 'string'
+        ? { name: p.author }
+        : p.author?.name
+          ? { name: p.author.name, email: p.author.email }
+          : manifest.owner?.name
+            ? { name: manifest.owner.name }
+            : undefined,
+    tags: p.tags || p.keywords,
+  }));
+}
+
+const SOURCES: PluginSource[] = MARKETPLACE_REPOS.map(({ repo, branch = 'main' }) => ({
+  id: repo.replace('/', '-'),
+  name: repo,
+  fetch: async () => {
+    const res = await fetch(
+      `https://raw.githubusercontent.com/${repo}/${branch}/.claude-plugin/marketplace.json`,
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return manifestToRemote(await res.json(), repo);
+  },
+}));
 
 // ── Plugin filters ──
 // Add predicates here to exclude plugins from the final list.
@@ -125,6 +189,7 @@ function mapRemotePlugin(remote: RemotePlugin): Plugin {
     tags: remote.tags,
     homepage: remote.marketplaceUrl,
     installCommand: remote.installCommand,
+    version: remote.version,
   };
 }
 
@@ -145,22 +210,25 @@ function deriveAuthors(plugins: Plugin[]): string[] {
   return Array.from(authors).sort();
 }
 
-/** Marketplaces exposed in the source dropdown. */
-const ALLOWED_MARKETPLACES = new Set(['anthropics-claude-code']);
-
+/** Every marketplace that returned plugins shows up in the source dropdown. */
 function deriveMarketplaces(plugins: Plugin[]): Marketplace[] {
-  const seen = new Map<string, Marketplace>();
+  const seen = new Map<string, { mp: Marketplace; count: number }>();
   for (const p of plugins) {
-    if (!seen.has(p.marketplace) && ALLOWED_MARKETPLACES.has(p.marketplace)) {
-      seen.set(p.marketplace, {
+    const entry = seen.get(p.marketplace);
+    if (entry) { entry.count++; continue; }
+    seen.set(p.marketplace, {
+      count: 1,
+      mp: {
         id: p.marketplace,
         name: p.marketplace,
-        description: `Plugins from ${p.marketplace}`,
+        description: '',
         source: p.homepage || p.marketplace,
-      });
-    }
+      },
+    });
   }
-  return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+  return Array.from(seen.values())
+    .map(({ mp, count }) => ({ ...mp, description: `${count} plugin${count > 1 ? 's' : ''}` }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // ── Fetch a single source (cache-first) ──
