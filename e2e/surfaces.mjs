@@ -44,9 +44,10 @@ export const SETTINGS_SECTIONS = [
 // l'inventaire sont ajoutées ici au fur et à mesure que le redesign les touche
 // (check-coverage.mjs liste celles qui restent non automatisées).
 export const OVERLAYS = [
-  { name: 'overlay-new-agent', route: '/agents', clickText: 'New Agent' },
-  { name: 'overlay-templates-manager', route: '/agents', clickText: 'Templates', settle: 1500 },
-  { name: 'overlay-deploy-team', route: '/agents', clickText: 'Deploy Team' },
+  { name: 'overlay-new-agent', route: '/agents', clickText: 'Agent' },
+  // Templates now live inside the creation flow, not as a top-level button.
+  { name: 'overlay-templates-manager', route: '/agents', clickText: 'Agent', clickText2: 'Manage templates', settle: 1500 },
+  { name: 'overlay-deploy-team', route: '/agents', clickText: '+ Team' },
 ];
 
 export const ALL = [...PAGES, ...SETTINGS_SECTIONS, ...OVERLAYS];
