@@ -9,6 +9,19 @@ import { getProvider, isValidProvider } from '../../providers';
 import { buildFullPath } from '../../utils/path-builder';
 import { AgentStatus, AgentCharacter } from '../../types';
 import { RouteApp, RouteContext, RouteRequest, SendJson } from './types';
+import { getSuperAgentInstructionsPath } from '../../utils';
+
+/**
+ * The orchestrator instructions, or nothing for a regular agent. The UI start
+ * path attached this file; the API path (every MCP delegate_task, start_agent
+ * and send_message) did not, so an orchestrator driven by the MCP ran without
+ * the rules that tell it to delegate rather than code.
+ */
+function orchestratorInstructionsFile(isOrchestrator: boolean | undefined): string | undefined {
+  if (!isOrchestrator) return undefined;
+  const file = getSuperAgentInstructionsPath();
+  return fs.existsSync(file) ? file : undefined;
+}
 
 type SpawnOpts = {
   model?: string;
@@ -119,6 +132,7 @@ async function spawnAgentSession(
   const resolvedModel = opts.model || agent.model;
   const effectiveMode = opts.permissionMode ?? agent.permissionMode ?? (agent.skipPermissions ? 'auto' : 'normal');
 
+
   // Build the CLI command through the provider so non-claude CLIs (codex,
   // gemini, grok, opencode, pi) get their own syntax instead of claude flags.
   let cliCommand: string;
@@ -133,6 +147,10 @@ async function spawnAgentSession(
       obsidianVaultPaths: agent.obsidianVaultPaths,
       mcpConfigPath,
       skills: agent.skills,
+      // Without this an orchestrator restarted through the API or by another
+      // orchestrator woke up with no orchestration rules and did the work
+      // itself instead of delegating.
+      systemPromptFile: orchestratorInstructionsFile(isSuperAgentApi),
       isSuperAgent: isSuperAgentApi,
       // BUG 5: orchestrator-mode agents cannot edit files directly.
       orchestratorMode: isSuperAgentApi || agent.orchestratorMode,

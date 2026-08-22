@@ -136,6 +136,11 @@ export class GrokProvider implements CLIProvider {
       DOROTHY_SKILLS: skills.join(','),
       DOROTHY_AGENT_ID: agentId,
       DOROTHY_PROJECT_PATH: projectPath,
+      // The orchestrator MCP and the hooks both read the CLAUDE_ names. Without
+      // them the agent has no identity, so whoami fails and list_agents falls
+      // back to every project's agents instead of its own.
+      CLAUDE_AGENT_ID: agentId,
+      CLAUDE_PROJECT_PATH: projectPath,
     };
   }
 

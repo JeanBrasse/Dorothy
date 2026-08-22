@@ -42,6 +42,16 @@ export class PiProvider implements CLIProvider {
       command += ` --model '${params.model}'`;
     }
 
+    // A delegated task arrives as params.prompt. Dropping it launched a bare
+    // TUI and reported success while the task went nowhere.
+    let finalPrompt = params.prompt;
+    if (params.skills && params.skills.length > 0 && !params.isSuperAgent) {
+      finalPrompt = `[IMPORTANT: Use these skills for this session: ${params.skills.join(', ')}. Invoke them with /<skill-name> when relevant to the task.] ${params.prompt}`;
+    }
+    if (finalPrompt) {
+      command += ` '${finalPrompt.replace(/'/g, "'\\''")}'`;
+    }
+
     return command;
   }
 
@@ -81,6 +91,11 @@ export class PiProvider implements CLIProvider {
       DOROTHY_SKILLS: skills.join(','),
       DOROTHY_AGENT_ID: agentId,
       DOROTHY_PROJECT_PATH: projectPath,
+      // The orchestrator MCP and the hooks both read the CLAUDE_ names. Without
+      // them the agent has no identity, so whoami fails and list_agents falls
+      // back to every project's agents instead of its own.
+      CLAUDE_AGENT_ID: agentId,
+      CLAUDE_PROJECT_PATH: projectPath,
       CLAUDE_PROVIDER: this.id,
     };
   }
