@@ -6,3 +6,4 @@ export { Label, Input, Select, Textarea } from './Field';
 export { Dropdown } from './Dropdown';
 export type { DropdownOption } from './Dropdown';
 export { LoadingState, SkeletonRows, SlowOperation, useLoadingStage } from './Loading';
+export { PageHeader } from './PageHeader';

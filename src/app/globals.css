@@ -29,7 +29,7 @@
 
   /* Primary - Tangerine 500 */
   --primary: #C77012;
-  --primary-foreground: #FFFFFF;
+  --primary-foreground: #1E1E1E;   /* white on #C77012 is 3.65:1 - fails AA. This is 4.57:1. */
 
   /* Secondary */
   --secondary: #F3F1EE;
@@ -37,17 +37,17 @@
 
   /* Muted */
   --muted: #F3F1EE;
-  --muted-foreground: #5E5E5E;
+  --muted-foreground: #4A4A4A;
 
   /* Accent - Tangerine */
   --accent: #C77012;
-  --accent-foreground: #FFFFFF;
+  --accent-foreground: #1E1E1E;
 
   /* Destructive */
   --destructive: #CF222E;
 
   /* Borders & inputs */
-  --border: #E6E3DE;
+  --border: #DAD6CE;
   --input: #FFFFFF;
   --ring: #C77012;
 
@@ -56,11 +56,11 @@
   --bg-secondary: #FFFFFF;
   --bg-tertiary: #F3F1EE;
   --bg-elevated: #FFFFFF;
-  --border-primary: #E6E3DE;
-  --border-accent: #CFCBC4;
+  --border-primary: #DAD6CE;
+  --border-accent: #BFBAB1;
   --text-primary: #1E1E1E;
-  --text-secondary: #5E5E5E;
-  --text-muted: #9B9B9B;
+  --text-secondary: #4A4A4A;
+  --text-muted: #6B6B6B;        /* was the DARK value: 2.6:1 on the light page */
 
   /* Status colors */
   --success: #1A7F37;
@@ -95,7 +95,7 @@
 }
 
 /* ============================================
-   DOROTHY — DARK THEME OVERRIDES
+   TARS — DARK THEME OVERRIDES
    ============================================ */
 .dark {
   /* Surfaces */
@@ -139,7 +139,7 @@
   --border-accent: #3A3A3A;
   --text-primary: #F5F4F2;
   --text-secondary: #9B9B9B;
-  --text-muted: #727272;
+  --text-muted: #898989;        /* #727272 was 3.6:1 on a card. Lightest value that clears AA on bg, card AND secondary. */
 
   /* Status colors */
   --success: #4CC38A;

@@ -6,16 +6,21 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type Size = 'sm' | 'md';
 
+// Every variant carries a border, transparent where it should not show. The
+// filled ones used to have none, so a primary rendered 2px shorter than the
+// secondary next to it and no two buttons in a row shared an edge.
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
+  primary: 'border border-primary bg-primary text-primary-foreground hover:bg-primary/90',
   secondary: 'border border-border bg-card text-foreground hover:bg-accent/50',
-  ghost: 'text-muted-foreground hover:text-foreground hover:bg-primary/5',
+  ghost: 'border border-transparent text-muted-foreground hover:text-foreground hover:bg-primary/5',
   danger: 'border border-danger/40 text-danger hover:bg-danger/10',
 };
 
+// Two heights, fixed. Padding-driven heights drifted with the content: an icon
+// made a button taller than the one beside it holding only a word.
 const SIZES: Record<Size, string> = {
-  sm: 'px-2.5 py-1 text-xs gap-1.5',
-  md: 'px-3 py-1.5 text-sm gap-2',
+  sm: 'h-[26px] px-2.5 text-xs gap-1.5',
+  md: 'h-8 px-3 text-sm gap-2',
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
