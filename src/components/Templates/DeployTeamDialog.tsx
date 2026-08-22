@@ -6,6 +6,7 @@ import type { TeamTemplate, TeamTemplateMember } from '@/types/electron';
 import { useElectronAgents, useElectronFS } from '@/hooks/useElectron';
 import { useElectronTeamTemplates } from '@/hooks/useElectronTeamTemplates';
 import { PROVIDER_REGISTRY, computeProviderAvailability } from '@/lib/providers';
+import { Dropdown } from '@/components/ui';
 
 interface DeployTeamDialogProps {
   open: boolean;
@@ -402,55 +403,39 @@ export function DeployTeamDialog({ open, onClose, onDeployed }: DeployTeamDialog
                         <div className="flex gap-2">
                           <div className="flex-1">
                             <label className="block text-[10px] text-muted-foreground mb-0.5">Provider</label>
-                            <select
+                            <Dropdown
                               value={m.provider || 'claude'}
-                              onChange={e => patchMember(i, { provider: e.target.value as TeamTemplateMember['provider'], model: undefined })}
-                              className="w-full px-2 py-1 bg-card border border-border text-xs text-foreground outline-none focus:border-primary/40"
-                            >
-                              {PROVIDER_REGISTRY.filter(p => availability[p.id] !== false).map(p => (
-                                <option key={p.id} value={p.id}>{p.label}</option>
-                              ))}
-                            </select>
+                              options={PROVIDER_REGISTRY.filter(p => availability[p.id] !== false).map(p => ({ value: p.id, label: p.label }))}
+                              onChange={v => patchMember(i, { provider: v as TeamTemplateMember['provider'], model: undefined })}
+                            />
                           </div>
                           <div className="flex-1">
                             <label className="block text-[10px] text-muted-foreground mb-0.5">Model</label>
-                            <select
+                            <Dropdown
                               value={m.model || ''}
-                              onChange={e => patchMember(i, { model: e.target.value || undefined })}
-                              className="w-full px-2 py-1 bg-card border border-border text-xs text-foreground outline-none focus:border-primary/40"
-                            >
-                              <option value="">Default</option>
-                              {(PROVIDER_REGISTRY.find(p => p.id === (m.provider || 'claude'))?.models ?? [])
+                              placeholder="Default"
+                              options={[{ value: '', label: 'Default' }, ...((PROVIDER_REGISTRY.find(p => p.id === (m.provider || 'claude'))?.models ?? [])
                                 .filter(mo => mo.id !== 'default')
-                                .map(mo => <option key={mo.id} value={mo.id}>{mo.name}</option>)}
-                            </select>
+                                .map(mo => ({ value: mo.id, label: mo.name, hint: mo.description })))]}
+                              onChange={v => patchMember(i, { model: v || undefined })}
+                            />
                           </div>
                           <div className="flex-1">
                             <label className="block text-[10px] text-muted-foreground mb-0.5">Effort</label>
-                            <select
+                            <Dropdown
                               value={m.effort || ''}
-                              onChange={e => patchMember(i, { effort: (e.target.value || undefined) as TeamTemplateMember['effort'] })}
-                              className="w-full px-2 py-1 bg-card border border-border text-xs text-foreground outline-none focus:border-primary/40"
-                            >
-                              <option value="">Default</option>
-                              <option value="low">Low</option>
-                              <option value="medium">Medium</option>
-                              <option value="high">High</option>
-                              <option value="xhigh">X-High</option>
-                              <option value="max">Max</option>
-                            </select>
+                              placeholder="Default"
+                              options={[{ value: '', label: 'Default' }, { value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }, { value: 'xhigh', label: 'X-High' }, { value: 'max', label: 'Max' }]}
+                              onChange={v => patchMember(i, { effort: (v || undefined) as TeamTemplateMember['effort'] })}
+                            />
                           </div>
                           <div className="flex-1">
                             <label className="block text-[10px] text-muted-foreground mb-0.5">Permissions</label>
-                            <select
+                            <Dropdown
                               value={m.permissionMode}
-                              onChange={e => patchMember(i, { permissionMode: e.target.value as TeamTemplateMember['permissionMode'] })}
-                              className="w-full px-2 py-1 bg-card border border-border text-xs text-foreground outline-none focus:border-primary/40"
-                            >
-                              <option value="normal">Normal</option>
-                              <option value="auto">Auto-accept</option>
-                              <option value="bypass">Bypass</option>
-                            </select>
+                              options={[{ value: 'normal', label: 'Normal' }, { value: 'auto', label: 'Auto-accept' }, { value: 'bypass', label: 'Bypass' }]}
+                              onChange={v => patchMember(i, { permissionMode: v as TeamTemplateMember['permissionMode'] })}
+                            />
                           </div>
                         </div>
                         <div>
