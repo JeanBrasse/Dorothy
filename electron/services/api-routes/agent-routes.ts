@@ -11,6 +11,7 @@ import { AgentStatus, AgentCharacter } from '../../types';
 import { RouteApp, RouteContext, RouteRequest, SendJson } from './types';
 import { getSuperAgentInstructionsPath } from '../../utils';
 import { assembleDigest, needsPromptInjection, wrapDigestForPrompt } from '../memory-hub';
+import { canDelegateOverAcp, delegateOverAcp } from '../acp/delegate';
 import { usableHermesConnection } from '../hermes-config';
 
 /**
@@ -708,6 +709,57 @@ export function registerAgentRoutes(app_: RouteApp, ctx: RouteContext): void {
     }
 
     await performDispatch(agent, { message, model, permissionMode }, ctx, sendJson);
+  });
+
+  /**
+   * POST /api/agents/:id/run-task
+   *
+   * Delegation with a receipt. Where /dispatch types a message into the
+   * target's terminal and returns before the agent has even read it, this runs
+   * the task over the Agent Client Protocol and answers with what the agent
+   * actually did: its reply, why the turn ended, which tools it used and what
+   * the turn cost. Works on every CLI with an ACP mode.
+   */
+  app_.post(/^\/api\/agents\/([^/]+)\/run-task$/, async (req, sendJson) => {
+    const agent = agents.get(req.params.id);
+    if (!agent) {
+      sendJson({ error: 'Agent not found' }, 404);
+      return;
+    }
+    if (!assertSameProject(req, agent, sendJson)) return;
+
+    const { task, timeoutSeconds } = req.body as { task?: string; timeoutSeconds?: number };
+    if (!task?.trim()) {
+      sendJson({ error: 'task is required' }, 400);
+      return;
+    }
+
+    if (!canDelegateOverAcp(agent)) {
+      sendJson({ error: `${agent.provider ?? 'this provider'} has no ACP mode; use /dispatch`, retryWithDispatch: true }, 409);
+      return;
+    }
+
+    const wasStatus = agent.status;
+    agent.status = 'running';
+    agent.currentTask = task.slice(0, 100);
+    agent.lastActivity = new Date().toISOString();
+    ctx.agentStatusEmitter.emit('status', { agentId: agent.id, status: 'running' });
+
+    const result = await delegateOverAcp({
+      agent,
+      task,
+      appSettings: ctx.getAppSettings(),
+      isOrchestrator: agent.role === 'orchestrator',
+      timeoutMs: Math.min(Math.max((timeoutSeconds ?? 900) * 1000, 30_000), 3_600_000),
+    });
+
+    agent.status = result.ok ? 'idle' : wasStatus === 'running' ? 'idle' : wasStatus;
+    agent.lastActivity = new Date().toISOString();
+    if (result.text) agent.lastCleanOutput = result.text.slice(-8000);
+    saveAgents();
+    ctx.agentStatusEmitter.emit('status', { agentId: agent.id, status: agent.status });
+
+    sendJson(result, result.ok ? 200 : 502);
   });
 
   // POST /api/agents/:id/stop

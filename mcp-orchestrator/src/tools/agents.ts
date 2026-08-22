@@ -596,6 +596,47 @@ export function registerAgentTools(server: McpServer): void {
     },
     async ({ id, prompt, model, timeoutSeconds = 300, allowCrossProject }) => {
       try {
+        // Preferred path: run the task over the Agent Client Protocol, which
+        // returns the agent's actual answer, why the turn ended and what it
+        // cost. Falls back to the terminal dispatch below for CLIs that have
+        // no ACP mode, or when the run itself could not start.
+        try {
+          const acp = (await apiRequest(
+            `/api/agents/${id}/run-task`,
+            "POST",
+            { task: prompt, timeoutSeconds },
+            (timeoutSeconds + 60) * 1000,
+          )) as {
+            ok?: boolean;
+            stopReason?: string;
+            text?: string;
+            toolCalls?: string[];
+            usage?: { totalTokens?: number };
+            costUSD?: number;
+            error?: string;
+            retryWithDispatch?: boolean;
+          };
+
+          if (acp && !acp.retryWithDispatch && (acp.ok || acp.text)) {
+            const meta = [
+              acp.stopReason ? `ended: ${acp.stopReason}` : "",
+              acp.toolCalls?.length ? `tools: ${acp.toolCalls.slice(0, 8).join(", ")}` : "",
+              acp.usage?.totalTokens ? `${acp.usage.totalTokens} tokens` : "",
+              typeof acp.costUSD === "number" ? `$${acp.costUSD.toFixed(4)}` : "",
+            ].filter(Boolean).join(" | ");
+
+            return {
+              content: [{
+                type: "text",
+                text: `${acp.text || "(the agent produced no text)"}\n\n---\n${meta}`,
+              }],
+              isError: !acp.ok,
+            };
+          }
+        } catch {
+          // ACP unavailable for this agent — the terminal path still works.
+        }
+
         // Atomic dispatch: the server decides message-vs-spawn under its own
         // lock, so a stale status can never route the prompt to a dead PTY.
         const dispatched = await dispatchToAgent(id, prompt, model, allowCrossProject);
